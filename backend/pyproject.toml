@@ -68,6 +68,8 @@ allowed-confusables = ["–", "×"]
 # error, eventos de auditoría y motivos de revocación, no secretos.
 "src/app/core/{codes,constants,exceptions}.py" = ["S105"]
 "src/app/core/security/audit.py" = ["S105"]
+# Contraseña pública de la cuenta de demostración (solo desarrollo, documentada en el README).
+"src/app/demo/data.py" = ["S105"]
 
 [tool.ruff.format]
 quote-style = "double"

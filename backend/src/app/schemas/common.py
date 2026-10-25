@@ -57,6 +57,10 @@ def _parse_clock_time(value: Any) -> time:
 
 
 def _parse_money(value: Any) -> Decimal:
+    # JSON nunca produce Decimal: esta rama solo la usa el código que construye el modelo
+    # directamente (p. ej. los datos de demostración). Un número JSON siempre se rechaza.
+    if isinstance(value, Decimal):
+        value = f"{value:f}"
     if not isinstance(value, str) or not re.fullmatch(MONEY_INPUT_PATTERN, value):
         raise ValueError(MONEY_MESSAGE)
     return Decimal(value)
