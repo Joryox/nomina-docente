@@ -1,13 +1,17 @@
 """Fixtures compartidas.
 
-Las pruebas marcadas con ``@pytest.mark.db`` usan la base ``DB_NAME_TEST``. Si no hay
-conexión, se saltan con un mensaje que explica cómo prepararla, en lugar de fallar.
+Las pruebas marcadas con ``@pytest.mark.db`` usan la base ``DB_NAME_TEST``, migrada a la
+última versión al iniciar la sesión de pruebas. Cada prueba corre dentro de una transacción
+que se revierte al terminar. Si no hay conexión, las pruebas se saltan con un mensaje que
+explica cómo preparar la base, en lugar de fallar.
 """
 
 from collections.abc import Iterator
+from decimal import Decimal
 from typing import Any
 
 import pytest
+from alembic import command
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine
@@ -17,6 +21,11 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings, get_settings
 from app.db.session import get_db
 from app.main import create_app
+from app.models import Career, HourlyRate
+from app.repositories.career import CareerRepository
+from app.repositories.hourly_rate import HourlyRateRepository
+from app.seeds.runner import run_seeds
+from tests.helpers import run_alembic
 
 DB_UNAVAILABLE_HINT = (
     "No hay conexión a la base de pruebas {database} ({reason}). "
@@ -67,6 +76,7 @@ def test_engine(settings: Settings) -> Iterator[Engine]:
         engine.dispose()
         reason = str(error.orig).strip().splitlines()[0] if error.orig else "sin detalle"
         pytest.skip(DB_UNAVAILABLE_HINT.format(database=settings.db_name_test, reason=reason))
+    run_alembic(engine, command.upgrade, "head")
     yield engine
     engine.dispose()
 
@@ -79,6 +89,34 @@ def db_session(test_engine: Engine) -> Iterator[Session]:
         with Session(bind=connection, join_transaction_mode="create_savepoint") as session:
             yield session
         transaction.rollback()
+
+
+@pytest.fixture
+def seeded_session(db_session: Session) -> Session:
+    """Sesión de pruebas con los catálogos semilla cargados (dentro de la transacción)."""
+    run_seeds(db_session)
+    return db_session
+
+
+@pytest.fixture
+def career(seeded_session: Session) -> Career:
+    career = CareerRepository(seeded_session).get_by_code("ISC")
+    assert career is not None
+    return career
+
+
+@pytest.fixture
+def other_career(seeded_session: Session) -> Career:
+    career = CareerRepository(seeded_session).get_by_code("LADM")
+    assert career is not None
+    return career
+
+
+@pytest.fixture
+def hourly_rate(seeded_session: Session) -> HourlyRate:
+    rate = HourlyRateRepository(seeded_session).get_by_amount(Decimal("125.00"))
+    assert rate is not None
+    return rate
 
 
 @pytest.fixture
