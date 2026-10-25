@@ -11,7 +11,7 @@ Sistema web para que el personal docente del **Tecnológico de Estudios Superior
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-06B6D4?logo=tailwindcss&logoColor=white)
 ![Licencia MIT](https://img.shields.io/badge/Licencia-MIT-informational)
 
-> **Estado:** en desarrollo. Etapa 3 concluida (autenticación: registro, inicio de sesión, sesiones con rotación y seguridad). Consulta la [hoja de ruta](#hoja-de-ruta).
+> **Estado:** en desarrollo. Etapa 4 concluida (lógica de negocio: materias, asignaciones, horarios, bitácora y cálculo y emisión del recibo, con su API y la capa de datos del frontend). Las pantallas llegan en las etapas 6 a 8. Consulta la [hoja de ruta](#hoja-de-ruta).
 
 ---
 
@@ -28,7 +28,8 @@ El diseño parte de un principio: **el sistema debe impedir errores**. Por eso u
 - **Asignaciones.** Combinación de materia, carrera y tarifa por hora, con tarifas tomadas de un catálogo.
 - **Horarios semanales** con validación de horas y detección de empalmes.
 - **Bitácora de sesiones** precargada con el horario del día, ajustable por el docente.
-- **Recibo de nómina quincenal** calculado automáticamente, con desglose por materia y carrera, folio consecutivo y exportación a PDF.
+- **Recibo de nómina quincenal** calculado automáticamente, con vista previa en vivo, advertencias (clases sin registrar, sesiones fuera de horario), desglose por materia y carrera, folio consecutivo y exportación a PDF (etapa 8).
+- **Historial que no cambia en silencio:** cada sesión guarda la tarifa con la que se registró y el recibo emitido es una copia fija que bloquea la bitácora de su quincena.
 - **Precisión monetaria:** todos los cálculos con aritmética decimal exacta, en pesos mexicanos (MXN).
 - **Interfaz en español de México**, accesible (WCAG 2.2 AA) y responsiva.
 
@@ -56,7 +57,13 @@ nomina-docente/
 └── LICENSE
 ```
 
-La arquitectura se explica en [`docs/arquitectura.md`](docs/arquitectura.md) y el esquema de base de datos (diagrama entidad-relación, diccionario de datos y decisiones de diseño) en [`docs/base-de-datos.md`](docs/base-de-datos.md) y la seguridad (flujos de autenticación, amenazas y mitigaciones) en [`docs/seguridad.md`](docs/seguridad.md).
+| Documento | Contenido |
+| --- | --- |
+| [`docs/arquitectura.md`](docs/arquitectura.md) | Componentes, capas y flujo de datos |
+| [`docs/reglas-de-negocio.md`](docs/reglas-de-negocio.md) | Cada regla RN-XX, dónde se valida y su prueba; fórmula del cálculo con un ejemplo; diagramas de la emisión y del ciclo de vida de una sesión |
+| [`docs/api.md`](docs/api.md) | Convenciones, tabla de endpoints y catálogo de códigos de error |
+| [`docs/base-de-datos.md`](docs/base-de-datos.md) | Diagrama entidad-relación, diccionario de datos y decisiones de diseño |
+| [`docs/seguridad.md`](docs/seguridad.md) | Flujos de autenticación, amenazas y mitigaciones |
 
 ## Requisitos
 
@@ -167,6 +174,38 @@ En las herramientas del navegador (Aplicación → Cookies) verás `nomina_acces
 
 Para levantar cada app por separado: `uv run python -m app` dentro de `backend/` y `npm run dev` dentro de `frontend/`.
 
+### Datos de demostración
+
+Para presentar el sistema sin capturar nada, carga una cuenta de demostración con datos **ficticios**:
+
+```bash
+bash scripts/demo-data.sh
+```
+
+Crea (o completa, si ya existe) a «Docente Demostración Ficticia» con 6 materias, 7 asignaciones en 4 carreras (ISC, IIND, LADM, IMEC) con las 3 tarifas, su horario semanal, la bitácora de las tres quincenas anteriores y de la actual, un cambio de tarifa a mitad del historial y los recibos emitidos de las dos quincenas más antiguas. La quincena anterior queda **terminada sin recibo**, lista para mostrar la emisión. Al final imprime las credenciales:
+
+| Dato | Valor |
+| --- | --- |
+| Correo | `docente.demo@example.com` |
+| Contraseña | `Pizarron-Verde-2026` |
+
+- Todo pasa por los servicios del sistema, con las mismas validaciones que una captura real (no escribe directo en las tablas).
+- Es idempotente: ejecutarlo otra vez solo agrega lo que falte.
+- Se niega a correr si `APP_ENV` no es `development`. Requiere las migraciones y los datos semilla.
+
+### Probar la API en `/docs`
+
+1. Levanta el backend (`bash scripts/dev.sh` o `uv run python -m app` en `backend/`) y abre http://127.0.0.1:8000/docs.
+2. Pide el token CSRF: **autenticación → `GET /api/v1/auth/csrf`** → *Try it out* → *Execute*. La cookie queda en el navegador; copia el valor de `csrf_token`.
+3. Inicia sesión con **`POST /api/v1/auth/login`** y el cuerpo `{"email": "docente.demo@example.com", "password": "Pizarron-Verde-2026"}`. En las rutas que modifican datos, agrega el encabezado `X-CSRF-Token` con el valor del paso 2 (Swagger no lo agrega solo: para las escrituras es más cómodo `curl` o el frontend).
+4. Con la sesión iniciada, las consultas funcionan directamente desde `/docs`:
+   - **panel → `GET /dashboard/summary`**: horas y monto estimado de la quincena actual, clases de hoy y últimos recibos;
+   - **nómina → `GET /payroll/periods?year=2026`**: las 24 quincenas con su estado (`issued`, `closed`, `open`, `future`);
+   - **nómina → `GET /payroll/preview`** con la quincena que aparece como `closed`: renglones, totales y advertencias;
+   - **horarios → `GET /schedules/weekly`** y **bitácora → `GET /logbook`** (con filtros y totales).
+
+El catálogo de endpoints y de códigos de error está en [`docs/api.md`](docs/api.md).
+
 ### 5. Pruebas y calidad
 
 ```bash
@@ -174,7 +213,7 @@ Para levantar cada app por separado: `uv run python -m app` dentro de `backend/`
 uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest
 
 # Frontend (dentro de frontend/)
-npm run check && npm run build
+npm run check && npm run api:check && npm run build
 ```
 
 Las pruebas que necesitan la base de datos se saltan, con un aviso que explica cómo prepararla, si `nomina_docente_test` no está disponible.
@@ -188,6 +227,8 @@ Las pruebas que necesitan la base de datos se saltan, con un aviso que explica c
 | [`scripts/migrate.sh`](scripts/migrate.sh) | Aplica las migraciones de Alembic (acepta argumentos, p. ej. `downgrade base`) |
 | [`scripts/seed.sh`](scripts/seed.sh) | Carga los datos semilla: carreras, tipos de carrera, tarifas y roles |
 | [`scripts/dev.sh`](scripts/dev.sh) | Levanta backend y frontend con un solo comando |
+| [`scripts/demo-data.sh`](scripts/demo-data.sh) | Carga la cuenta de demostración con datos ficticios (solo desarrollo) |
+| [`scripts/generate-api-types.sh`](scripts/generate-api-types.sh) | Regenera los tipos de TypeScript desde el OpenAPI (`--check` verifica que estén al día) |
 
 Más detalles en [`scripts/README.md`](scripts/README.md).
 
@@ -197,7 +238,7 @@ Más detalles en [`scripts/README.md`](scripts/README.md).
 - [x] 1. Arquitectura base del backend y frontend
 - [x] 2. Base de datos: modelos, migraciones y catálogo de carreras
 - [x] 3. Autenticación: registro, inicio de sesión, sesión y seguridad
-- [ ] 4. Lógica de negocio: materias, asignaciones, horarios, bitácora y cálculo de nómina
+- [x] 4. Lógica de negocio: materias, asignaciones, horarios, bitácora y cálculo de nómina
 - [ ] 5. Sistema de diseño
 - [ ] 6. Pantallas: inicio de sesión, registro y panel principal
 - [ ] 7. Pantallas: asignaciones, horarios y bitácora

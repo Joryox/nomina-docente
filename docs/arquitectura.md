@@ -1,6 +1,6 @@
 # Arquitectura del Sistema de Nómina Docente
 
-Este documento describe el sistema a alto nivel: sus componentes, cómo se organizan las capas de cada aplicación y el modelo de datos conceptual. Las reglas de negocio completas y las convenciones están en [`CLAUDE.md`](../CLAUDE.md); el esquema de base de datos en [`base-de-datos.md`](base-de-datos.md) y la seguridad (autenticación, sesiones, CSRF, amenazas) en [`seguridad.md`](seguridad.md).
+Este documento describe el sistema a alto nivel: sus componentes, cómo se organizan las capas de cada aplicación y el modelo de datos conceptual. Las reglas de negocio completas y las convenciones están en [`CLAUDE.md`](../CLAUDE.md); el esquema de base de datos en [`base-de-datos.md`](base-de-datos.md); la seguridad (autenticación, sesiones, CSRF, amenazas) en [`seguridad.md`](seguridad.md); cada regla de negocio con dónde se valida y su prueba en [`reglas-de-negocio.md`](reglas-de-negocio.md), y los endpoints y códigos de error en [`api.md`](api.md).
 
 ## 1. Visión general
 
@@ -68,7 +68,8 @@ flowchart TD
     end
 
     subgraph domain[Dominio]
-        services[services<br/>lógica de negocio, sin HTTP]
+        services[services<br/>casos de uso, transacciones, sin HTTP]
+        pure[domain<br/>reglas puras: periodos,<br/>redondeo, cálculo de nómina]
     end
 
     subgraph data[Datos]
@@ -82,6 +83,7 @@ flowchart TD
 
     main --> routers
     routers --> services
+    services --> pure
     services --> repos
     repos --> models
     models --> dbm
@@ -97,6 +99,7 @@ flowchart TD
 | `api/v1/routers` | Recibe la petición, valida con `schemas`, obtiene al docente autenticado, llama al servicio y responde | Consultar la base de datos o aplicar reglas de negocio |
 | `api/v1/dependencies.py` | Raíz de composición: construye cada servicio con sus repositorios y la sesión (`get_db`) y lo entrega a los routers mediante `Depends` | Contener lógica; es el único punto de la capa API que conoce sesiones y repositorios |
 | `services` | Aplica las reglas de negocio (RN-XX), coordina repositorios, controla la transacción y lanza excepciones de dominio | Conocer `Request`, `Response` o códigos HTTP |
+| `domain` | Reglas puras sin E/S: periodos quincenales, redondeo de dinero y horas (único módulo que redondea), cálculo del recibo, intervalos de clase, ocurrencias del horario. Solo importa `core.constants` | Acceder a la base, al reloj o a HTTP |
 | `repositories` | Lee y escribe entidades, siempre filtradas por el docente dueño | Decidir si una operación es válida |
 | `models` | Define tablas, relaciones y restricciones | Importar capas superiores |
 | `schemas` | Define contratos de entrada y salida de la API | Depender de los modelos ORM |
@@ -106,7 +109,9 @@ flowchart TD
 
 **Autenticación y acceso.** `api/v1/dependencies.py` ofrece `get_current_user`, `get_current_teacher` y `require_roles(...)`: toda ruta de negocio los declara y pasa el docente autenticado al servicio, que filtra por él (RN-04). La validación del JWT, la rotación de sesiones y la revocación viven en `services/sessions.py`; el registro e inicio de sesión en `services/auth.py`; el perfil y el cambio de contraseña en `services/account.py`. El servicio controla la transacción con `repositories/unit_of_work.py`. Las piezas sin estado (Argon2, JWT, política de contraseñas, middlewares, auditoría) están en `core/security/`. Detalle y diagramas en [`seguridad.md`](seguridad.md).
 
-**Manejo de errores.** Los servicios lanzan excepciones de dominio (`NotFoundError`, `ConflictError`, `BusinessRuleError`, etc.). Un manejador central registrado en `main.py` las traduce a respuestas HTTP con un formato único:
+**Lógica de negocio (etapa 4).** Cada funcionalidad tiene su servicio (`subjects`, `assignments`, `schedules`, `logbook`, `payroll`, `dashboard`, `catalogs`). La vista previa y la emisión del recibo llaman a la misma función pura `domain.payroll.calculate_payroll`, así que sus totales coinciden. La fecha del negocio la da un `BusinessCalendar` inyectable (zona `America/Mexico_City`), separado del reloj de sesión para que las pruebas fijen «hoy» sin invalidar los tokens. Los límites configurables (duración de clases, antigüedad de la bitácora, regla de emisión) llegan a los servicios como `BusinessPolicy`. Las escrituras de bitácora y la emisión bloquean la fila del docente (`FOR NO KEY UPDATE`) para que no compitan entre sí. Detalle en [`reglas-de-negocio.md`](reglas-de-negocio.md).
+
+**Manejo de errores.** Los servicios lanzan excepciones de dominio (`NotFoundError`, `ConflictError`, `BusinessRuleError`, etc.); `domain_error(code)` elige la clase según el estado HTTP que el catálogo `ERROR_CATALOG` asigna a cada código. Si la base rechaza una escritura, `services/constraints.py` traduce el nombre de la restricción al mismo código. Un manejador central registrado en `main.py` las traduce a respuestas HTTP con un formato único:
 
 ```json
 { "error": { "code": "SCHEDULE_OVERLAP", "message": "…", "details": {} } }
@@ -139,16 +144,19 @@ flowchart TD
 
     subgraph features[features/]
         auth[auth]
+        catalogs[catalogs]
+        subjects[subjects]
         assignments[assignments]
         schedules[schedules]
         logbook[logbook]
         payroll[payroll]
+        dashboard[dashboard]
     end
 
     subgraph shared[Compartido]
         ui[components/ui<br/>shadcn]
         layout[components/layout]
-        lib[lib<br/>cliente HTTP, formateadores,<br/>manejo de errores]
+        lib[lib<br/>cliente HTTP, tipos generados,<br/>claves de consulta, formateadores,<br/>manejo de errores]
         config[config<br/>variables de entorno]
         constants[constants<br/>textos y rutas]
         styles[styles<br/>tokens de diseño]
@@ -164,7 +172,7 @@ flowchart TD
     ui --> styles
 ```
 
-Cada feature contiene `components/`, `hooks/`, `api/`, `schemas/` y `types/`. Una feature no importa archivos internos de otra; lo compartido se mueve a `components/`, `lib/` o `constants/`. La feature `system-status` es temporal (etapa 1): muestra el resultado de `GET /api/v1/health` en la página inicial y se retirará cuando exista el panel principal.
+Cada feature contiene `components/`, `hooks/`, `api/`, `schemas/` y `types/`. Una feature no importa archivos internos de otra; lo compartido se mueve a `components/`, `lib/` o `constants/`. La feature `system-status` es temporal (etapa 1): muestra el resultado de `GET /api/v1/health` en la página inicial y se retirará cuando exista el panel principal. En la etapa 4 las features `catalogs`, `subjects`, `assignments`, `schedules`, `logbook`, `payroll` y `dashboard` tienen su capa de datos (`api/`, `hooks/`, `schemas/`, `types/`); sus componentes llegan en las etapas 6 a 8.
 
 **Rutas y sesión.** Las rutas están en español y centralizadas en `constants/routes.ts`: `/iniciar-sesion`, `/registro` y `/panel` (provisional hasta la etapa 6). `src/proxy.ts` (en Next.js 16, `middleware` se llama `proxy`) redirige a `/iniciar-sesion?siguiente=…` si no hay sesión y al panel si ya la hay, mirando solo una cookie indicadora; la autorización real la hace la API. La feature `auth` contiene las llamadas tipadas, los esquemas de Zod (construidos con la política de contraseñas que publica el backend), los hooks (`useSession`, `useLogin`, `useRegister`, `useLogout`, `usePasswordPolicy`) y los formularios.
 
@@ -183,6 +191,9 @@ flowchart LR
 - `api-client.ts` es el único módulo que usa `fetch` (lo garantiza una regla de ESLint). Envía `X-CSRF-Token` en los métodos que modifican datos (y pide el token si aún no existe), valida cada respuesta con un schema de Zod y convierte cualquier falla en `ApiError`. Ante un 401 renueva la sesión **una sola vez**, compartida entre las peticiones simultáneas, y repite la petición; si no puede, avisa para llevar a iniciar sesión.
 - `api-error.ts` interpreta el formato único de error del backend. Si el backend no responde (el proxy devuelve 5xx sin JSON), usa el código local `BACKEND_UNAVAILABLE`. `toUserMessage()` es el único punto que traduce errores a textos en español.
 - Las variables de entorno se validan con Zod en `config/`. `next.config.ts` reutiliza esa validación para construir el proxy.
+- **Tipos generados.** `lib/api-types.gen.ts` se genera desde el OpenAPI del backend con `npm run api:types` (`scripts/generate-api-types.sh`; `npm run api:check` falla si está desactualizado). Cada schema de Zod se declara con `satisfies z.ZodType<…>` contra el tipo generado, y los textos de error y de advertencia son `Record` sobre los códigos generados: si el backend cambia un contrato o agrega un código, TypeScript lo señala.
+- **Datos del servidor.** Las claves de TanStack Query viven en `lib/query-keys.ts` y `lib/query-invalidation.ts` define qué consultas se invalidan con cada tipo de cambio (por ejemplo, registrar una sesión invalida la bitácora, la vista previa, el panel y las asignaciones). Lo que comparten varias features (schemas de carrera, tarifa, horario, periodo, recibo) vive en `lib/api-schemas.ts`.
+- **Formatos.** `lib/formatters.ts` formatea dinero, horas, fechas y periodos a partir de las cadenas decimales de la API, sin convertirlas a número.
 
 ## 4. Modelo de datos conceptual
 
@@ -288,8 +299,12 @@ flowchart LR
 Para un periodo quincenal (1 al 15, o 16 al último día del mes):
 
 1. Se obtienen las sesiones de bitácora del docente cuya fecha cae en el periodo.
-2. Se agrupan por asignación y se suman sus minutos.
+2. Se agrupan por asignación **y tarifa** (cada sesión guarda la tarifa vigente al registrarla) y se suman sus minutos.
 3. `importe = minutos × tarifa / 60`, redondeado a 2 decimales con `ROUND_HALF_UP`.
 4. `total bruto = suma de importes`.
 
-Todo el cálculo usa `Decimal` en Python y `NUMERIC` en PostgreSQL. No se calculan deducciones (ISR, IMSS) en esta versión.
+Todo el cálculo usa `Decimal` en Python y `NUMERIC` en PostgreSQL, y vive en `backend/src/app/domain/` (`money.py` es el único módulo que redondea). No se calculan deducciones (ISR, IMSS) en esta versión. Fórmula con un ejemplo numérico completo y diagramas de la emisión en [`reglas-de-negocio.md`](reglas-de-negocio.md).
+
+## 7. Datos de demostración
+
+`scripts/demo-data.sh` (`python -m app.demo`) carga, solo con `APP_ENV=development`, una cuenta ficticia con materias, asignaciones, horarios, bitácora de varias quincenas y recibos emitidos. No escribe en las tablas de negocio directamente: usa los mismos servicios que la API, con un calendario que «viaja» a la fecha de cada sesión, así que los datos cumplen todas las reglas. Es idempotente.

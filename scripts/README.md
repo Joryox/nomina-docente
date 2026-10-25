@@ -14,9 +14,11 @@ Utilidades para preparar y mantener el entorno local. Cada script:
 | `migrate.sh` | Aplica las migraciones de Alembic a `DB_NAME`. Sin argumentos ejecuta `upgrade head`; con argumentos los pasa a Alembic (`current`, `history`, `downgrade base`) |
 | `seed.sh` | Carga los datos semilla de `backend/src/app/seeds/data/` (roles, tipos de carrera, carreras y tarifas): inserta lo nuevo, actualiza lo que cambió y nunca borra |
 | `dev.sh` | Levanta backend y frontend juntos, muestra sus URL y detiene ambos con Ctrl+C |
+| `demo-data.sh` | Carga la cuenta de demostración (`python -m app.demo`): materias, asignaciones, horarios, bitácora de varias quincenas y recibos, todo por los servicios del sistema. Se niega a correr si `APP_ENV` no es `development`; imprime el correo y la contraseña |
+| `generate-api-types.sh` | Exporta el OpenAPI del backend sin levantarlo (`python -m app.api.export_openapi`) y genera `frontend/src/lib/api-types.gen.ts` con openapi-typescript. Con `--check` falla si el archivo versionado está desactualizado. También: `npm run api:types` / `npm run api:check` en `frontend/` |
 | `lib/common.sh` | Funciones compartidas (lectura segura de `.env`, rutas de herramientas en Windows, mensajes) |
 
-Orden para una base nueva: `create-databases.sh` → `migrate.sh` → `seed.sh`.
+Orden para una base nueva: `create-databases.sh` → `migrate.sh` → `seed.sh` (→ `demo-data.sh` para presentar el sistema).
 
 `create-databases.sh` envía el SQL a `psql` por la entrada estándar (las variables `:'name'` de psql no se interpolan con `--command`) y pide los mensajes del servidor en UTF-8 (`PGCLIENTENCODING`), para que en Windows no aparezcan como `Â«`.
 

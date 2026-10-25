@@ -7,7 +7,7 @@ Este documento describe el esquema de PostgreSQL del sistema: el modelo entidad-
 | Motor | PostgreSQL 16 o superior (desarrollo con 18.3) |
 | Bases | `nomina_docente` (desarrollo) y `nomina_docente_test` (pruebas automatizadas) |
 | Codificación | UTF-8 (`TEMPLATE template0`) |
-| Fuente de verdad del esquema | Migraciones de Alembic en [`backend/alembic/versions/`](../backend/alembic/versions/): esquema inicial (`3295e857da8d`, etapa 2) y sesiones y bloqueo de acceso (`067cd1ed562c`, etapa 3) |
+| Fuente de verdad del esquema | Migraciones de Alembic en [`backend/alembic/versions/`](../backend/alembic/versions/): esquema inicial (`3295e857da8d`, etapa 2), sesiones y bloqueo de acceso (`067cd1ed562c`, etapa 3) y lógica de negocio (`8c41d2f7a9b3`, etapa 4) |
 | Modelos ORM | [`backend/src/app/models/`](../backend/src/app/models/), un archivo por tabla |
 | Datos semilla | [`backend/src/app/seeds/data/`](../backend/src/app/seeds/data/) |
 
@@ -32,6 +32,7 @@ erDiagram
     subjects ||--o{ assignments : "se imparte en"
     careers ||--o{ assignments : "agrupa"
     hourly_rates ||--o{ assignments : "tarifa de"
+    hourly_rates ||--o{ logbook_entries : "congelada en"
 
     assignments ||--o{ schedules : "tiene horarios"
     assignments ||--o{ logbook_entries : "registra sesiones"
@@ -127,6 +128,7 @@ erDiagram
         varchar name
         varchar code "nulo"
         text name_normalized "generada"
+        boolean is_active
         timestamptz created_at
         timestamptz updated_at
     }
@@ -138,6 +140,7 @@ erDiagram
         bigint career_id FK
         bigint hourly_rate_id FK
         boolean is_active
+        date active_until "nulo"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -161,6 +164,7 @@ erDiagram
         time start_time
         time end_time
         varchar notes "nulo"
+        bigint hourly_rate_id FK "tarifa congelada"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -294,6 +298,7 @@ Fuente del catálogo: volante oficial de admisión 2024 del TESH (sección 5.1).
 | `name` | `varchar(150)` | No | Recortado | Nombre tal como lo escribió el docente |
 | `code` | `varchar(20)` | Sí | Recortado | Clave opcional de la materia |
 | `name_normalized` | `text` | No | Columna generada `normalize_name(name)`; único `(teacher_id, name_normalized)` | Nombre sin acentos, en minúsculas y con espacios simples (RN-09) |
+| `is_active` | `boolean` | No | Por defecto `true` | Baja lógica: una materia usada en asignaciones no se borra, se desactiva (RN-32) |
 | `created_at`, `updated_at` | `timestamptz` | No | | Marcas de tiempo |
 
 ### 2.9 `assignments` — asignaciones
@@ -309,6 +314,7 @@ Docente + materia + carrera + tarifa por hora (RN-13).
 | `career_id` | `bigint` | No | FK → `careers.id` `RESTRICT`; índice | Carrera del catálogo |
 | `hourly_rate_id` | `bigint` | No | FK → `hourly_rates.id` `RESTRICT`; índice | Tarifa del catálogo (RN-11) |
 | `is_active` | `boolean` | No | Por defecto `true`; índice único parcial `uq_assignments_active_teacher_subject_career` sobre `(teacher_id, subject_id, career_id) WHERE is_active` | Una sola asignación activa por materia y carrera (RN-14) |
+| `active_until` | `date` | Sí | `ck_assignments_active_until_consistent` (`is_active = (active_until IS NULL)`) | Último día activo (zona de la institución). Se aceptan sesiones con fecha hasta ese día (RN-38) |
 | `created_at`, `updated_at` | `timestamptz` | No | | Marcas de tiempo |
 
 ### 2.10 `schedules` — horario semanal
@@ -338,6 +344,7 @@ Restricción de exclusión `ex_schedules_no_overlap`: `EXCLUDE USING gist (teach
 | `start_time` | `time` | No | Sin segundos | Hora de entrada |
 | `end_time` | `time` | No | `end_time > start_time`; sin segundos | Hora de salida |
 | `notes` | `varchar(500)` | Sí | Recortado | Observaciones opcionales |
+| `hourly_rate_id` | `bigint` | No | FK → `hourly_rates.id` `RESTRICT`; índice | Tarifa vigente de la asignación cuando se registró la sesión (RN-33, sección 3.9) |
 | `created_at`, `updated_at` | `timestamptz` | No | | Marcas de tiempo |
 
 Restricción de exclusión `ex_logbook_entries_no_overlap`: `EXCLUDE USING gist (teacher_id WITH =, session_date WITH =, timerange(start_time, end_time, '[)') WITH &&)` (RN-22). Trigger `trg_logbook_entries_period_locked`: impide insertar, editar o borrar sesiones de un periodo con recibo emitido (RN-23).
@@ -374,7 +381,7 @@ Copia fija e inmutable de la nómina de un periodo (RN-28).
 | `id` | `bigint` | No | PK, identity | Identificador interno |
 | `receipt_id` | `bigint` | No | FK compuesta `(receipt_id, teacher_id)` → `payroll_receipts(id, teacher_id)` `RESTRICT`; índice | Recibo |
 | `teacher_id` | `bigint` | No | Parte de las dos FK compuestas | Obliga a que recibo y asignación sean del mismo docente |
-| `assignment_id` | `bigint` | No | FK compuesta `(assignment_id, teacher_id)` → `assignments(id, teacher_id)` `RESTRICT`; índice; único `(receipt_id, assignment_id)` | Asignación de origen (trazabilidad) |
+| `assignment_id` | `bigint` | No | FK compuesta `(assignment_id, teacher_id)` → `assignments(id, teacher_id)` `RESTRICT`; índice; único `(receipt_id, assignment_id, hourly_rate)` | Asignación de origen (trazabilidad). Un renglón por asignación **y tarifa**: un cambio de tarifa dentro de la quincena produce dos renglones |
 | `subject_name` | `varchar(150)` | No | Recortado | Nombre de la materia al emitir |
 | `career_name` | `varchar(150)` | No | Recortado | Nombre de la carrera al emitir |
 | `minutes` | `integer` | No | `> 0` | Minutos impartidos en el periodo |
@@ -445,6 +452,7 @@ Además de los índices que crean automáticamente las llaves primarias, los `UN
 | `ix_schedules_assignment_id_teacher_id` | `assignment_id, teacher_id` | FK compuesta y borrado en cascada |
 | `ix_logbook_entries_assignment_id_teacher_id` | `assignment_id, teacher_id` | FK compuesta |
 | `ix_logbook_entries_teacher_id_session_date` | `teacher_id, session_date` | Bitácora de un docente en un rango de fechas (vista previa del recibo, cierre del periodo) |
+| `ix_logbook_entries_hourly_rate_id` | `hourly_rate_id` | FK de la tarifa congelada |
 | `ix_payroll_receipt_lines_receipt_id_teacher_id` | `receipt_id, teacher_id` | FK compuesta |
 | `ix_payroll_receipt_lines_assignment_id_teacher_id` | `assignment_id, teacher_id` | FK compuesta |
 | `ix_auth_sessions_user_id` | `user_id` | FK y revocación de todas las sesiones de una cuenta |
@@ -483,7 +491,7 @@ Un recibo emitido es un documento con valor administrativo: debe decir siempre l
 4. `trg_logbook_entries_period_locked` cierra la bitácora del periodo (RN-23): si las sesiones pudieran cambiar, el recibo dejaría de coincidir con ellas.
 5. Los `CHECK` garantizan la coherencia interna: el periodo coincide con año, mes y quincena (incluido febrero bisiesto) y cada importe es exactamente `round(minutos × tarifa / 60, 2)`.
 
-La regla "el total es la suma de los renglones" involucra varias filas y no puede expresarse como `CHECK`; la garantiza el servicio de emisión (etapa 4) dentro de una sola transacción.
+La regla "el total es la suma de los renglones" involucra varias filas y no puede expresarse como `CHECK`; la garantiza el servicio de emisión (`PayrollService.issue`) dentro de una sola transacción.
 
 ### 3.3 Restricciones de exclusión (no empalme)
 
@@ -553,7 +561,7 @@ Principio: **nunca se borra en cascada información con valor histórico**. Toda
 | `payroll_receipts → payroll_receipt_lines` | `RESTRICT` (+ trigger) | Un recibo emitido nunca se borra. Se cambió el `CASCADE` previsto en la etapa 0: con recibos inmutables no hay borrado que propagar |
 | Todas las demás | `RESTRICT` | Catálogos, docentes, materias y recibos se dan de baja con `is_active` o se conservan |
 
-Las bajas lógicas (`is_active = false`) están en `users`, `roles`, `careers`, `hourly_rates` y `assignments`.
+Las bajas lógicas (`is_active = false`) están en `users`, `roles`, `careers`, `hourly_rates`, `subjects` y `assignments`. Desactivar una asignación guarda `active_until` y borra sus horarios (no tienen valor histórico: la historia está en la bitácora y en los recibos).
 
 ### 3.8 Validación en la base sin duplicar al servicio
 
@@ -562,10 +570,29 @@ La base garantiza todo lo que puede expresarse como invariante de los datos. Lo 
 | Regla | Dónde |
 | --- | --- |
 | Salida posterior a la entrada, día ISO, quincena, periodo exacto, importes, no empalme, correo normalizado, materia sin duplicados, tarifa del catálogo, periodo emitido cerrado, recibo inmutable | Base de datos (y además el servicio, para dar mensajes claros) |
-| Fecha de sesión no futura (RN-22), periodo emitible no futuro (RN-29) | Servicio. Un `CHECK` con `current_date` no es válido: su resultado cambia con el tiempo y una fila aceptada hoy no se volvería a validar |
+| Fecha de sesión no futura (RN-22), periodo emitible no futuro (RN-29), antigüedad máxima de la bitácora (RN-37) | Servicio. Un `CHECK` con `current_date` no es válido: su resultado cambia con el tiempo y una fila aceptada hoy no se volvería a validar |
 | Total del recibo = suma de renglones; selección solo de catálogos activos | Servicio, dentro de una transacción |
+| Duración mínima y máxima de una clase (RN-36) | Servicio: son límites configurables por variable de entorno; un `CHECK` con valores fijos obligaría a migrar para cambiarlos |
+| Sesión dentro de la vigencia de la asignación (RN-38) | Servicio, comparando con `active_until` (que sí está en la base) |
+| Dos emisiones simultáneas del mismo periodo | Servicio: bloqueo `FOR NO KEY UPDATE` de la fila del docente; la base lo respalda con el `UNIQUE` del periodo |
 
-### 3.9 Convención de nombres
+### 3.9 Tarifa congelada en cada sesión (etapa 4)
+
+**Problema.** Si la tarifa se leyera de la asignación al calcular, cambiarla alteraría en silencio la vista previa de quincenas ya trabajadas. RN-12 protege el importe de cada tarifa del catálogo, pero no qué tarifa usa una asignación.
+
+**Opciones evaluadas.**
+
+| Opción | Ventajas | Desventajas |
+| --- | --- | --- |
+| A. Solo desactivar y crear otra asignación (diseño de la etapa 0) | Sin cambios de esquema | Obliga a duplicar horarios; la misma materia y carrera aparece como dos asignaciones; no impide que un cambio de `hourly_rate_id` por SQL altere el historial |
+| B. Versionar la asignación (tabla de tarifas con vigencia desde/hasta) | Modela la tarifa vigente por fecha | Más tablas y consultas por rango; hay que resolver traslapes de vigencias y sesiones capturadas tarde |
+| **C. Guardar la tarifa en cada sesión al registrarla** (elegida) | Una sola columna; la vista previa y la emisión leen exactamente lo registrado; un cambio de tarifa nunca toca filas existentes; la FK obliga a que sea una tarifa del catálogo | La tarifa de una sesión es la vigente al **registrarla**, no la de su fecha |
+
+**Decisión.** `logbook_entries.hourly_rate_id` (FK `RESTRICT` a `hourly_rates`). Como el importe de una tarifa es inmutable (trigger `trg_hourly_rates_amount_immutable`), referenciar la fila equivale a congelar el precio sin copiar el número. El servicio la toma de la asignación al crear la sesión y solo la cambia si la sesión pasa a otra asignación. La desventaja de C es acotada: la bitácora solo acepta sesiones de los últimos `LOGBOOK_MAX_AGE_DAYS` días y el periodo se cierra al emitir, así que una sesión atrasada no puede tomar la tarifa de otra época. Los renglones del recibo se agrupan por asignación y tarifa (`UNIQUE (receipt_id, assignment_id, hourly_rate)`).
+
+**Migración** `8c41d2f7a9b3`: agrega la columna, la rellena con la tarifa actual de cada asignación (la única que pudieron tener las sesiones previas) con los triggers de la bitácora desactivados durante el relleno, y la declara `NOT NULL`.
+
+### 3.10 Convención de nombres
 
 La base declarativa ([`backend/src/app/db/base.py`](../backend/src/app/db/base.py)) define nombres predecibles, y una prueba verifica que todas las restricciones e índices los cumplan:
 
@@ -589,6 +616,7 @@ Los nombres estables permiten que el backend traduzca una violación a un códig
 | --- | --- | --- |
 | `3295e857da8d` | 2 | Esquema inicial: extensiones, tipos, funciones, triggers y las 13 tablas del sistema |
 | `067cd1ed562c` | 3 | Sesiones y bloqueo de acceso: `auth_sessions`, `refresh_tokens` y columnas de bloqueo en `users` |
+| `8c41d2f7a9b3` | 4 | Lógica de negocio: `subjects.is_active`, `assignments.active_until`, `logbook_entries.hourly_rate_id` (tarifa congelada) y renglones del recibo únicos por asignación y tarifa |
 
 Las migraciones se escriben y revisan a mano: *autogenerate* no detecta extensiones, tipos, funciones, secuencias ni triggers, y no compara bien las restricciones de exclusión. Usa SQL literal a propósito: una migración es una fotografía del esquema y no debe cambiar si cambian las constantes de la aplicación. Una prueba verifica que *autogenerate* no encuentre diferencias entre los modelos y la base migrada.
 
