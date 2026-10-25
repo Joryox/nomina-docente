@@ -1,0 +1,12 @@
+{
+  "source": "Volante oficial de admisión 2024 del Tecnológico de Estudios Superiores de Huixquilucan (TESH)",
+  "records": [
+    { "code": "ICIV", "name": "Ingeniería Civil", "career_type": "engineering", "is_active": true },
+    { "code": "IIND", "name": "Ingeniería Industrial", "career_type": "engineering", "is_active": true },
+    { "code": "IMEC", "name": "Ingeniería Mecatrónica", "career_type": "engineering", "is_active": true },
+    { "code": "ISC", "name": "Ingeniería en Sistemas Computacionales", "career_type": "engineering", "is_active": true },
+    { "code": "LADM", "name": "Licenciatura en Administración", "career_type": "bachelor", "is_active": true },
+    { "code": "LBIO", "name": "Licenciatura en Biología", "career_type": "bachelor", "is_active": true },
+    { "code": "LGAS", "name": "Licenciatura en Gastronomía", "career_type": "bachelor", "is_active": true }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "source": "Tipos de programa del catálogo de carreras del TESH (volante oficial de admisión 2024)",
+  "records": [
+    { "code": "engineering", "name": "Ingeniería" },
+    { "code": "bachelor", "name": "Licenciatura" }
+  ]
+}
