@@ -14,8 +14,9 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from app.core.codes import ErrorCode
 from app.core.constants import CSRF_HEADER, DOCS_PATHS, SAFE_HTTP_METHODS
-from app.core.exceptions import ErrorCode, PayloadTooLargeError, error_response
+from app.core.exceptions import PayloadTooLargeError, error_response
 from app.core.security.tokens import tokens_match
 
 # La API solo responde JSON: no hay nada que cargar, incrustar ni ejecutar.

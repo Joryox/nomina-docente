@@ -9,7 +9,12 @@ from pydantic import Field, SecretStr, ValidationError, field_validator, model_v
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy import URL
 
-from app.core.constants import DATABASE_DRIVER, JWT_SECRET_MIN_LENGTH, PASSWORD_MAX_LENGTH
+from app.core.constants import (
+    DATABASE_DRIVER,
+    JWT_SECRET_MIN_LENGTH,
+    MINUTES_PER_DAY,
+    PASSWORD_MAX_LENGTH,
+)
 
 BACKEND_DIR = Path(__file__).resolve().parents[3]
 ENV_FILE = BACKEND_DIR / ".env"
@@ -74,6 +79,12 @@ class Settings(BaseSettings):
     cors_origins: Annotated[list[str], NoDecode]
 
     payroll_folio_prefix: str = Field(min_length=1)
+    # Política institucional (docs/reglas-de-negocio.md): no son constantes porque cada
+    # institución puede fijar otros límites sin cambiar código.
+    payroll_issue_requires_closed_period: bool
+    class_min_duration_minutes: int = Field(gt=0, lt=MINUTES_PER_DAY)
+    class_max_duration_minutes: int = Field(gt=0, lt=MINUTES_PER_DAY)
+    logbook_max_age_days: int = Field(ge=0)
 
     @field_validator("jwt_secret")
     @classmethod
@@ -105,6 +116,14 @@ class Settings(BaseSettings):
         ]
         if len(set(names)) != len(names):
             raise ValueError("los nombres de las cookies de sesión y CSRF deben ser distintos")
+        return self
+
+    @model_validator(mode="after")
+    def _require_coherent_class_durations(self) -> Self:
+        if self.class_min_duration_minutes > self.class_max_duration_minutes:
+            raise ValueError(
+                "CLASS_MIN_DURATION_MINUTES no puede ser mayor que CLASS_MAX_DURATION_MINUTES"
+            )
         return self
 
     @property

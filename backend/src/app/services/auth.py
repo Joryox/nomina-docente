@@ -1,8 +1,9 @@
 """Registro, inicio de sesión, renovación y cierre de sesión."""
 
 from app.core.clock import Clock
+from app.core.codes import ErrorCode
 from app.core.constants import RoleCode, SessionRevocationReason
-from app.core.exceptions import AuthenticationError, ConflictError, ErrorCode, PermissionDeniedError
+from app.core.exceptions import AuthenticationError, ConflictError, PermissionDeniedError
 from app.core.security.audit import SecurityEvent, email_fingerprint, log_security_event
 from app.core.security.password_policy import PUBLISHED_RULES, PasswordPolicy
 from app.core.security.passwords import PasswordHasher

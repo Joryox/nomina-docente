@@ -7,8 +7,9 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from app.core.clock import Clock
+from app.core.codes import ErrorCode
 from app.core.constants import SessionRevocationReason
-from app.core.exceptions import AuthenticationError, ConflictError, ErrorCode
+from app.core.exceptions import AuthenticationError, ConflictError
 from app.core.security.tokens import (
     AccessTokenClaims,
     AccessTokenCodec,

@@ -6,14 +6,9 @@ leer y modificar su propia cuenta (RN-04).
 
 from collections.abc import Iterable
 
+from app.core.codes import ErrorCode
 from app.core.constants import SessionRevocationReason
-from app.core.exceptions import (
-    BusinessRuleError,
-    ConflictError,
-    DomainError,
-    ErrorCode,
-    PermissionDeniedError,
-)
+from app.core.exceptions import BusinessRuleError, ConflictError, DomainError, PermissionDeniedError
 from app.core.security.audit import SecurityEvent, log_security_event
 from app.core.security.password_policy import PasswordPolicy
 from app.core.security.passwords import PasswordHasher

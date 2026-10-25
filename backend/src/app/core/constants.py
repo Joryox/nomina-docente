@@ -46,6 +46,40 @@ FIRST_FORTNIGHT_LAST_DAY: Final = 15
 SECOND_FORTNIGHT_FIRST_DAY: Final = FIRST_FORTNIGHT_LAST_DAY + 1
 
 MINUTES_PER_HOUR: Final = 60
+MINUTES_PER_DAY: Final = 24 * MINUTES_PER_HOUR
+
+# Años que acepta la API para un periodo de nómina: evita errores de captura (p. ej. 20026).
+PERIOD_MIN_YEAR: Final = 2000
+PERIOD_MAX_YEAR: Final = 2100
+
+# Textos del calendario en español para mensajes y documentos del backend (el frontend tiene
+# los suyos en src/constants/). El índice 0 queda vacío para indexar por número ISO o de mes.
+WEEKDAY_NAMES: Final = (
+    "",
+    "lunes",
+    "martes",
+    "miércoles",
+    "jueves",
+    "viernes",
+    "sábado",
+    "domingo",
+)
+MONTH_NAMES: Final = (
+    "",
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+)
+FORTNIGHT_ORDINALS: Final = ("", "1.ª", "2.ª")
 
 
 # --- Dinero y horas (RN-25, RN-26) -------------------------------------------------------
@@ -76,6 +110,58 @@ CATALOG_DESCRIPTION_MAX_LENGTH: Final = 255
 SUBJECT_NAME_MAX_LENGTH: Final = 150
 SUBJECT_CODE_MAX_LENGTH: Final = 20
 LOGBOOK_NOTES_MAX_LENGTH: Final = 500
+
+
+# --- Materias (RN-08, RN-09) ---------------------------------------------------------------
+# Palabras que se escriben en minúsculas dentro del nombre de una materia (salvo al inicio):
+# «Fundamentos de Investigación», «Taller de Ética y Valores».
+SUBJECT_NAME_LOWERCASE_WORDS: Final = frozenset(
+    {
+        "a",
+        "al",
+        "con",
+        "de",
+        "del",
+        "e",
+        "el",
+        "en",
+        "la",
+        "las",
+        "lo",
+        "los",
+        "o",
+        "para",
+        "por",
+        "sin",
+        "u",
+        "un",
+        "una",
+        "y",
+    }
+)
+# Números romanos que se escriben en mayúsculas: «Cálculo II», «Taller de Investigación I».
+SUBJECT_NAME_ROMAN_NUMERALS: Final = frozenset(
+    {"i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"}
+)
+SUBJECT_CODE_PATTERN: Final = r"^[A-Za-z0-9][A-Za-z0-9\-]*$"
+
+
+# --- Listados y paginación (docs/api.md) -------------------------------------------------
+DEFAULT_PAGE_SIZE: Final = 20
+MAX_PAGE_SIZE: Final = 100
+SEARCH_TERM_MAX_LENGTH: Final = 100
+
+# Máximo de clases en un registro rápido de bitácora: más que las de un día completo.
+QUICK_LOGBOOK_MAX_ENTRIES: Final = 20
+# Detalle máximo de advertencias con lista (clases sin registrar, sesiones fuera de horario).
+WARNING_DETAIL_MAX_ITEMS: Final = 50
+DASHBOARD_LATEST_RECEIPTS: Final = 3
+
+# Formato de horas en la API: 24 horas con dos dígitos, sin segundos (CLAUDE.md §7.4).
+CLOCK_TIME_PATTERN: Final = r"^([01]\d|2[0-3]):[0-5]\d$"
+CLOCK_TIME_FORMAT: Final = "%H:%M"
+# Montos que recibe la API: cadena decimal con hasta dos decimales, nunca un número JSON.
+MONEY_INPUT_PATTERN: Final = r"^\d{1,8}(\.\d{1,2})?$"
 
 
 # --- Catálogos ---------------------------------------------------------------------------

@@ -14,6 +14,7 @@ dependencies = [
     "pyjwt>=2.15.1",
     "sqlalchemy>=2.1.6",
     "uvicorn[standard]>=0.54.0",
+    "tzdata>=2026.5",
 ]
 
 [dependency-groups]
@@ -57,11 +58,15 @@ select = [
     "RUF",  # reglas propias de Ruff
 ]
 
+# Raya y signo de multiplicación: forman parte de los textos en español («10:00–12:00»,
+# «minutos × tarifa»), no son confusiones con «-» y «x».
+allowed-confusables = ["–", "×"]
+
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106"]
 # S105 marca cualquier nombre con «password» o «token»; en estos archivos son códigos de
 # error, eventos de auditoría y motivos de revocación, no secretos.
-"src/app/core/{constants,exceptions}.py" = ["S105"]
+"src/app/core/{codes,constants,exceptions}.py" = ["S105"]
 "src/app/core/security/audit.py" = ["S105"]
 
 [tool.ruff.format]

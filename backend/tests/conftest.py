@@ -68,6 +68,10 @@ def valid_settings_values() -> dict[str, Any]:
         "max_request_body_bytes": 65536,
         "cors_origins": "http://localhost:3000",
         "payroll_folio_prefix": "NOM",
+        "payroll_issue_requires_closed_period": True,
+        "class_min_duration_minutes": 30,
+        "class_max_duration_minutes": 300,
+        "logbook_max_age_days": 30,
     }
 
 
