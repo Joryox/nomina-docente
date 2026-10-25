@@ -1,13 +1,17 @@
 from datetime import time
+from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, CheckConstraint, ForeignKeyConstraint, Index, SmallInteger, text
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.constants import Weekday
 from app.db.base import Base
 from app.db.checks import whole_minute
 from app.db.mixins import IdentityPkMixin, PublicIdMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.assignment import Assignment
 
 
 class Schedule(IdentityPkMixin, PublicIdMixin, TimestampMixin, Base):
@@ -45,3 +49,5 @@ class Schedule(IdentityPkMixin, PublicIdMixin, TimestampMixin, Base):
     weekday: Mapped[int] = mapped_column(SmallInteger)
     start_time: Mapped[time]
     end_time: Mapped[time]
+
+    assignment: Mapped["Assignment"] = relationship(viewonly=True, lazy="raise_on_sql")

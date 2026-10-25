@@ -27,6 +27,7 @@ from app.core.constants import (
     PERSON_NAME_PATTERN,
 )
 from app.core.security.password_policy import PasswordRule
+from app.schemas.common import StrictInput
 from app.utils.text import collapse_spaces, normalize_email
 
 
@@ -56,10 +57,6 @@ EmployeeNumber = Annotated[
 ]
 OptionalPersonName = Annotated[PersonName | None, BeforeValidator(_blank_to_none)]
 OptionalEmployeeNumber = Annotated[EmployeeNumber | None, BeforeValidator(_blank_to_none)]
-
-
-class StrictInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
 
 
 class RegisterRequest(StrictInput):

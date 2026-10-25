@@ -3,6 +3,8 @@
 from http import HTTPStatus
 from typing import Any
 
+from app.core.codes import ErrorCode
+from app.core.exceptions import ERROR_CATALOG
 from app.schemas.error import ErrorResponse
 
 _ERROR_DESCRIPTIONS: dict[int, tuple[str, str, str]] = {
@@ -50,6 +52,50 @@ def error_responses(*statuses: int) -> dict[int | str, dict[str, Any]]:
             "content": {
                 "application/json": {
                     "example": {"error": {"code": code, "message": message, "details": {}}}
+                }
+            },
+        }
+    return responses
+
+
+_STATUS_DESCRIPTIONS: dict[int, str] = {
+    HTTPStatus.UNAUTHORIZED: "Sin sesión válida.",
+    HTTPStatus.FORBIDDEN: "Sin perfil de docente, o falta el token CSRF en una escritura.",
+    HTTPStatus.NOT_FOUND: "No existe o pertenece a otro docente (RN-04).",
+    HTTPStatus.CONFLICT: "Choca con datos existentes o con un periodo emitido.",
+    HTTPStatus.UNPROCESSABLE_ENTITY: "Datos inválidos o regla de negocio incumplida.",
+}
+
+
+def business_responses(*codes: ErrorCode, writes: bool = False) -> dict[int | str, dict[str, Any]]:
+    """Bloque ``responses`` de una ruta de negocio: agrupa los códigos posibles por estado
+    HTTP (según ``ERROR_CATALOG``) y usa el primero de cada estado como ejemplo.
+
+    Toda ruta de negocio puede responder 401, 403 y 422 de validación; las escrituras
+    también 403 por CSRF.
+    """
+    common = [ErrorCode.NOT_AUTHENTICATED, ErrorCode.TEACHER_PROFILE_REQUIRED]
+    if writes:
+        common.append(ErrorCode.CSRF_TOKEN_INVALID)
+    by_status: dict[int, list[ErrorCode]] = {}
+    for code in [*common, *codes, ErrorCode.VALIDATION_ERROR]:
+        by_status.setdefault(ERROR_CATALOG[code].status, []).append(code)
+    responses: dict[int | str, dict[str, Any]] = {}
+    for status, status_codes in sorted(by_status.items()):
+        example = status_codes[0]
+        listed = ", ".join(f"`{code.value}`" for code in status_codes)
+        responses[status] = {
+            "model": ErrorResponse,
+            "description": f"{_STATUS_DESCRIPTIONS.get(status, '')} Códigos: {listed}.".strip(),
+            "content": {
+                "application/json": {
+                    "example": {
+                        "error": {
+                            "code": example.value,
+                            "message": ERROR_CATALOG[example].message,
+                            "details": {},
+                        }
+                    }
                 }
             },
         }

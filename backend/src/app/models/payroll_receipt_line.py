@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     BigInteger,
@@ -11,7 +12,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.constants import (
     CATALOG_NAME_MAX_LENGTH,
@@ -26,6 +27,9 @@ from app.core.constants import (
 from app.db.base import Base
 from app.db.checks import trimmed_not_blank
 from app.db.mixins import IdentityPkMixin
+
+if TYPE_CHECKING:
+    from app.models.assignment import Assignment
 
 
 class PayrollReceiptLine(IdentityPkMixin, Base):
@@ -79,3 +83,6 @@ class PayrollReceiptLine(IdentityPkMixin, Base):
         Numeric(HOURLY_RATE_PRECISION, MONEY_DECIMAL_PLACES)
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(MONEY_AMOUNT_PRECISION, MONEY_DECIMAL_PLACES))
+
+    # Solo para trazabilidad (identificador público de la asignación de origen).
+    assignment: Mapped["Assignment"] = relationship(viewonly=True, lazy="raise_on_sql")

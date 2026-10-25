@@ -25,6 +25,11 @@ from app.core.constants import (
 )
 
 
+def long_date(day: date) -> str:
+    """Fecha larga en español (CLAUDE.md §7.4): «15 de octubre de 2026»."""
+    return f"{day.day} de {MONTH_NAMES[day.month]} de {day.year}"
+
+
 def last_day_of_month(year: int, month: int) -> int:
     return calendar.monthrange(year, month)[1]
 
