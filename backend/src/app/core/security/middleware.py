@@ -37,6 +37,9 @@ PERMISSIONS_POLICY = (
     "microphone=(), payment=(), usb=()"
 )
 HSTS_VALUE = "max-age=31536000; includeSubDomains"
+CSRF_INVALID_MESSAGE = (
+    "La sesión de seguridad del formulario expiró. Recarga la página e intenta de nuevo."
+)
 
 _STATIC_SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
@@ -139,6 +142,6 @@ class CsrfMiddleware(BaseHTTPMiddleware):
             return error_response(
                 HTTPStatus.FORBIDDEN,
                 ErrorCode.CSRF_TOKEN_INVALID,
-                "La sesión de seguridad del formulario expiró. Recarga la página e intenta de nuevo.",
+                CSRF_INVALID_MESSAGE,
             )
         return await call_next(request)

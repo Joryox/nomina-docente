@@ -25,11 +25,17 @@ class SecurityEvent(StrEnum):
     LOGOUT = "logout"
     LOGOUT_ALL = "logout_all"
     PASSWORD_CHANGED = "password_changed"
+    PASSWORD_CHANGE_FAILED = "password_change_failed"
     PROFILE_UPDATED = "profile_updated"
 
 
 _WARNING_EVENTS = frozenset(
-    {SecurityEvent.LOGIN_FAILED, SecurityEvent.ACCOUNT_LOCKED, SecurityEvent.REFRESH_TOKEN_REUSED}
+    {
+        SecurityEvent.LOGIN_FAILED,
+        SecurityEvent.ACCOUNT_LOCKED,
+        SecurityEvent.REFRESH_TOKEN_REUSED,
+        SecurityEvent.PASSWORD_CHANGE_FAILED,
+    }
 )
 
 

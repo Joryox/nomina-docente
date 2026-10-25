@@ -59,6 +59,10 @@ select = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106"]
+# S105 marca cualquier nombre con «password» o «token»; en estos archivos son códigos de
+# error, eventos de auditoría y motivos de revocación, no secretos.
+"src/app/core/{constants,exceptions}.py" = ["S105"]
+"src/app/core/security/audit.py" = ["S105"]
 
 [tool.ruff.format]
 quote-style = "double"

@@ -11,6 +11,11 @@ from app.core.constants import API_V1_PREFIX, APP_PACKAGE_NAME, CSRF_HEADER, REQ
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
+from app.core.security.middleware import (
+    BodySizeLimitMiddleware,
+    CsrfMiddleware,
+    SecurityHeadersMiddleware,
+)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -21,10 +26,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         title=settings.app_name,
         description=f"API del {settings.app_name} — {settings.institution_name}",
         version=version(APP_PACKAGE_NAME),
-        openapi_url=f"{API_V1_PREFIX}/openapi.json",
+        # En producción no se publica la documentación interactiva.
+        openapi_url=None if settings.is_production else f"{API_V1_PREFIX}/openapi.json",
     )
 
-    app.add_middleware(RequestContextMiddleware)
+    # Starlette ejecuta primero el último middleware agregado. Orden efectivo, de afuera
+    # hacia adentro: contexto → cabeceras de seguridad → CORS → límite de tamaño → CSRF.
+    app.add_middleware(
+        CsrfMiddleware,
+        cookie_name=settings.csrf_cookie_name,
+        allowed_origins=settings.cors_origins,
+    )
+    app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_request_body_bytes)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -33,6 +46,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["Content-Type", CSRF_HEADER, REQUEST_ID_HEADER],
         expose_headers=[REQUEST_ID_HEADER],
     )
+    app.add_middleware(SecurityHeadersMiddleware, enable_hsts=settings.is_production)
+    app.add_middleware(RequestContextMiddleware)
 
     register_exception_handlers(app)
     app.include_router(api_router)

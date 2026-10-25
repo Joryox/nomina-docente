@@ -31,6 +31,19 @@ class PasswordRule(StrEnum):
     DIGIT_REQUIRED = "digit_required"
     NO_PERSONAL_DATA = "no_personal_data"
     NOT_COMMON = "not_common"
+    # Solo al cambiar la contraseña: la nueva no puede ser igual a la actual.
+    NOT_CURRENT = "not_current"
+
+
+# Requisitos que se publican para el frontend (los que aplican a cualquier contraseña nueva).
+PUBLISHED_RULES: tuple[PasswordRule, ...] = (
+    PasswordRule.MIN_LENGTH,
+    PasswordRule.MAX_LENGTH,
+    PasswordRule.LETTER_REQUIRED,
+    PasswordRule.DIGIT_REQUIRED,
+    PasswordRule.NO_PERSONAL_DATA,
+    PasswordRule.NOT_COMMON,
+)
 
 
 def _fold(value: str) -> str:
@@ -52,7 +65,12 @@ class PasswordPolicy:
     common_passwords: frozenset[str]
     max_length: int = PASSWORD_MAX_LENGTH
 
-    def violations(self, password: str, personal_data: Iterable[str] = ()) -> list[PasswordRule]:
+    def violations(
+        self,
+        password: str,
+        personal_data: Iterable[str] = (),
+        current_password: str | None = None,
+    ) -> list[PasswordRule]:
         """Lista los requisitos que no cumple ``password`` (vacía si es aceptable).
 
         ``personal_data`` son el correo y los nombres de la persona: la contraseña no puede
@@ -72,6 +90,8 @@ class PasswordPolicy:
             broken.append(PasswordRule.NO_PERSONAL_DATA)
         if folded in self.common_passwords:
             broken.append(PasswordRule.NOT_COMMON)
+        if current_password is not None and password == current_password:
+            broken.append(PasswordRule.NOT_CURRENT)
         return broken
 
 
