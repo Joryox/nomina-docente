@@ -1,0 +1,17 @@
+{
+  "source": "Modelo de roles del sistema (CLAUDE.md, sección 5.2)",
+  "records": [
+    {
+      "code": "teacher",
+      "name": "Docente",
+      "description": "Administra sus propias materias, asignaciones, horarios, bitácora y recibos.",
+      "is_active": true
+    },
+    {
+      "code": "admin",
+      "name": "Administrador",
+      "description": "Reservado para una versión futura: gestión de catálogos y consulta de docentes.",
+      "is_active": false
+    }
+  ]
+}

@@ -11,7 +11,7 @@ Sistema web para que el personal docente del **Tecnológico de Estudios Superior
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-06B6D4?logo=tailwindcss&logoColor=white)
 ![Licencia MIT](https://img.shields.io/badge/Licencia-MIT-informational)
 
-> **Estado:** en desarrollo. Etapa 1 concluida (arquitectura base del backend y del frontend, conectados). Consulta la [hoja de ruta](#hoja-de-ruta).
+> **Estado:** en desarrollo. Etapa 2 concluida (base de datos: modelos, migraciones, restricciones y catálogos semilla). Consulta la [hoja de ruta](#hoja-de-ruta).
 
 ---
 
@@ -49,14 +49,14 @@ nomina-docente/
 ├── backend/        API REST en FastAPI (arquitectura limpia por capas)
 ├── frontend/       Aplicación web en Next.js (organizada por funcionalidades)
 │   └── public/brand/   Logos institucionales
-├── docs/           Documentación técnica (arquitectura y diagramas)
+├── docs/           Documentación técnica (arquitectura, base de datos y diagramas)
 ├── scripts/        Utilidades para el entorno de desarrollo
 ├── CLAUDE.md       Reglas de negocio, convenciones y bitácora técnica del proyecto
 ├── README.md
 └── LICENSE
 ```
 
-La arquitectura se explica en [`docs/arquitectura.md`](docs/arquitectura.md).
+La arquitectura se explica en [`docs/arquitectura.md`](docs/arquitectura.md) y el esquema de base de datos (diagrama entidad-relación, diccionario de datos y decisiones de diseño) en [`docs/base-de-datos.md`](docs/base-de-datos.md).
 
 ## Requisitos
 
@@ -127,13 +127,20 @@ Crea `backend/.env` (con un `JWT_SECRET` aleatorio) y `frontend/.env.local` si n
 ### 3. Configurar y crear las bases de datos
 
 1. Abre `backend/.env` y escribe en `DB_PASSWORD` la contraseña del usuario de PostgreSQL (`DB_USER`, por defecto `postgres`).
-2. Crea las bases `nomina_docente` y `nomina_docente_test` (habilita `btree_gist` en ambas):
+2. Crea las bases `nomina_docente` y `nomina_docente_test`:
 
    ```bash
    bash scripts/create-databases.sh
    ```
 
-El script es idempotente: si las bases ya existen, solo lo confirma.
+3. Crea las tablas (y las extensiones `btree_gist` y `unaccent`) en la base de desarrollo y carga los catálogos (carreras del TESH, tarifas y roles):
+
+   ```bash
+   bash scripts/migrate.sh
+   bash scripts/seed.sh
+   ```
+
+Los tres scripts son idempotentes: ejecutarlos de nuevo no duplica ni rompe nada. Las pruebas migran por su cuenta la base de pruebas.
 
 ### 4. Levantar el proyecto
 
@@ -168,7 +175,9 @@ Las pruebas que necesitan la base de datos se saltan, con un aviso que explica c
 | Script | Descripción |
 | --- | --- |
 | [`scripts/setup.sh`](scripts/setup.sh) | Crea los archivos `.env` que falten e instala dependencias |
-| [`scripts/create-databases.sh`](scripts/create-databases.sh) | Crea las bases de desarrollo y pruebas y habilita `btree_gist` |
+| [`scripts/create-databases.sh`](scripts/create-databases.sh) | Crea las bases de desarrollo y de pruebas |
+| [`scripts/migrate.sh`](scripts/migrate.sh) | Aplica las migraciones de Alembic (acepta argumentos, p. ej. `downgrade base`) |
+| [`scripts/seed.sh`](scripts/seed.sh) | Carga los datos semilla: carreras, tipos de carrera, tarifas y roles |
 | [`scripts/dev.sh`](scripts/dev.sh) | Levanta backend y frontend con un solo comando |
 
 Más detalles en [`scripts/README.md`](scripts/README.md).
@@ -177,7 +186,7 @@ Más detalles en [`scripts/README.md`](scripts/README.md).
 
 - [x] 0. Cimientos y documentación
 - [x] 1. Arquitectura base del backend y frontend
-- [ ] 2. Base de datos: modelos, migraciones y catálogo de carreras
+- [x] 2. Base de datos: modelos, migraciones y catálogo de carreras
 - [ ] 3. Autenticación: registro, inicio de sesión, sesión y seguridad
 - [ ] 4. Lógica de negocio: materias, asignaciones, horarios, bitácora y cálculo de nómina
 - [ ] 5. Sistema de diseño

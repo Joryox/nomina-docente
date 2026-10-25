@@ -178,6 +178,8 @@ flowchart LR
 
 ## 4. Modelo de datos conceptual
 
+Vista resumida. El esquema completo, con el diccionario de datos y las decisiones de diseño, está en [`base-de-datos.md`](base-de-datos.md).
+
 ```mermaid
 erDiagram
     USER ||--|| TEACHER : "tiene perfil"
@@ -189,6 +191,7 @@ erDiagram
     SUBJECT ||--o{ ASSIGNMENT : "se imparte en"
     CAREER ||--o{ ASSIGNMENT : "agrupa"
     HOURLY_RATE ||--o{ ASSIGNMENT : "tarifa de"
+    CAREER_TYPE ||--o{ CAREER : "clasifica"
 
     ASSIGNMENT ||--o{ SCHEDULE : "tiene horarios"
     ASSIGNMENT ||--o{ LOGBOOK_ENTRY : "registra sesiones"
@@ -203,7 +206,12 @@ erDiagram
         string maternal_surname
         string employee_number "opcional, único"
     }
+    CAREER_TYPE {
+        string code "engineering, bachelor"
+        string name "único"
+    }
     CAREER {
+        string code "único, p. ej. ISC"
         string name "único"
         bool is_active
     }
@@ -248,9 +256,10 @@ erDiagram
 Puntos clave del modelo:
 
 - **Identidad y perfil separados.** `USER` guarda credenciales; `TEACHER` guarda los datos del docente. Los roles se asignan por `USER_ROLE`, lo que permite agregar un administrador sin rehacer tablas.
-- **Catálogos en base de datos.** Carreras y tarifas son catálogos con datos semilla; el frontend obtiene sus opciones de la API.
-- **Recibo congelado.** Al emitirse, cada renglón copia materia, carrera, tarifa, minutos e importe. El recibo no cambia aunque los catálogos cambien después.
-- **Validación en base de datos.** Restricciones `CHECK`, llaves foráneas y restricciones de exclusión (no empalme de horarios ni de sesiones) protegen los datos aunque falle una validación previa.
+- **Catálogos en base de datos.** Carreras (con su tipo: ingeniería o licenciatura), tarifas y roles son catálogos con datos semilla; el frontend obtiene sus opciones de la API. Las 7 carreras salen del volante oficial de admisión 2024 del TESH.
+- **Recibo congelado.** Al emitirse, cada renglón copia materia, carrera, tarifa, minutos e importe, y el encabezado copia los datos del docente. Triggers de la base impiden modificar o borrar el recibo y cierran la bitácora del periodo.
+- **Identificadores.** Llave primaria `bigint` identity en todas las tablas; las entidades del docente que expone la API tienen además un `public_id` UUID para no revelar identificadores secuenciales.
+- **Validación en base de datos.** Restricciones `CHECK`, llaves foráneas (algunas compuestas, para que los datos de un docente nunca se mezclen con los de otro) y restricciones de exclusión con `btree_gist` (no empalme de horarios ni de sesiones) protegen los datos aunque falle una validación previa.
 
 ## 5. Flujo principal
 

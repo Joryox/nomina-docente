@@ -1,0 +1,8 @@
+{
+  "source": "Tabulador de tarifas por hora definido por el responsable del proyecto (RN-10), en MXN",
+  "records": [
+    { "amount": "125.00", "is_active": true },
+    { "amount": "135.00", "is_active": true },
+    { "amount": "145.00", "is_active": true }
+  ]
+}
