@@ -12,14 +12,16 @@ routers (API) → services (negocio) → repositories (datos) → models (ORM)
 | --- | --- |
 | `src/app/main.py` | `create_app()`: registra middlewares, CORS, manejadores de errores y routers |
 | `src/app/__main__.py` | Arranque del servidor con host y puerto de la configuración (`python -m app`) |
-| `src/app/core/` | Configuración (`config.py`), constantes, logging JSON, middleware de peticiones y excepciones de dominio |
+| `src/app/core/` | Configuración (`config.py`), constantes, reloj inyectable, logging JSON, middleware de peticiones y excepciones de dominio |
+| `src/app/core/security/` | Argon2, JWT y tokens opacos, política de contraseñas (con `data/common-passwords.txt`), middlewares de cabeceras, tamaño y CSRF, y auditoría |
 | `src/app/db/` | Motor, sesiones (`get_db`), base declarativa con convención de nombres, mezclas de columnas comunes (`mixins.py`) y expresiones `CHECK` reutilizables (`checks.py`) |
 | `src/app/models/` | Modelos ORM (uno por archivo; se registran en `models/__init__.py` para Alembic) |
 | `src/app/schemas/` | Contratos Pydantic de entrada y salida |
 | `src/app/repositories/` | Acceso a datos, sin reglas de negocio |
 | `src/app/services/` | Lógica de negocio, sin HTTP |
 | `src/app/api/v1/routers/` | Endpoints delgados |
-| `src/app/api/v1/dependencies.py` | Composición: arma servicios con sus repositorios para los routers |
+| `src/app/api/v1/dependencies.py` | Composición: arma servicios con sus repositorios; `get_current_user`, `get_current_teacher` y `require_roles` |
+| `src/app/api/v1/cookies.py` | Cookies de sesión y CSRF |
 | `src/app/seeds/` | Datos semilla: archivos en `data/*.json`, validación (`schemas.py`, `loader.py`) y carga idempotente (`runner.py`, `python -m app.seeds`) |
 | `src/app/utils/` | Utilidades sin estado (formato del folio) |
 | `alembic/` | Migraciones; la URL sale de `Settings`, nunca de `alembic.ini` |
@@ -54,4 +56,14 @@ El esquema de base de datos está documentado en [`docs/base-de-datos.md`](../do
 | Método y ruta | Descripción |
 | --- | --- |
 | `GET /api/v1/health` | Estado de la API y de la base de datos (`status`: `ok` o `degraded`) |
+| `GET /api/v1/auth/csrf` | Token CSRF (cookie legible + valor para el encabezado `X-CSRF-Token`) |
+| `GET /api/v1/auth/password-policy` | Requisitos de contraseña que aplica el servidor |
+| `POST /api/v1/auth/register` | Registro de docente (cuenta, perfil, rol y sesión en una transacción) |
+| `POST /api/v1/auth/login` | Inicio de sesión (mensaje genérico, bloqueo tras intentos fallidos) |
+| `POST /api/v1/auth/refresh` | Rotación del refresh token y nuevo token de acceso |
+| `POST /api/v1/auth/logout` y `/logout-all` | Cierra la sesión actual o todas |
+| `GET` y `PATCH /api/v1/auth/me` | Datos de la cuenta y del perfil; actualización del perfil |
+| `POST /api/v1/auth/change-password` | Cambio de contraseña (revoca las demás sesiones) |
+
+Toda petición que modifica datos requiere el encabezado `X-CSRF-Token`. Detalle en [`docs/seguridad.md`](../docs/seguridad.md).
 | `GET /docs` | Documentación interactiva (OpenAPI en `/api/v1/openapi.json`) |

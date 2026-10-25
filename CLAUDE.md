@@ -180,7 +180,8 @@ backend/
 ├── src/app/
 │   ├── main.py              → solo crea la app (create_app) y registra routers y middlewares
 │   ├── __main__.py          → arranque de Uvicorn con host/puerto de Settings (`python -m app`)
-│   ├── core/                → config (pydantic-settings), seguridad, logging, middleware, excepciones, constantes
+│   ├── core/                → config (pydantic-settings), reloj, logging, middleware, excepciones, constantes
+│   │   └── security/        → Argon2, JWT, política de contraseñas (+ data/), cabeceras, tamaño, CSRF, auditoría
 │   ├── db/                  → motor, sesión (get_db), base declarativa con convención de nombres, mixins y CHECK reutilizables
 │   ├── models/              → modelos ORM (un archivo por entidad, registrados en __init__.py)
 │   ├── schemas/             → modelos Pydantic de entrada/salida
@@ -188,7 +189,9 @@ backend/
 │   ├── services/            → lógica de negocio (sin saber de HTTP)
 │   ├── api/v1/
 │   │   ├── router.py        → router raíz con el prefijo /api/v1
-│   │   ├── dependencies.py  → raíz de composición: servicio + repositorios + sesión
+│   │   ├── dependencies.py  → raíz de composición + get_current_user / get_current_teacher / require_roles
+│   │   ├── cookies.py       → cookies de sesión y CSRF
+│   │   ├── openapi.py       → respuestas de error documentadas
 │   │   └── routers/         → endpoints delgados (validan, llaman al service, responden)
 │   ├── seeds/               → datos semilla: data/*.json, validación (schemas, loader) y carga idempotente (runner)
 │   └── utils/               → utilidades sin estado (formato del folio)
@@ -239,7 +242,8 @@ frontend/
 │   ├── constants/           → textos, mensajes de error, rutas, HTTP, localización
 │   └── styles/              → tokens.css (variables CSS) y globals.css (mapeo a Tailwind)
 ├── public/brand/            → logos oficiales
-├── next.config.ts           → rewrites del proxy hacia el backend
+├── src/proxy.ts             → redirecciones según la cookie indicadora de sesión (Next.js 16: antes middleware)
+├── next.config.ts           → rewrites del proxy hacia el backend y cabeceras de seguridad de las páginas
 ├── components.json          → configuración de shadcn/ui
 ├── eslint.config.mjs  .prettierrc.json  tsconfig.json  .nvmrc
 ├── AGENTS.md                → reglas para agentes que `next dev` regenera; se versiona
@@ -293,7 +297,7 @@ Implementado en la etapa 2. Referencia completa (diagrama entidad-relación, dic
 
 | Tabla | Propósito | Columnas clave |
 | --- | --- | --- |
-| `users` | Identidad y credenciales | `email` (único, guardado normalizado; `CHECK email = lower(btrim(email))`), `password_hash`, `is_active`, `last_login_at` |
+| `users` | Identidad y credenciales | `email` (único, guardado normalizado; `CHECK email = lower(btrim(email))`), `password_hash`, `is_active`, `last_login_at`, `failed_login_attempts` y `locked_until` (bloqueo, etapa 3) |
 | `roles` | Catálogo de roles | `code` (único: `teacher`; `admin` cargado inactivo, reservado), `name`, `description`, `is_active` |
 | `user_roles` | Relación N:M usuario–rol | `user_id`, `role_id` (PK compuesta), `created_at` |
 | `teachers` | Perfil del docente (1:1) | `user_id` (único, FK), `first_names`, `paternal_surname`, `maternal_surname` (nulo permitido), `employee_number` (único, nulo permitido) |
@@ -306,6 +310,8 @@ Implementado en la etapa 2. Referencia completa (diagrama entidad-relación, dic
 | `logbook_entries` | Sesiones impartidas | `assignment_id`, `teacher_id`, `session_date`, `start_time`, `end_time`, `notes` |
 | `payroll_receipts` | Recibo emitido (copia fija) | `teacher_id`, `folio_number` (secuencia de la base), `folio` (único), `year`, `month`, `fortnight`, `period_start`, `period_end`, `teacher_full_name` y `teacher_employee_number` (copias), `total_minutes`, `total_hours` (generada), `total_amount` `NUMERIC(12,2)`, `issued_at`; único `(teacher_id, year, month, fortnight)` |
 | `payroll_receipt_lines` | Renglones congelados del recibo | `receipt_id`, `teacher_id`, `assignment_id`, `subject_name`, `career_name`, `minutes`, `hours` (generada), `hourly_rate`, `amount` |
+| `auth_sessions` | Sesión iniciada (etapa 3) | `public_id` (= `sid` del JWT), `user_id`, `user_agent`, `ip_address`, `last_used_at`, `expires_at`, `revoked_at`, `revocation_reason` |
+| `refresh_tokens` | Refresh tokens (etapa 3) | `session_id`, `token_hash` (SHA-256, único), `expires_at`, `used_at`; un solo token sin usar por sesión |
 
 Tipos: dinero `NUMERIC(10,2)` (tarifas) y `NUMERIC(12,2)` (importes y totales), horas `NUMERIC(8,2)`, minutos `integer`. Longitudes y precisiones son constantes en `core/constants.py`.
 
@@ -334,14 +340,54 @@ La identidad (`users`) está separada del perfil (`teachers`) y los permisos se 
 
 ## 6. Seguridad
 
-- **Contraseñas:** hash Argon2id; nunca se registran ni se devuelven. Longitud mínima de 8 caracteres (constante con nombre).
-- **Sesión:** JWT firmado (HS256 por defecto, configurable) con `sub` = `users.public_id` (UUID, nunca el `id` secuencial) y expiración configurable (`ACCESS_TOKEN_EXPIRE_MINUTES`).
-- **Cookie:** `httpOnly`, `SameSite=Lax`, `Secure` configurable (`AUTH_COOKIE_SECURE`, `false` solo en desarrollo local por HTTP), `Path=/`.
-- **CSRF:** como la sesión vive en una cookie, las peticiones que modifican datos (`POST`, `PUT`, `PATCH`, `DELETE`) usan el patrón *double-submit*: una cookie legible `csrf_token` y el encabezado `X-CSRF-Token` deben coincidir.
-- **Autorización:** toda consulta se filtra por el docente autenticado en la capa de repositorio (RN-04).
-- **Mensajes de autenticación:** el login falla con un mensaje genérico ("Correo o contraseña incorrectos") para no revelar qué cuentas existen.
-- **Secretos:** solo en `.env` (ignorado por git). `JWT_SECRET` es obligatorio y debe tener al menos 32 caracteres; si no, el backend no inicia.
-- Revisión de seguridad formal en la etapa 10 (OWASP Top 10, dependencias, cabeceras).
+Implementada en la etapa 3. Diagramas de cada flujo, amenazas y mitigaciones (OWASP Top 10) y limitaciones: [`docs/seguridad.md`](docs/seguridad.md).
+
+### 6.1 Flujo de autenticación
+
+1. **Registro** (`POST /api/v1/auth/register`): en **una** transacción crea `users` (correo normalizado, hash Argon2id), el rol `teacher` (buscado por su clave `RoleCode.TEACHER`, nunca por id), `teachers` y la primera sesión. Correo o número de empleado repetidos responden 409 con mensaje claro (también si la carrera la gana otro registro: la base decide con su `UNIQUE`).
+2. **Inicio de sesión** (`POST /auth/login`): mismo error genérico `INVALID_CREDENTIALS` ("Correo o contraseña incorrectos.") para correo inexistente, contraseña incorrecta, cuenta bloqueada o desactivada; siempre se calcula un Argon2 (hash ficticio si no hay cuenta) para que el tiempo no revele nada. Tras `LOGIN_MAX_FAILED_ATTEMPTS` fallos seguidos, `users.locked_until = ahora + LOGIN_LOCKOUT_MINUTES`. Rehash transparente si el hash tiene parámetros antiguos. Actualiza `last_login_at`.
+3. **Sesión:** JWT de acceso (`ACCESS_TOKEN_EXPIRE_MINUTES`, 15) con `sub` = `users.public_id` y `sid` = `auth_sessions.public_id`, más `iss`, `aud`, `typ` y `exp` obligatorios; solo algoritmos HMAC. **Cada petición comprueba en la base que la sesión `sid` siga vigente**: revocar una sesión corta el acceso de inmediato.
+4. **Refresh token** opaco (256 bits) de `REFRESH_TOKEN_EXPIRE_DAYS` (7), guardado solo como SHA-256 en `refresh_tokens`; se **rota** en cada uso (`POST /auth/refresh`). Si se presenta uno ya rotado fuera de `REFRESH_TOKEN_REUSE_GRACE_SECONDS`, se **revocan todas las sesiones del usuario** (detección de reuso). Dentro de la tolerancia responde 409 `SESSION_REFRESH_CONFLICT` sin revocar (carrera entre pestañas).
+5. **Cierre:** `POST /auth/logout` (sesión actual, idempotente), `POST /auth/logout-all` (todas). `POST /auth/change-password` exige la actual (un error cuenta para el bloqueo), aplica la política y revoca las **demás** sesiones.
+6. **Cuenta:** `GET /auth/me` y `PATCH /auth/me` (nombres, apellidos y número de empleado; el correo no cambia).
+
+### 6.2 Cookies
+
+| Cookie | HttpOnly | Path | Vida |
+| --- | --- | --- | --- |
+| `ACCESS_COOKIE_NAME` (JWT) | sí | `/` | `ACCESS_TOKEN_EXPIRE_MINUTES` |
+| `REFRESH_COOKIE_NAME` (opaco) | sí | `/api/v1/auth` | `REFRESH_TOKEN_EXPIRE_DAYS` |
+| `SESSION_HINT_COOKIE_NAME` (`1`, no es credencial) | sí | `/` | igual que el refresh |
+| `CSRF_COOKIE_NAME` | **no** | `/` | igual que el refresh |
+
+Todas con `SameSite` (`AUTH_COOKIE_SAMESITE`: `lax` o `strict`) y `Secure` (`AUTH_COOKIE_SECURE`, obligatorio en producción). La indicadora solo sirve al proxy de Next.js para redirigir.
+
+### 6.3 CSRF
+
+*Double-submit* en `CsrfMiddleware` para **todo** `POST`, `PUT`, `PATCH` y `DELETE`, incluidos login y registro (evita el *login CSRF*): el encabezado `X-CSRF-Token` debe ser igual a la cookie CSRF (comparación en tiempo constante) y, si llega `Origin`, debe estar en `CORS_ORIGINS`. El token se obtiene con `GET /auth/csrf` (el cliente HTTP lo pide solo) y se renueva al iniciar y al cerrar sesión.
+
+### 6.4 Reglas de acceso (obligatorias para toda ruta futura)
+
+- Toda ruta de negocio declara `CurrentTeacher` (o `CurrentUser`, o `require_roles(...)`) de `api/v1/dependencies.py` y pasa ese objeto al servicio.
+- **Un docente solo puede acceder a sus propios datos (RN-04).** Ninguna ruta recibe el identificador del docente desde la petición; el servicio y el repositorio filtran por el docente autenticado. Un recurso de otro docente responde **404**.
+- La API expone `public_id` (UUID), nunca el `id` secuencial.
+- 401 = sin sesión o sesión vencida/revocada; 403 = sin permiso, sin perfil de docente o sin token CSRF.
+
+### 6.5 Contraseñas
+
+Política única en `core/security/password_policy.py`, publicada en `GET /auth/password-policy` (el frontend no la duplica): `PASSWORD_MIN_LENGTH` (12), máximo 128, al menos una letra y un número, sin nombre, apellidos ni parte local del correo, fuera de la lista de comunes (`core/security/data/common-passwords.txt`, ampliable sin tocar código) y, al cambiarla, distinta de la actual. Nunca se recortan, registran ni devuelven.
+
+### 6.6 Endurecimiento
+
+- Cabeceras: `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, COOP/CORP, `Cache-Control: no-store`, CSP `default-src 'none'; frame-ancestors 'none'` (relajada solo para `/docs`), HSTS en producción. Las páginas de Next.js también envían cabeceras básicas (`config/security-headers.ts`).
+- Límite de cuerpo `MAX_REQUEST_BODY_BYTES` (413), también sin `Content-Length`.
+- Pydantic estricto (`extra="forbid"`); errores en español con el formato único, sin trazas, SQL ni el valor recibido.
+- OpenAPI solo fuera de producción.
+- Eventos de seguridad en el logger `app.security` (registro, inicio correcto o fallido, bloqueo, reuso, cambio de contraseña, cierres) sin contraseñas, tokens ni correo en claro (se usa una huella SHA-256 truncada).
+
+### 6.7 Secretos
+
+Solo en `.env` (ignorado por git). `JWT_SECRET` es obligatorio y de al menos 32 caracteres; si no, el backend no inicia. Revisión de seguridad formal en la etapa 10.
 
 ---
 
@@ -459,7 +505,7 @@ Los formateadores están en `frontend/src/lib/` y el backend usa las mismas regl
 
 Documentadas en [`backend/.env.example`](backend/.env.example) y [`frontend/.env.example`](frontend/.env.example). Toda variable nueva se agrega primero ahí y en el módulo de configuración tipado (`backend/src/app/core/config.py`, `frontend/src/config/`). Todas son obligatorias: no hay valores por defecto en el código.
 
-Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_PUBLIC_CSRF_COOKIE_NAME` (frontend); `API_HOST`/`API_PORT` (backend) ↔ `API_PROXY_TARGET` (frontend); `DEV_SERVER_PORT` (frontend) debe estar en `CORS_ORIGINS` (backend).
+Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_PUBLIC_CSRF_COOKIE_NAME` (frontend); `SESSION_HINT_COOKIE_NAME` (backend) = `SESSION_HINT_COOKIE_NAME` (frontend, solo servidor); `API_HOST`/`API_PORT` (backend) ↔ `API_PROXY_TARGET` (frontend); `DEV_SERVER_PORT` (frontend) debe estar en `CORS_ORIGINS` (backend).
 
 ### 9.5 Comandos habituales
 
@@ -480,7 +526,7 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 - [x] **0. Cimientos y CLAUDE.md**
 - [x] **1. Arquitectura base del backend y frontend** (proyectos inicializados y conectados)
 - [x] **2. Base de datos:** modelos, migraciones y catálogo de carreras
-- [ ] **3. Autenticación:** registro, login, sesión y seguridad
+- [x] **3. Autenticación:** registro, login, sesión y seguridad
 - [ ] **4. Lógica de negocio:** materias, asignaciones, horarios, bitácora y cálculo de nómina
 - [ ] **5. Sistema de diseño** (colores, tipografía, componentes)
 - [ ] **6. Pantallas:** login, registro y panel principal
@@ -493,6 +539,7 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 ### Mejoras futuras (fuera de alcance de esta versión)
 
 - Cálculo de ISR, IMSS y otras deducciones.
+- Recuperación de contraseña por correo, segundo factor (MFA) y pantalla de sesiones activas (ver `docs/seguridad.md` §8).
 - Rol de administrador (gestión de catálogos, consulta de docentes).
 - Cancelación o reexpedición de recibos emitidos.
 - Despliegue en servidor institucional.
@@ -612,3 +659,38 @@ Formato: fecha, etapa, qué se hizo y decisiones importantes. Lo más reciente v
 **Pendiente**
 
 - Nada bloqueante. Siguen abiertas las decisiones de la sección 11 (rol de base de datos con privilegios mínimos antes de la etapa 10, biblioteca de PDF, paleta y logos).
+
+### 2026-10-25 — Etapa 3: Autenticación, registro, sesión y seguridad
+
+**Qué se hizo**
+
+- **Backend, capa de servicios por primera vez:** `AuthService` (registro, inicio de sesión, renovación, cierre), `AccountService` (perfil, cambio de contraseña), `SessionManager` (emisión, validación, rotación, revocación) y `LoginThrottle` (bloqueo). El servicio controla la transacción con `UnitOfWork`; los repositorios traducen violaciones de restricciones a `ConstraintViolationError`.
+- **Piezas de seguridad** en `core/security/`: Argon2id con rehash y hash ficticio, JWT ligado a la sesión, tokens opacos con SHA-256, política de contraseñas con lista en archivo de datos, middlewares de cabeceras, límite de tamaño y CSRF, y auditoría. Reloj inyectable (`core/clock.py`) para probar bloqueos y vencimientos.
+- **API** `/api/v1/auth`: `csrf`, `password-policy`, `register`, `login`, `refresh`, `logout`, `logout-all`, `me` (GET y PATCH) y `change-password`, documentados en OpenAPI en español con ejemplos y errores. Dependencias `get_current_user`, `get_current_teacher` y `require_roles(...)`.
+- **Esquema:** migración `067cd1ed562c` (tablas `auth_sessions` y `refresh_tokens`, columnas `failed_login_attempts` y `locked_until` en `users`), revisada a mano, con trigger y downgrade; ciclo `upgrade → downgrade -1 → upgrade` verificado en desarrollo.
+- **Configuración:** variables nuevas (vida de tokens, tolerancia de reuso, nombres y atributos de cookies, intentos y bloqueo, longitud mínima, tamaño máximo), todas obligatorias y documentadas en `backend/.env.example` con valores seguros. `AUTH_COOKIE_NAME` se sustituyó por `ACCESS_COOKIE_NAME`, `REFRESH_COOKIE_NAME` y `SESSION_HINT_COOKIE_NAME`; `ACCESS_TOKEN_EXPIRE_MINUTES` bajó de 480 a 15. Se actualizaron `backend/.env` y `frontend/.env.local` locales.
+- **Frontend:** cliente HTTP con token CSRF automático y renovación de sesión única ante 401 (compartida entre peticiones simultáneas); feature `auth` (api, schemas, hooks, components, types); `src/proxy.ts`; páginas `/iniciar-sesion`, `/registro` y `/panel` provisional; componentes `input` y `label` de shadcn/ui; cabeceras de seguridad de las páginas.
+- **Pruebas:** 283 en verde (antes 159). Prueba de punta a punta en dos niveles, con datos ficticios que se borraron al terminar: (1) `curl` contra el proxy de Next.js (atributos de cookies, redirecciones, renovación, CSRF ausente, cabeceras) y (2) navegador real (Microsoft Edge sin interfaz, con `playwright-core` instalado fuera del repositorio): registro con validación en vivo → panel → renovación automática al vencer el token de acceso → cerrar sesión → contraseña incorrecta (mensaje genérico) → iniciar sesión → sesión irrecuperable vuelve a iniciar sesión → correo duplicado marcado en su campo. 18 de 18 comprobaciones correctas.
+- **Documentación:** `docs/seguridad.md` (diagramas de secuencia, OWASP Top 10, configuración, limitaciones); actualizados `docs/base-de-datos.md`, `docs/arquitectura.md`, README y `backend/README.md`.
+
+**Decisiones**
+
+1. **JWT revocable:** el token de acceso lleva `sid` y cada petición verifica la sesión en la base (una lectura por llave única). Cuesta una consulta, pero `logout`, `logout-all`, el cambio de contraseña y la detección de reuso surten efecto al instante en lugar de esperar 15 minutos.
+2. **Reuso del refresh token revoca todas las sesiones del usuario**, no solo la familia: no se sabe cuál copia es la legítima y la víctima recupera el acceso con su contraseña.
+3. **Tolerancia de reuso entre pestañas** (`REFRESH_TOKEN_REUSE_GRACE_SECONDS`, 10 s) con 409 `SESSION_REFRESH_CONFLICT`, que el cliente trata como éxito; la fila del token se bloquea con `FOR UPDATE`.
+4. **Cookie indicadora de sesión** (`SESSION_HINT_COOKIE_NAME`, valor `1`, `HttpOnly`) para el proxy de Next.js, porque la de refresh tiene ruta restringida y la de acceso dura 15 minutos. No es credencial.
+5. **Next.js 16 usa `proxy.ts`** (antes `middleware.ts`); su `matcher` debe ser literal, así que repite las rutas de `constants/routes.ts` con un comentario que lo explica.
+6. **CSRF también en login y registro**, más validación de `Origin` contra `CORS_ORIGINS`; el middleware corre antes del enrutamiento, así que un `POST` sin token recibe 403 aun en rutas inexistentes (se niega por defecto).
+7. **Cuenta bloqueada responde el mismo error genérico**, para no permitir enumerar cuentas; el texto del frontend avisa del bloqueo temporal.
+8. **Un error en la contraseña actual al cambiarla cuenta para el bloqueo:** una sesión robada no sirve para adivinarla.
+9. **Política de contraseñas publicada por la API**; el frontend arma sus validaciones con ella. La lista de contraseñas comunes no se publica.
+10. **Del correo solo cuenta la parte local** como dato personal: el dominio (`tesh.edu.mx`) es de todos.
+11. **Variables obligatorias sin valores por defecto en el código** (sección 9.4); los valores seguros recomendados viven en `.env.example`. `Settings` rechaza `Secure=false` en producción, `SameSite=none`, algoritmos no HMAC y nombres de cookie repetidos.
+12. **Validación de la IP del cliente** antes de guardarla (`inet`) y *user agent* recortado: una prueba encontró que un host no IP provocaba un 500.
+13. **`S105` de Ruff ignorado solo** en `constants.py`, `exceptions.py` y `audit.py`: marca nombres con «password»/«token» que son códigos, no secretos.
+14. **`pydantic[email]`** (email-validator) para validar la forma del correo sin consultar DNS.
+15. **Mensajes de validación en español** en el manejador central, sin incluir nunca el valor recibido; los 404/405 de Starlette también se responden en español.
+
+**Pendiente**
+
+- Nada bloqueante. Siguen abiertas las decisiones de la sección 11 y las mejoras listadas en `docs/seguridad.md` §8 (recuperación de contraseña por correo, limitador por IP, CSP con *nonces* en las páginas para la etapa 10).
