@@ -14,3 +14,10 @@ export const CSRF_HEADER = "X-CSRF-Token";
 
 /** Respuestas del proxy cuando el backend no está disponible. */
 export const BACKEND_UNAVAILABLE_STATUSES: ReadonlySet<number> = new Set([500, 502, 503, 504]);
+
+/** Códigos HTTP que el cliente interpreta. */
+export const HTTP_STATUS = {
+  noContent: 204,
+  unauthorized: 401,
+  conflict: 409,
+} as const;
