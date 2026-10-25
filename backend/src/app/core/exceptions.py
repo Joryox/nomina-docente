@@ -4,11 +4,16 @@ Los servicios lanzan excepciones de dominio sin saber de HTTP. Los manejadores d
 módulo las convierten siempre al mismo formato:
 
     { "error": { "code": "…", "message": "…", "details": {} } }
+
+``ErrorCode`` es el catálogo único de códigos estables. ``ERROR_CATALOG`` asigna a cada
+código su estado HTTP y un mensaje por defecto en español; los servicios usan
+``domain_error()`` para lanzar el error adecuado a partir del código. El catálogo completo
+está publicado en ``docs/api.md`` y el frontend tiene un texto por código.
 """
 
 import logging
 from collections.abc import Mapping
-from enum import StrEnum
+from dataclasses import dataclass
 from http import HTTPStatus
 from typing import Any
 
@@ -18,48 +23,23 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.core.codes import ErrorCode
 from app.schemas.error import ErrorBody, ErrorResponse
 
 logger = logging.getLogger(__name__)
 
 
-class ErrorCode(StrEnum):
-    BAD_REQUEST = "BAD_REQUEST"
-    NOT_FOUND = "NOT_FOUND"
-    METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED"
-    CONFLICT = "CONFLICT"
-    BUSINESS_RULE_VIOLATION = "BUSINESS_RULE_VIOLATION"
-    VALIDATION_ERROR = "VALIDATION_ERROR"
-    PAYLOAD_TOO_LARGE = "PAYLOAD_TOO_LARGE"
-    INTERNAL_ERROR = "INTERNAL_ERROR"
-    # Autenticación y autorización
-    NOT_AUTHENTICATED = "NOT_AUTHENTICATED"
-    ACCESS_TOKEN_EXPIRED = "ACCESS_TOKEN_EXPIRED"
-    SESSION_INVALID = "SESSION_INVALID"
-    SESSION_REFRESH_CONFLICT = "SESSION_REFRESH_CONFLICT"
-    INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
-    CURRENT_PASSWORD_INCORRECT = "CURRENT_PASSWORD_INCORRECT"
-    PERMISSION_DENIED = "PERMISSION_DENIED"
-    TEACHER_PROFILE_REQUIRED = "TEACHER_PROFILE_REQUIRED"
-    CSRF_TOKEN_INVALID = "CSRF_TOKEN_INVALID"
-    CSRF_ORIGIN_NOT_ALLOWED = "CSRF_ORIGIN_NOT_ALLOWED"
-    # Registro y cuenta
-    EMAIL_ALREADY_REGISTERED = "EMAIL_ALREADY_REGISTERED"
-    EMPLOYEE_NUMBER_ALREADY_REGISTERED = "EMPLOYEE_NUMBER_ALREADY_REGISTERED"
-    PASSWORD_POLICY_VIOLATION = "PASSWORD_POLICY_VIOLATION"
-
-
 class DomainError(Exception):
     """Base de todas las excepciones de dominio."""
 
-    default_code: str = ErrorCode.BAD_REQUEST
+    default_code: ErrorCode = ErrorCode.BAD_REQUEST
     default_message: str = "La solicitud no es válida."
 
     def __init__(
         self,
         message: str | None = None,
         *,
-        code: str | None = None,
+        code: ErrorCode | None = None,
         details: dict[str, Any] | None = None,
     ) -> None:
         self.code = code or self.default_code
@@ -98,6 +78,155 @@ class PermissionDeniedError(DomainError):
 class PayloadTooLargeError(DomainError):
     default_code = ErrorCode.PAYLOAD_TOO_LARGE
     default_message = "La solicitud es demasiado grande."
+
+
+@dataclass(frozen=True)
+class ErrorSpec:
+    status: HTTPStatus
+    message: str
+
+
+_NOT_FOUND = HTTPStatus.NOT_FOUND
+_CONFLICT = HTTPStatus.CONFLICT
+_RULE = HTTPStatus.UNPROCESSABLE_ENTITY
+
+ERROR_CATALOG: Mapping[ErrorCode, ErrorSpec] = {
+    ErrorCode.BAD_REQUEST: ErrorSpec(HTTPStatus.BAD_REQUEST, "La solicitud no es válida."),
+    ErrorCode.NOT_FOUND: ErrorSpec(_NOT_FOUND, "El recurso solicitado no existe."),
+    ErrorCode.METHOD_NOT_ALLOWED: ErrorSpec(
+        HTTPStatus.METHOD_NOT_ALLOWED, "El método no está permitido en esta ruta."
+    ),
+    ErrorCode.CONFLICT: ErrorSpec(
+        _CONFLICT, "La operación entra en conflicto con datos existentes."
+    ),
+    ErrorCode.BUSINESS_RULE_VIOLATION: ErrorSpec(
+        _RULE, "La operación no cumple una regla de negocio."
+    ),
+    ErrorCode.VALIDATION_ERROR: ErrorSpec(_RULE, "Los datos enviados no son válidos."),
+    ErrorCode.PAYLOAD_TOO_LARGE: ErrorSpec(
+        HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "La solicitud es demasiado grande."
+    ),
+    ErrorCode.INTERNAL_ERROR: ErrorSpec(
+        HTTPStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error inesperado. Intenta de nuevo más tarde."
+    ),
+    ErrorCode.NOT_AUTHENTICATED: ErrorSpec(
+        HTTPStatus.UNAUTHORIZED, "Inicia sesión para continuar."
+    ),
+    ErrorCode.ACCESS_TOKEN_EXPIRED: ErrorSpec(
+        HTTPStatus.UNAUTHORIZED, "Tu sesión expiró. Vuelve a iniciar sesión."
+    ),
+    ErrorCode.SESSION_INVALID: ErrorSpec(
+        HTTPStatus.UNAUTHORIZED, "Tu sesión ya no es válida. Vuelve a iniciar sesión."
+    ),
+    ErrorCode.SESSION_REFRESH_CONFLICT: ErrorSpec(
+        _CONFLICT, "La sesión se acaba de renovar en otra pestaña."
+    ),
+    ErrorCode.INVALID_CREDENTIALS: ErrorSpec(
+        HTTPStatus.UNAUTHORIZED, "Correo o contraseña incorrectos."
+    ),
+    ErrorCode.CURRENT_PASSWORD_INCORRECT: ErrorSpec(
+        HTTPStatus.BAD_REQUEST, "La contraseña actual no es correcta."
+    ),
+    ErrorCode.PERMISSION_DENIED: ErrorSpec(
+        HTTPStatus.FORBIDDEN, "No tienes permiso para realizar esta acción."
+    ),
+    ErrorCode.TEACHER_PROFILE_REQUIRED: ErrorSpec(
+        HTTPStatus.FORBIDDEN, "Esta cuenta no tiene un perfil de docente."
+    ),
+    ErrorCode.CSRF_TOKEN_INVALID: ErrorSpec(
+        HTTPStatus.FORBIDDEN,
+        "La sesión de seguridad del formulario expiró. Recarga la página e intenta de nuevo.",
+    ),
+    ErrorCode.CSRF_ORIGIN_NOT_ALLOWED: ErrorSpec(
+        HTTPStatus.FORBIDDEN, "La solicitud viene de un origen no permitido."
+    ),
+    ErrorCode.EMAIL_ALREADY_REGISTERED: ErrorSpec(
+        _CONFLICT, "Ya existe una cuenta con este correo. Inicia sesión o usa otro correo."
+    ),
+    ErrorCode.EMPLOYEE_NUMBER_ALREADY_REGISTERED: ErrorSpec(
+        _CONFLICT, "Ese número de empleado ya está registrado en otra cuenta."
+    ),
+    ErrorCode.PASSWORD_POLICY_VIOLATION: ErrorSpec(
+        _RULE, "La contraseña no cumple los requisitos de seguridad."
+    ),
+    ErrorCode.CAREER_NOT_FOUND: ErrorSpec(
+        _NOT_FOUND, "La carrera no existe. Elige una carrera de la lista."
+    ),
+    ErrorCode.CAREER_INACTIVE: ErrorSpec(
+        _RULE, "La carrera ya no está disponible. Elige otra carrera de la lista."
+    ),
+    ErrorCode.RATE_NOT_FOUND: ErrorSpec(
+        _NOT_FOUND, "La tarifa no existe en el catálogo. Elige una tarifa de la lista."
+    ),
+    ErrorCode.RATE_INACTIVE: ErrorSpec(
+        _RULE, "La tarifa ya no está vigente. Elige una tarifa vigente de la lista."
+    ),
+    ErrorCode.SUBJECT_NOT_FOUND: ErrorSpec(_NOT_FOUND, "La materia no existe."),
+    ErrorCode.SUBJECT_ALREADY_EXISTS: ErrorSpec(
+        _CONFLICT, "Ya registraste una materia con ese nombre. Usa la que ya existe."
+    ),
+    ErrorCode.SUBJECT_INACTIVE: ErrorSpec(
+        _RULE, "La materia está desactivada. Reactívala antes de usarla."
+    ),
+    ErrorCode.SUBJECT_HAS_ACTIVE_ASSIGNMENTS: ErrorSpec(
+        _CONFLICT,
+        "La materia tiene asignaciones activas. Desactívalas o elimínalas antes de quitarla.",
+    ),
+    ErrorCode.ASSIGNMENT_NOT_FOUND: ErrorSpec(_NOT_FOUND, "La asignación no existe."),
+    ErrorCode.ASSIGNMENT_ALREADY_EXISTS: ErrorSpec(
+        _CONFLICT, "Ya tienes una asignación activa de esa materia en esa carrera."
+    ),
+    ErrorCode.ASSIGNMENT_INACTIVE: ErrorSpec(
+        _RULE, "La asignación está desactivada. Reactívala antes de modificarla."
+    ),
+    ErrorCode.ASSIGNMENT_HAS_LOGBOOK: ErrorSpec(
+        _CONFLICT,
+        "La asignación tiene sesiones en la bitácora: no se puede borrar ni cambiar su materia "
+        "o carrera. Desactívala y crea una nueva.",
+    ),
+    ErrorCode.SCHEDULE_NOT_FOUND: ErrorSpec(_NOT_FOUND, "El horario no existe."),
+    ErrorCode.SCHEDULE_OVERLAP: ErrorSpec(
+        _CONFLICT, "El horario se empalma con otra de tus clases. Elige otra hora."
+    ),
+    ErrorCode.TIME_RANGE_INVALID: ErrorSpec(
+        _RULE, "La hora de salida debe ser posterior a la hora de entrada."
+    ),
+    ErrorCode.CLASS_TOO_SHORT: ErrorSpec(_RULE, "La clase dura menos de lo permitido."),
+    ErrorCode.CLASS_TOO_LONG: ErrorSpec(_RULE, "La clase dura más de lo permitido."),
+    ErrorCode.LOGBOOK_ENTRY_NOT_FOUND: ErrorSpec(_NOT_FOUND, "La sesión no existe en tu bitácora."),
+    ErrorCode.SESSION_OVERLAP: ErrorSpec(
+        _CONFLICT, "La sesión se empalma con otra sesión registrada ese día."
+    ),
+    ErrorCode.SESSION_DATE_IN_FUTURE: ErrorSpec(
+        _RULE, "No se registran sesiones con fecha futura."
+    ),
+    ErrorCode.SESSION_NOT_FINISHED: ErrorSpec(
+        _RULE, "La sesión todavía no termina. Regístrala después de la hora de salida."
+    ),
+    ErrorCode.SESSION_DATE_TOO_OLD: ErrorSpec(
+        _RULE, "La sesión es demasiado antigua para registrarla o moverla a esa fecha."
+    ),
+    ErrorCode.ASSIGNMENT_INACTIVE_ON_DATE: ErrorSpec(
+        _RULE, "La asignación no estaba activa en esa fecha."
+    ),
+    ErrorCode.SCHEDULE_NOT_ON_DATE: ErrorSpec(
+        _RULE, "El horario elegido no corresponde al día de la semana de la fecha."
+    ),
+    ErrorCode.PERIOD_LOCKED: ErrorSpec(
+        _CONFLICT, "La quincena ya tiene recibo emitido: su bitácora no se puede modificar."
+    ),
+    ErrorCode.PERIOD_IN_FUTURE: ErrorSpec(_RULE, "La quincena todavía no empieza."),
+    ErrorCode.PERIOD_NOT_FINISHED: ErrorSpec(
+        _RULE, "La quincena todavía no termina. Emite el recibo cuando concluya."
+    ),
+    ErrorCode.PERIOD_WITHOUT_SESSIONS: ErrorSpec(
+        _RULE, "La quincena no tiene sesiones registradas: no hay nada que pagar."
+    ),
+    ErrorCode.RECEIPT_ALREADY_ISSUED: ErrorSpec(
+        _CONFLICT, "Ya emitiste el recibo de esta quincena."
+    ),
+    ErrorCode.RECEIPT_NOT_FOUND: ErrorSpec(_NOT_FOUND, "El recibo no existe."),
+}
 
 
 _DOMAIN_ERROR_STATUS: dict[type[DomainError], HTTPStatus] = {
@@ -145,8 +274,22 @@ _HTTP_MESSAGES: dict[ErrorCode, str] = {
 }
 
 
+_ERROR_TYPE_BY_STATUS: dict[HTTPStatus, type[DomainError]] = {
+    status: error_type for error_type, status in _DOMAIN_ERROR_STATUS.items()
+}
+
+
+def domain_error(
+    code: ErrorCode, message: str | None = None, details: dict[str, Any] | None = None
+) -> DomainError:
+    """Construye la excepción que corresponde al estado HTTP del código en el catálogo."""
+    spec = ERROR_CATALOG[code]
+    error_type = _ERROR_TYPE_BY_STATUS.get(spec.status, DomainError)
+    return error_type(message or spec.message, code=code, details=details)
+
+
 def error_response(
-    status: int, code: str, message: str, details: dict[str, Any] | None = None
+    status: int, code: ErrorCode, message: str, details: dict[str, Any] | None = None
 ) -> JSONResponse:
     body = ErrorResponse(error=ErrorBody(code=code, message=message, details=details or {}))
     return JSONResponse(status_code=status, content=jsonable_encoder(body))

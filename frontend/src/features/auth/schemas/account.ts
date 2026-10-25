@@ -19,6 +19,3 @@ export const meResponseSchema = z.object({
     })
     .nullable(),
 });
-
-/** Respuestas sin cuerpo (204). */
-export const noContentSchema = z.undefined();

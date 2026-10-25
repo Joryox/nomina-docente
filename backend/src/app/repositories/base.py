@@ -7,7 +7,7 @@ El ``commit`` lo decide el servicio.
 """
 
 import psycopg
-from sqlalchemy import ColumnElement, select
+from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -29,6 +29,10 @@ class BaseRepository[ModelT: Base]:
         self.flush()
         return entity
 
+    def delete(self, entity: ModelT) -> None:
+        self._session.delete(entity)
+        self.flush()
+
     def flush(self) -> None:
         try:
             self._session.flush()
@@ -46,3 +50,13 @@ class BaseRepository[ModelT: Base]:
         if for_update:
             statement = statement.with_for_update()
         return self._session.scalars(statement).one_or_none()
+
+    def _paginate[RowT](
+        self, statement: Select[RowT], *, offset: int, limit: int
+    ) -> tuple[list[RowT], int]:
+        """Página de resultados y total de filas del filtro completo (sin ``LIMIT``)."""
+        total = self._session.scalar(
+            select(func.count()).select_from(statement.order_by(None).subquery())
+        )
+        items = list(self._session.scalars(statement.offset(offset).limit(limit)))
+        return items, total or 0

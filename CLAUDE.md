@@ -49,7 +49,7 @@
 
 ## 2. Reglas de negocio
 
-Cada regla tiene un identificador (`RN-XX`) para citarla en código, pruebas y commits cuando aporte claridad.
+Cada regla tiene un identificador (`RN-XX`) para citarla en código, pruebas y commits cuando aporte claridad. La explicación completa de cada regla, dónde se valida (frontend, backend, base de datos) y la prueba que la demuestra está en [`docs/reglas-de-negocio.md`](docs/reglas-de-negocio.md).
 
 ### 2.1 Docentes
 
@@ -67,7 +67,8 @@ Cada regla tiene un identificador (`RN-XX`) para citarla en código, pruebas y c
 ### 2.3 Materias
 
 - **RN-08 Materias del docente.** Un docente puede impartir **varias** materias en **varias** carreras. Cada docente registra las materias que imparte una sola vez (nombre y, opcionalmente, clave) y después las reutiliza desde selectores.
-- **RN-09 Sin duplicados.** Un docente no puede registrar dos materias con el mismo nombre. La comparación ignora mayúsculas/minúsculas, acentos y espacios repetidos.
+- **RN-09 Sin duplicados.** Un docente no puede registrar dos materias con el mismo nombre. La comparación ignora mayúsculas/minúsculas, acentos y espacios repetidos. El nombre se guarda con espacios simples y mayúsculas coherentes («bases   de datos» → «Bases de Datos»; artículos y preposiciones en minúsculas, números romanos en mayúsculas, palabras con mayúsculas propias como «TIC» se respetan).
+- **RN-32 Baja de materias.** Una materia que nunca se usó en una asignación se borra. Si ya se usó, no se borra: se desactiva (deja de aparecer en los selectores y se puede reactivar). Si tiene asignaciones activas, primero hay que desactivarlas o borrarlas.
 
 ### 2.4 Tarifas por hora
 
@@ -78,32 +79,40 @@ Cada regla tiene un identificador (`RN-XX`) para citarla en código, pruebas y c
 ### 2.5 Asignaciones
 
 - **RN-13 Definición.** Una asignación es la unión **docente + materia + carrera + tarifa por hora**.
-- **RN-14 Unicidad.** Un docente no puede tener dos asignaciones **activas** con la misma materia en la misma carrera. Una asignación desactivada conserva su historial y permite crear otra (por ejemplo, con una tarifa distinta).
+- **RN-14 Unicidad.** Un docente no puede tener dos asignaciones **activas** con la misma materia en la misma carrera. Una asignación desactivada conserva su historial y permite crear otra.
 - **RN-15 Borrado protegido.** Una asignación con sesiones en bitácora no se puede borrar; solo se puede desactivar. Sin bitácora, se puede borrar previa confirmación (sus horarios se eliminan con ella).
+- **RN-33 Tarifa congelada en la sesión.** Cada sesión de bitácora guarda la tarifa vigente de su asignación al registrarse. Cambiar la tarifa de una asignación (se permite siempre) solo afecta a las sesiones que se registren después: las ya registradas, la vista previa de su quincena y los recibos emitidos no cambian.
+- **RN-34 Materia y carrera fijas con historial.** La materia o la carrera de una asignación solo se cambian si no tiene bitácora; con historial se desactiva y se crea otra.
+- **RN-35 Desactivación.** Desactivar una asignación guarda hoy como su último día activo (`active_until`) y elimina sus horarios (una clase que ya no se imparte no ocupa el horario semanal ni bloquea otras). Reactivarla exige que su materia, carrera y tarifa sigan activas y que no exista otra asignación activa igual.
 
 ### 2.6 Horarios
 
 - **RN-16 Horario semanal.** Cada asignación tiene uno o más horarios semanales: día de la semana, hora de entrada y hora de salida.
 - **RN-17 Salida posterior a la entrada.** La hora de salida debe ser estrictamente posterior a la hora de entrada. Un horario no cruza la medianoche.
-- **RN-18 Sin empalmes.** Un docente no puede tener horarios empalmados entre sí, aunque pertenezcan a asignaciones distintas. Los intervalos son semiabiertos `[entrada, salida)`: un horario que termina a las 11:00 y otro que empieza a las 11:00 **no** se empalman.
+- **RN-18 Sin empalmes.** Un docente no puede tener horarios empalmados entre sí, aunque pertenezcan a asignaciones distintas. Los intervalos son semiabiertos `[entrada, salida)`: un horario que termina a las 11:00 y otro que empieza a las 11:00 **no** se empalman. El error dice con qué clase choca (materia, carrera, día y horas).
+- **RN-36 Duración de una clase.** Un horario o una sesión dura entre `CLASS_MIN_DURATION_MINUTES` y `CLASS_MAX_DURATION_MINUTES` (configurables; 30 y 300 minutos recomendados).
 
 ### 2.7 Bitácora
 
 - **RN-19 Sesiones impartidas.** La bitácora registra las sesiones realmente impartidas: fecha, asignación, hora de entrada, hora de salida y observaciones (opcionales).
 - **RN-20 Captura por selección.** Al capturar, el docente elige de listas lo que ya existe (asignación, es decir, materia y carrera). No vuelve a escribir nada que ya esté registrado.
-- **RN-21 Precarga desde el horario.** Al elegir fecha y asignación, se precargan la entrada y la salida del horario correspondiente a ese día de la semana. El docente puede ajustarlas.
-- **RN-22 Validaciones de la sesión.** La salida debe ser posterior a la entrada (RN-17), una sesión no puede empalmarse con otra sesión del mismo docente en la misma fecha (misma semántica de RN-18) y la fecha no puede ser futura respecto a la fecha actual en `America/Mexico_City`.
+- **RN-21 Precarga desde el horario.** Al elegir fecha y asignación, se precargan la entrada y la salida del horario correspondiente a ese día de la semana. El docente puede ajustarlas. `GET /logbook/scheduled?date=` devuelve las clases programadas del día con sus horas y si ya están registradas.
+- **RN-22 Validaciones de la sesión.** La salida debe ser posterior a la entrada (RN-17), una sesión no puede empalmarse con otra sesión del mismo docente en la misma fecha (misma semántica de RN-18) y la fecha no puede ser futura respecto a la fecha actual en `America/Mexico_City`; si la fecha es hoy, la clase ya debe haber terminado.
 - **RN-23 Sesiones de periodos emitidos.** Una sesión cuya fecha cae en un periodo con recibo emitido no se puede crear, editar ni borrar (ver RN-28).
+- **RN-37 Antigüedad máxima.** Solo se registran sesiones de los últimos `LOGBOOK_MAX_AGE_DAYS` días (configurable; 30 recomendado). Aplica al crear y al cambiar la fecha de una sesión; corregir las observaciones de una sesión antigua sí se permite.
+- **RN-38 Asignación activa en la fecha.** Una asignación desactivada acepta sesiones con fecha hasta su último día activo, no después.
+- **RN-39 Sesión fuera de horario.** Si la sesión no coincide con el horario programado (otro día u otras horas), se registra igual y la respuesta incluye una advertencia.
+- **RN-40 Registro rápido.** Varias clases programadas de un mismo día se registran en una sola petición y una sola transacción: si una falla, no se registra ninguna y el error indica cuál.
 
 ### 2.8 Recibo de nómina
 
 - **RN-24 Periodo quincenal.** Quincena 1: días 1 al 15 del mes. Quincena 2: día 16 al último día del mes (28, 29, 30 o 31 según corresponda). Estos límites son constantes con nombre en un solo módulo (sección 4.4).
-- **RN-25 Cálculo automático.** El recibo se calcula a partir de la bitácora del periodo. Por cada asignación: `horas = suma de minutos de sus sesiones / 60`; `importe = horas × tarifa de la asignación`. El **total bruto** es la suma de los importes. El docente nunca escribe montos.
-- **RN-26 Dinero exacto.** Todo cálculo monetario usa `Decimal` en Python y `NUMERIC` en PostgreSQL. **Jamás `float`.** Los importes se redondean a 2 decimales con `ROUND_HALF_UP` a nivel de renglón (asignación); el total es la suma de los renglones ya redondeados. Las horas se muestran con 2 decimales.
+- **RN-25 Cálculo automático.** El recibo se calcula a partir de la bitácora del periodo. Por cada asignación **y tarifa** (la congelada en cada sesión, RN-33): `minutos = suma de los minutos de sus sesiones`; `horas = minutos / 60`; `importe = minutos × tarifa / 60`. El **total bruto** es la suma de los importes. El docente nunca escribe montos. La vista previa y la emisión usan la misma función de cálculo.
+- **RN-26 Dinero exacto.** Todo cálculo monetario usa `Decimal` en Python y `NUMERIC` en PostgreSQL. **Jamás `float`.** Los importes se redondean una sola vez, a 2 decimales con `ROUND_HALF_UP`, a nivel de renglón; el total es la suma de los renglones ya redondeados. Las horas se muestran con 2 decimales. Las reglas de redondeo viven en un solo módulo (`backend/src/app/domain/money.py`) y en la API dinero y horas viajan como cadenas decimales (`"1250.00"`), nunca como números.
 - **RN-27 Contenido del recibo.** Encabezado institucional con logo, título "Recibo de Nómina", folio, periodo, datos del docente, desglose por materia y carrera (horas, tarifa, importe) y total. Se puede descargar en PDF.
 - **RN-28 Vista previa y emisión.** Mientras el periodo no se emite, el docente ve una **vista previa** calculada en vivo. Al **emitir** (con confirmación), el sistema guarda una copia fija del recibo (renglones con horas, tarifa e importe) y le asigna un folio. A partir de ahí el recibo no cambia aunque cambien los catálogos, y la bitácora de ese periodo queda bloqueada (RN-23).
-- **RN-29 Un recibo por periodo.** Un docente tiene a lo más un recibo emitido por periodo (año, mes, quincena). Solo se pueden emitir periodos ya concluidos o el periodo en curso; nunca periodos futuros. No se emite un recibo sin sesiones.
-- **RN-30 Folio.** El folio es único, consecutivo y lo genera la base de datos (secuencia). Formato: `{PREFIJO}-{AAAA}{MM}-Q{n}-{consecutivo de 6 dígitos}`, por ejemplo `NOM-202610-Q2-000042`. El prefijo es configurable por variable de entorno.
+- **RN-29 Un recibo por periodo.** Un docente tiene a lo más un recibo emitido por periodo (año, mes, quincena). Solo se emiten periodos ya concluidos; si `PAYROLL_ISSUE_REQUIRES_CLOSED_PERIOD=false`, también el periodo en curso. Nunca periodos futuros. No se emite un recibo sin sesiones. Dos emisiones simultáneas del mismo periodo producen un solo recibo.
+- **RN-30 Folio.** El folio es único, consecutivo y lo genera la base de datos (secuencia). Formato: `{PREFIJO}-{AAAA}{MM}-Q{n}-{consecutivo de 6 dígitos}`, por ejemplo `NOM-202610-Q2-000042`. El prefijo es configurable por variable de entorno. Una emisión que falla después de pedir el consecutivo deja un hueco en la numeración (propiedad de las secuencias de PostgreSQL); nunca se repite un folio.
 - **RN-31 Fuera de alcance.** No se calculan ISR, IMSS ni otras deducciones en esta versión. Se documenta como mejora futura.
 
 ---
@@ -125,6 +134,7 @@ Stack definitivo. Cambiar una pieza requiere registrar la decisión en la secci�
 | Autenticación | JWT (PyJWT) en cookie `httpOnly` |
 | Contraseñas | Argon2id (vía `pwdlib[argon2]`); bcrypt solo si Argon2 no estuviera disponible |
 | Dependencias | uv (`pyproject.toml` + `uv.lock` versionado) |
+| Zonas horarias | `zoneinfo` + `tzdata` (Windows no trae la base de zonas horarias) |
 | Calidad | Ruff (lint + formato), mypy en modo estricto, pytest contra `nomina_docente_test` |
 
 ### 3.2 Frontend (`frontend/`)
@@ -140,6 +150,7 @@ Stack definitivo. Cambiar una pieza requiere registrar la decisión en la secci�
 | Animación | Framer Motion (respetando `prefers-reduced-motion`) |
 | Formularios | React Hook Form + Zod |
 | Datos del servidor | TanStack Query |
+| Contratos de la API | Tipos generados desde el OpenAPI con openapi-typescript (`src/lib/api-types.gen.ts`, `npm run api:types`) |
 | Paquetes | npm (`package-lock.json` versionado) |
 | Calidad | ESLint + Prettier |
 
@@ -184,16 +195,20 @@ backend/
 │   │   └── security/        → Argon2, JWT, política de contraseñas (+ data/), cabeceras, tamaño, CSRF, auditoría
 │   ├── db/                  → motor, sesión (get_db), base declarativa con convención de nombres, mixins y CHECK reutilizables
 │   ├── models/              → modelos ORM (un archivo por entidad, registrados en __init__.py)
-│   ├── schemas/             → modelos Pydantic de entrada/salida
+│   ├── domain/              → reglas puras sin E/S: periodos, redondeo, cálculo de nómina, intervalos, ocurrencias
+│   ├── schemas/             → modelos Pydantic de entrada/salida (common.py: dinero, horas, paginación)
 │   ├── repositories/        → acceso a datos (sin lógica de negocio)
-│   ├── services/            → lógica de negocio (sin saber de HTTP)
+│   ├── services/            → lógica de negocio (sin saber de HTTP); constraints.py traduce restricciones
 │   ├── api/v1/
 │   │   ├── router.py        → router raíz con el prefijo /api/v1
 │   │   ├── dependencies.py  → raíz de composición + get_current_user / get_current_teacher / require_roles
 │   │   ├── cookies.py       → cookies de sesión y CSRF
-│   │   ├── openapi.py       → respuestas de error documentadas
+│   │   ├── openapi.py       → respuestas de error documentadas (business_responses desde ERROR_CATALOG)
+│   │   ├── params.py        → parámetros de consulta compartidos (periodo)
 │   │   └── routers/         → endpoints delgados (validan, llaman al service, responden)
 │   ├── seeds/               → datos semilla: data/*.json, validación (schemas, loader) y carga idempotente (runner)
+│   ├── demo/                → cuenta de demostración (solo desarrollo), cargada por los servicios
+│   ├── api/export_openapi.py → exporta el OpenAPI sin levantar el servidor (tipos del frontend)
 │   └── utils/               → utilidades sin estado (formato del folio)
 ├── alembic/                 → migraciones (URL desde Settings, nunca en alembic.ini)
 ├── alembic.ini
@@ -208,20 +223,22 @@ backend/
 └── .env.example
 ```
 
-**Regla de dependencias:** `routers → services → repositories → models`. Nunca al revés. Nunca un router consulta la base de datos directamente.
+**Regla de dependencias:** `routers → services → repositories → models`, y `services → domain`. Nunca al revés. Nunca un router consulta la base de datos directamente.
 
 | Capa | Puede importar | No puede |
 | --- | --- | --- |
 | `api/v1/routers` | `services`, `schemas`, `api/v1/dependencies`, dependencias de `core` | usar `Session`, `repositories` o `models` |
 | `api/v1/dependencies.py` | `services`, `repositories`, `db.session`, `core` | contener lógica (solo construye objetos) |
-| `services` | `repositories`, `schemas`, `core` | conocer `Request`, `Response`, `HTTPException` ni códigos HTTP |
+| `services` | `repositories`, `schemas`, `domain`, `core` | conocer `Request`, `Response`, `HTTPException` ni códigos HTTP |
+| `domain` | `core.constants` | hacer E/S (base, reloj, HTTP); los routers solo usan sus objetos de valor (p. ej. `Period`) |
 | `repositories` | `models`, `db` | aplicar reglas de negocio |
 | `models` | `db.base` | importar cualquier capa superior |
 | `schemas` | tipos y validadores | importar modelos ORM o repositorios |
 
 Detalles:
 
-- Los servicios lanzan **excepciones de dominio** (`core/exceptions.py`, p. ej. `NotFoundError`, `ConflictError`, `BusinessRuleError`). Un manejador central las traduce a HTTP.
+- Los servicios lanzan **excepciones de dominio** (`core/exceptions.py`, p. ej. `NotFoundError`, `ConflictError`, `BusinessRuleError`). Un manejador central las traduce a HTTP. Los códigos estables viven en `core/codes.py` (`ErrorCode`, `WarningCode`) y `ERROR_CATALOG` asigna a cada uno su estado HTTP y un mensaje por defecto; `domain_error(code)` construye la excepción correcta.
+- La fecha del negocio la da `BusinessCalendar` (`core/clock.py`), inyectado aparte del reloj de sesión; los límites configurables llegan como `BusinessPolicy` (`services/policy.py`).
 - Los servicios reciben sus repositorios por inyección (dependencias de FastAPI), lo que permite probarlos con dobles.
 - La transacción la controla la capa de servicio (unidad de trabajo por petición); los repositorios no hacen `commit`.
 - Los schemas de Pydantic están separados de los modelos ORM. Nunca se devuelve un modelo ORM directamente.
@@ -232,12 +249,13 @@ Detalles:
 frontend/
 ├── src/
 │   ├── app/                 → solo rutas y layouts de Next.js
-│   ├── features/            → auth/, assignments/, schedules/, logbook/, payroll/
+│   ├── features/            → auth/, catalogs/, subjects/, assignments/, schedules/, logbook/, payroll/, dashboard/
 │   │   │                      (+ system-status/, temporal de la etapa 1)
 │   │   └── <feature>/       → components/, hooks/, api/, schemas/, types/
 │   ├── components/ui/       → componentes base (shadcn)
 │   ├── components/layout/   → encabezado, barra lateral, providers globales (TanStack Query)
-│   ├── lib/                 → api-client.ts, api-error.ts, query-client.ts, formateadores, utils (cn)
+│   ├── lib/                 → api-client.ts, api-error.ts, api-types.gen.ts (generado), api-schemas.ts,
+│   │                          query-keys.ts, query-invalidation.ts, formateadores, calendario, utils (cn)
 │   ├── config/              → env.ts (públicas), server-env.ts (solo servidor), validadas con Zod
 │   ├── constants/           → textos, mensajes de error, rutas, HTTP, localización
 │   └── styles/              → tokens.css (variables CSS) y globals.css (mapeo a Tailwind)
@@ -255,6 +273,8 @@ Reglas:
 - `app/` no contiene lógica: compone componentes de `features/` y `components/`.
 - Una feature no importa archivos internos de otra feature; lo compartido sube a `components/`, `lib/` o `constants/`.
 - Todo acceso a la API pasa por el cliente HTTP de `lib/` y por los módulos `features/<feature>/api/`. Los componentes nunca llaman a `fetch` directamente (ESLint lo prohíbe fuera de `lib/api-client.ts`). Cada respuesta se valida con un schema de Zod.
+- Los tipos de la API **no se escriben a mano**: se generan del OpenAPI (`npm run api:types`) y cada schema de Zod se declara con `satisfies z.ZodType<…>` contra el tipo generado. Los mensajes por código de error y de advertencia son `Record` sobre los códigos generados.
+- Las claves de TanStack Query están centralizadas en `lib/query-keys.ts`; `lib/query-invalidation.ts` define qué se invalida con cada tipo de cambio.
 - Los schemas de Zod viven en `features/<feature>/schemas/` y sus mensajes salen de `constants/`.
 
 ### 4.4 Cero hardcodeo (aplica a todo el proyecto, siempre)
@@ -262,6 +282,7 @@ Reglas:
 - **Tarifas por hora:** tabla catálogo `hourly_rates` con datos semilla (125, 135, 145). La asignación la referencia con llave foránea y el frontend obtiene las opciones desde la API. **No** se usa un `CHECK` con valores fijos (esta regla sustituye la idea original de un `CHECK (rate IN (125, 135, 145))`).
 - **Carreras, materias y tarifas:** siempre desde la base de datos; nunca listas escritas en el frontend.
 - **Configuración** (URLs, puertos, credenciales, duración del token, CORS, nombre de la institución, prefijo de folio): variables de entorno leídas por un módulo de configuración tipado (`backend/src/app/core/config.py` con pydantic-settings; `frontend/src/config/`). Si falta una variable obligatoria, la app **falla al iniciar** con un mensaje claro que nombra la variable.
+- **Límites institucionales** (duración mínima y máxima de una clase, antigüedad máxima de la bitácora, si se exige que la quincena haya terminado para emitir): variables de entorno obligatorias, publicadas al frontend en `GET /catalogs/business-rules` para que no las duplique.
 - **Reglas de periodo, formatos y zona horaria:** constantes con nombre en un solo módulo por app (`backend/src/app/core/constants.py`; `frontend/src/constants/`). Ejemplos: `FIRST_FORTNIGHT_LAST_DAY = 15`, `TIMEZONE = "America/Mexico_City"`, `MONEY_DECIMAL_PLACES = 2`. Nada de números mágicos repartidos por el código.
 - **Textos de la interfaz y mensajes de error:** centralizados en `frontend/src/constants/`, no regados en los componentes.
 - **Colores, espaciados y tipografía:** tokens de diseño en variables CSS expuestas a Tailwind. Prohibido escribir colores sueltos (`#1a2b3c`, `rgb(...)`, `bg-[#...]`) dentro de componentes.
@@ -304,12 +325,12 @@ Implementado en la etapa 2. Referencia completa (diagrama entidad-relación, dic
 | `career_types` | Catálogo de tipos de carrera | `code` (`engineering`, `bachelor`), `name` |
 | `careers` | Catálogo de carreras | `code` (único, mayúsculas), `name` (único), `career_type_id`, `is_active` |
 | `hourly_rates` | Catálogo de tarifas | `amount` `NUMERIC(10,2)` único, `CHECK (amount > 0)`, inmutable por trigger, `is_active` |
-| `subjects` | Materias del docente | `teacher_id`, `name`, `code` (opcional), `name_normalized` (columna generada con `normalize_name()` = `unaccent` + minúsculas + espacios simples); único `(teacher_id, name_normalized)` |
-| `assignments` | Docente + materia + carrera + tarifa | `teacher_id`, `subject_id`, `career_id`, `hourly_rate_id`, `is_active`; único parcial `(teacher_id, subject_id, career_id) WHERE is_active` |
+| `subjects` | Materias del docente | `teacher_id`, `name`, `code` (opcional), `name_normalized` (columna generada con `normalize_name()` = `unaccent` + minúsculas + espacios simples); único `(teacher_id, name_normalized)`; `is_active` (baja lógica, RN-32) |
+| `assignments` | Docente + materia + carrera + tarifa | `teacher_id`, `subject_id`, `career_id`, `hourly_rate_id`, `is_active`, `active_until` (último día activo; `CHECK is_active = (active_until IS NULL)`); único parcial `(teacher_id, subject_id, career_id) WHERE is_active` |
 | `schedules` | Horario semanal | `assignment_id`, `teacher_id`, `weekday` (1 = lunes … 7 = domingo, ISO 8601), `start_time`, `end_time` |
-| `logbook_entries` | Sesiones impartidas | `assignment_id`, `teacher_id`, `session_date`, `start_time`, `end_time`, `notes` |
+| `logbook_entries` | Sesiones impartidas | `assignment_id`, `teacher_id`, `session_date`, `start_time`, `end_time`, `notes`, `hourly_rate_id` (tarifa congelada al registrar, RN-33) |
 | `payroll_receipts` | Recibo emitido (copia fija) | `teacher_id`, `folio_number` (secuencia de la base), `folio` (único), `year`, `month`, `fortnight`, `period_start`, `period_end`, `teacher_full_name` y `teacher_employee_number` (copias), `total_minutes`, `total_hours` (generada), `total_amount` `NUMERIC(12,2)`, `issued_at`; único `(teacher_id, year, month, fortnight)` |
-| `payroll_receipt_lines` | Renglones congelados del recibo | `receipt_id`, `teacher_id`, `assignment_id`, `subject_name`, `career_name`, `minutes`, `hours` (generada), `hourly_rate`, `amount` |
+| `payroll_receipt_lines` | Renglones congelados del recibo | `receipt_id`, `teacher_id`, `assignment_id`, `subject_name`, `career_name`, `minutes`, `hours` (generada), `hourly_rate`, `amount`; único `(receipt_id, assignment_id, hourly_rate)` |
 | `auth_sessions` | Sesión iniciada (etapa 3) | `public_id` (= `sid` del JWT), `user_id`, `user_agent`, `ip_address`, `last_used_at`, `expires_at`, `revoked_at`, `revocation_reason` |
 | `refresh_tokens` | Refresh tokens (etapa 3) | `session_id`, `token_hash` (SHA-256, único), `expires_at`, `used_at`; un solo token sin usar por sesión |
 
@@ -333,7 +354,7 @@ La identidad (`users`) está separada del perfil (`teachers`) y los permisos se 
 - `CHECK (amount = round(minutes * hourly_rate / 60, 2))` en `payroll_receipt_lines` (RN-25, RN-26).
 - **Borrado:** `ON DELETE RESTRICT` por defecto. `CASCADE` solo de `assignments` a `schedules` (RN-15) y de `users` a `user_roles`. De `payroll_receipts` a sus renglones es `RESTRICT`: los recibos nunca se borran.
 - Las líneas y el encabezado del recibo copian nombres, tarifa y datos del docente (RN-28): el recibo emitido no depende de que los catálogos sigan iguales.
-- **Lo que valida solo el servicio:** fecha de sesión no futura (RN-22) y periodo no futuro (RN-29), porque un `CHECK` con `current_date` no es válido; total del recibo = suma de renglones (involucra varias filas).
+- **Lo que valida solo el servicio:** fecha de sesión no futura (RN-22), antigüedad máxima (RN-37) y periodo no futuro (RN-29), porque un `CHECK` con `current_date` no es válido; duración de la clase (RN-36, límites configurables); total del recibo = suma de renglones (involucra varias filas). Toda violación de una restricción de la base se traduce al mismo código de dominio que daría el servicio (`services/constraints.py`), nunca a un 500.
 - Nombres de restricciones e índices según la convención de `db/base.py` (`pk_`, `fk_`, `uq_`, `ck_`, `ex_`, `ix_`, y `trg_` para triggers); una prueba lo verifica.
 
 ---
@@ -505,6 +526,8 @@ Los formateadores están en `frontend/src/lib/` y el backend usa las mismas regl
 
 Documentadas en [`backend/.env.example`](backend/.env.example) y [`frontend/.env.example`](frontend/.env.example). Toda variable nueva se agrega primero ahí y en el módulo de configuración tipado (`backend/src/app/core/config.py`, `frontend/src/config/`). Todas son obligatorias: no hay valores por defecto en el código.
 
+Etapa 4: `PAYROLL_ISSUE_REQUIRES_CLOSED_PERIOD`, `CLASS_MIN_DURATION_MINUTES`, `CLASS_MAX_DURATION_MINUTES` y `LOGBOOK_MAX_AGE_DAYS` (backend).
+
 Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_PUBLIC_CSRF_COOKIE_NAME` (frontend); `SESSION_HINT_COOKIE_NAME` (backend) = `SESSION_HINT_COOKIE_NAME` (frontend, solo servidor); `API_HOST`/`API_PORT` (backend) ↔ `API_PROXY_TARGET` (frontend); `DEV_SERVER_PORT` (frontend) debe estar en `CORS_ORIGINS` (backend).
 
 ### 9.5 Comandos habituales
@@ -515,9 +538,11 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 | Crear bases de datos | `bash scripts/create-databases.sh` |
 | Aplicar migraciones | `bash scripts/migrate.sh` (con argumentos: `current`, `downgrade base`…) |
 | Cargar datos semilla | `bash scripts/seed.sh` |
+| Cargar datos de demostración (solo desarrollo) | `bash scripts/demo-data.sh` → `docente.demo@example.com` / `Pizarron-Verde-2026` |
+| Regenerar los tipos de la API del frontend | `bash scripts/generate-api-types.sh` (o `npm run api:types`; `--check` / `npm run api:check` para verificar) |
 | Levantar todo | `bash scripts/dev.sh` |
 | Verificar backend | `cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest` |
-| Verificar frontend | `cd frontend && npm run check && npm run build` |
+| Verificar frontend | `cd frontend && npm run check && npm run api:check && npm run build` |
 
 ---
 
@@ -527,7 +552,7 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 - [x] **1. Arquitectura base del backend y frontend** (proyectos inicializados y conectados)
 - [x] **2. Base de datos:** modelos, migraciones y catálogo de carreras
 - [x] **3. Autenticación:** registro, login, sesión y seguridad
-- [ ] **4. Lógica de negocio:** materias, asignaciones, horarios, bitácora y cálculo de nómina
+- [x] **4. Lógica de negocio:** materias, asignaciones, horarios, bitácora y cálculo de nómina
 - [ ] **5. Sistema de diseño** (colores, tipografía, componentes)
 - [ ] **6. Pantallas:** login, registro y panel principal
 - [ ] **7. Pantallas:** asignaciones, horarios y bitácora
@@ -542,6 +567,9 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 - Recuperación de contraseña por correo, segundo factor (MFA) y pantalla de sesiones activas (ver `docs/seguridad.md` §8).
 - Rol de administrador (gestión de catálogos, consulta de docentes).
 - Cancelación o reexpedición de recibos emitidos.
+- Tarifa vigente por fecha (versionar la asignación) si la institución necesita registrar sesiones atrasadas con una tarifa anterior (ver `docs/base-de-datos.md` §3.9).
+- Historial de horarios (hoy las advertencias de «clases sin registrar» usan el horario actual).
+- Catálogo de días inhábiles para no contar como pendientes las clases de días festivos.
 - Despliegue en servidor institucional.
 
 ---
@@ -553,6 +581,7 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 | Generación del PDF del recibo | 8 | Generarlo en el backend (una sola fuente de cálculo y formato). Elegir la biblioteca en la etapa 8 considerando que funcione sin dependencias de sistema complicadas en Linux y Windows |
 | Paleta institucional y tipografía | 5 / 11 | Depende de los logos oficiales del TESH |
 | Usuario de base de datos de la app | 2 | Hoy se usa `postgres` en desarrollo local. Evaluar un rol propio con privilegios mínimos (dueño de las bases) antes de la revisión de seguridad de la etapa 10 |
+| Huecos en el consecutivo del folio | 10 | Una emisión revertida después de `nextval` deja un hueco. Si la institución exige numeración sin huecos, usar una tabla contador bloqueada dentro de la misma transacción |
 | Migrar el `TestClient` a `httpx2` | 3 o posterior | Starlette 1.x anuncia el cambio; se adopta cuando FastAPI lo incluya en sus dependencias de pruebas. Mientras, el aviso se filtra en `pyproject.toml` |
 
 ---
@@ -694,3 +723,42 @@ Formato: fecha, etapa, qué se hizo y decisiones importantes. Lo más reciente v
 **Pendiente**
 
 - Nada bloqueante. Siguen abiertas las decisiones de la sección 11 y las mejoras listadas en `docs/seguridad.md` §8 (recuperación de contraseña por correo, limitador por IP, CSP con *nonces* en las páginas para la etapa 10).
+
+### 2026-10-25 — Etapa 4: Lógica de negocio
+
+**Qué se hizo**
+
+- **Dominio puro** (`backend/src/app/domain/`): periodos quincenales (`Period`: fechas exactas, quincena de una fecha, las 24 del año, etiquetas en español), reglas de redondeo en un solo módulo (`money.py`), cálculo del recibo por asignación y tarifa (`payroll.py`), intervalos semiabiertos y duración de clases (`time_ranges.py`), ocurrencias del horario contra la bitácora (`attendance.py`) y formato de nombres de materia (`subjects.py`).
+- **Catálogo de códigos** (`core/codes.py`: `ErrorCode` con 51 códigos y `WarningCode` con 6) y `ERROR_CATALOG` con estado HTTP y mensaje por defecto; `domain_error()`; los códigos se publican como enumeraciones en el OpenAPI.
+- **Migración `8c41d2f7a9b3`** (revisada a mano, ciclo `upgrade → downgrade -1 → upgrade` verificado): `subjects.is_active`, `assignments.active_until` con su `CHECK`, `logbook_entries.hourly_rate_id` (rellenada con los triggers de bitácora desactivados) y renglones del recibo únicos por asignación y tarifa.
+- **Servicios y API** (32 rutas en total): catálogos de solo lectura y reglas configurables; CRUD de materias con búsqueda sin acentos y baja lógica; asignaciones (crear, editar, cambiar tarifa, desactivar, reactivar, borrar); horarios con detección de empalmes que nombra la clase con la que choca y horario semanal agrupado por día; bitácora (registro, edición, borrado, listado filtrable con totales, clases programadas de una fecha y registro rápido todo o nada); nómina (quincenas del año con estado, vista previa con advertencias y bloqueos, emisión con folio, listado y detalle de recibos); resumen del panel. Paginación y filtros con un solo formato; dinero y horas como cadenas decimales; horas `HH:MM`.
+- **Datos de demostración**: `scripts/demo-data.sh` (`python -m app.demo`) carga por los servicios una cuenta ficticia (`docente.demo@example.com`) con 6 materias, 7 asignaciones en 4 carreras y 3 tarifas, 11 horarios, bitácora de 4 quincenas (78 sesiones al 25 de octubre de 2026), un cambio de tarifa y 2 recibos emitidos. Idempotente; se niega a correr fuera de `APP_ENV=development`.
+- **Frontend (capa de datos, sin pantallas)**: tipos generados con openapi-typescript 7.13.0 (`scripts/generate-api-types.sh`, `npm run api:types`, `npm run api:check`); features `catalogs`, `subjects`, `assignments`, `schedules`, `logbook`, `payroll` y `dashboard` con `api/`, `hooks/` (TanStack Query), `schemas/` (Zod con `satisfies` contra los tipos generados) y `types/`; claves de consulta centralizadas e invalidación por tipo de cambio; formateadores de moneda, horas, fechas y periodos sobre cadenas decimales; mensajes por código de error (con detalle: clase con la que choca, límites, folio) y de advertencia.
+- **Pruebas**: 530 en verde (antes 283). Unitarias del dominio (todas las quincenas de un año, febrero normal y bisiesto incluido 2000 y 2100, meses de 30 y 31 días, días 15 y 16, clases de 50 y 90 minutos, medio centavo, sumas sin pérdida, 10 000 horas). Integración de cada endpoint con su código de dominio; aislamiento entre docentes en todos los recursos (lectura, edición, borrado, cambio de estado y uso de recursos ajenos: 404); empalmes de horarios y de bitácora; periodos bloqueados; cambio de tarifa sin afectar el historial; emisión idéntica a la vista previa, folio consecutivo, periodo duplicado, futuro o sin sesiones; **dos emisiones simultáneas con conexiones reales producen un solo recibo**; cada restricción traducida existe en el esquema; carga de demostración coherente e idempotente.
+- **Verificación con el servidor real**: con los datos de demostración, `/docs` responde y `GET /dashboard/summary`, `/payroll/preview` y `/payroll/receipts` devuelven cifras coherentes (por ejemplo, la 1.ª quincena de octubre: 39.00 h y $5,221.67 MXN, cuadrando renglón por renglón a mano).
+- **Documentación**: `docs/reglas-de-negocio.md` (cada RN con dónde se valida y su prueba, fórmula con ejemplo numérico, diagramas de la emisión, de la concurrencia y del ciclo de vida de una sesión), `docs/api.md` (convenciones, tabla de endpoints y catálogo de códigos, generados del OpenAPI y de `ERROR_CATALOG`); actualizados `docs/arquitectura.md`, `docs/base-de-datos.md`, los README y este archivo.
+
+**Decisiones**
+
+1. **Tarifa congelada en cada sesión** (`logbook_entries.hourly_rate_id`) en lugar de versionar la asignación o de obligar a desactivar y crear otra: una columna, la FK garantiza que sea del catálogo y la inmutabilidad del importe (RN-12) congela el precio. Cambiar la tarifa de una asignación ya se permite y no altera historial. Comparación de opciones en `docs/base-de-datos.md` §3.9.
+2. **Renglón del recibo por asignación y tarifa**: un cambio de tarifa dentro de la quincena produce dos renglones (advertencia `ASSIGNMENT_RATE_CHANGED`).
+3. **Capa `domain/` pura** (nueva en la arquitectura): las reglas que más deben probarse (periodos, redondeo, cálculo) no dependen de la base; la vista previa y la emisión llaman a la misma función, por eso coinciden.
+4. **Calendario del negocio separado del reloj de sesión** (`BusinessCalendar`): PyJWT valida la expiración con la hora real, así que mover el reloj de sesión invalidaría las cookies. La zona horaria sigue siendo una constante (decisión 8 de la etapa 0).
+5. **Límites institucionales como variables de entorno** (duración de clases 30–300 min, antigüedad de la bitácora 30 días, emisión solo de quincenas terminadas), publicados en `GET /catalogs/business-rules` para que el frontend no los duplique. Los días de quincena siguen siendo constantes (reglas de la nómina, no del despliegue).
+6. **Emisión solo de quincenas terminadas por defecto** (`PAYROLL_ISSUE_REQUIRES_CLOSED_PERIOD=true`): RN-29 permitía emitir la quincena en curso; ahora es configurable y el valor recomendado lo impide, porque un recibo emitido a medias bloquea el resto de la bitácora de la quincena.
+7. **Concurrencia por bloqueo de la fila del docente** (`SELECT … FOR NO KEY UPDATE`) en la emisión y en toda escritura de bitácora: dos emisiones del mismo periodo se serializan y una sesión que llega durante la emisión queda rechazada por el cierre. No bloquea lecturas ni las inserciones con llave foránea al docente. El `UNIQUE` del periodo y el trigger de cierre respaldan la regla en la base.
+8. **Catálogos por llave natural en la API** (carrera por `code`, tarifa por `amount` como cadena): no se expone ningún `id` secuencial y la llave es estable e inmutable.
+9. **Sesión de hoy solo si ya terminó** (`SESSION_NOT_FINISHED`): no se certifica una clase que no ha ocurrido.
+10. **Antigüedad máxima al crear o mover la fecha**, no al corregir observaciones: permite arreglar una nota sin reabrir la ventana de captura.
+11. **Desactivar una asignación borra sus horarios**: los horarios no tienen valor histórico y, si se quedaran, bloquearían por empalme la clase que la sustituye. La bitácora y los recibos se conservan.
+12. **Materia: borrar si nunca se usó, desactivar si tiene historial, 409 si tiene asignaciones activas** (`DELETE /subjects/{id}` responde `outcome`).
+13. **Advertencias, no errores, para sesiones fuera de horario** (RN-39): una clase recorrida es real y debe pagarse; se avisa para revisar.
+14. **«Clases sin registrar» con el horario actual** y sin calendario de días inhábiles: es una advertencia, no un bloqueo. Ambas mejoras quedan en la hoja de ruta.
+15. **Tipos del frontend generados del OpenAPI** y vinculados a Zod con `satisfies`; los textos por código son `Record` sobre los códigos generados, así que un código nuevo sin texto no compila.
+16. **Datos de demostración por los servicios**, con un reloj que viaja a cada fecha: los datos cumplen todas las reglas y sirven además como prueba de punta a punta del dominio.
+17. **Pruebas de negocio con Argon2 de parámetros mínimos**: registran docentes en cada caso; el hash real lo cubren las pruebas de autenticación.
+18. **Finales de línea:** las ediciones con `Path.write_text` en Windows guardaron CRLF; se normalizó todo a LF en un commit propio y los scripts de edición escriben con `newline="\n"`.
+
+**Pendiente**
+
+- Nada bloqueante. Abiertas: decisiones de la sección 11 (incluida la de huecos en el folio, nueva) y las pantallas (etapas 6 a 8). Swagger (`/docs`) no envía el encabezado CSRF por su cuenta: para probar escrituras se usa `curl` o el frontend (README, «Probar la API en `/docs`»).

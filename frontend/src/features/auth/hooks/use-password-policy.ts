@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { queryKeys } from "@/lib/query-keys";
+
 import { getPasswordPolicy } from "../api/auth";
-import { authQueryKeys } from "./query-keys";
 
 /** Política de contraseñas del backend; no cambia mientras la página está abierta. */
 export function usePasswordPolicy() {
   return useQuery({
-    queryKey: authQueryKeys.passwordPolicy,
+    queryKey: queryKeys.auth.passwordPolicy,
     queryFn: ({ signal }) => getPasswordPolicy(signal),
     staleTime: Number.POSITIVE_INFINITY,
   });

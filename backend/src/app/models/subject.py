@@ -6,6 +6,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    true,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,3 +40,5 @@ class Subject(IdentityPkMixin, PublicIdMixin, TimestampMixin, Base):
     name_normalized: Mapped[str] = mapped_column(
         Text, Computed("normalize_name(name)", persisted=True)
     )
+    # Baja lógica: una materia usada en asignaciones conserva su historial y solo se desactiva.
+    is_active: Mapped[bool] = mapped_column(default=True, server_default=true())

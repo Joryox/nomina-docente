@@ -1,3 +1,5 @@
+from datetime import date
+
 import pytest
 from sqlalchemy.orm import Session
 
@@ -88,6 +90,7 @@ def test_inactive_assignment_allows_a_new_one(
         seeded_session, create_teacher(seeded_session), career, hourly_rate
     )
     assignment.is_active = False
+    assignment.active_until = date(2026, 10, 20)
     seeded_session.flush()
 
     replacement = Assignment(
@@ -122,3 +125,20 @@ def test_rate_in_use_cannot_be_deleted(
 
     with violates(seeded_session, "fk_assignments_hourly_rate_id_hourly_rates"):
         seeded_session.delete(hourly_rate)
+
+
+@pytest.mark.parametrize(("is_active", "active_until"), [(True, date(2026, 10, 20)), (False, None)])
+def test_active_until_exists_only_when_inactive(
+    seeded_session: Session,
+    career: Career,
+    hourly_rate: HourlyRate,
+    is_active: bool,
+    active_until: date | None,
+) -> None:
+    assignment = create_assignment(
+        seeded_session, create_teacher(seeded_session), career, hourly_rate
+    )
+
+    with violates(seeded_session, "ck_assignments_active_until_consistent"):
+        assignment.is_active = is_active
+        assignment.active_until = active_until

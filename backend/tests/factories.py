@@ -94,6 +94,7 @@ def build_logbook_entry(
         session_date=session_date,
         start_time=start,
         end_time=end,
+        hourly_rate_id=assignment.hourly_rate_id,
     )
 
 

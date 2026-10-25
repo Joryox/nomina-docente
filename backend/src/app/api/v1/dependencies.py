@@ -14,30 +14,47 @@ from datetime import timedelta
 from ipaddress import ip_address
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends, Query, Request
 from sqlalchemy.orm import Session
 
-from app.core.clock import Clock, utc_now
+from app.core.clock import BusinessCalendar, Clock, utc_now
 from app.core.config import Settings, get_settings
-from app.core.constants import USER_AGENT_MAX_LENGTH, RoleCode
+from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, USER_AGENT_MAX_LENGTH, RoleCode
 from app.core.exceptions import AuthenticationError
 from app.core.security.password_policy import PasswordPolicy, get_common_passwords
 from app.core.security.passwords import PasswordHasher, get_password_hasher
 from app.core.security.tokens import AccessTokenCodec
 from app.db.session import get_db
 from app.models.teacher import Teacher
+from app.repositories.assignment import AssignmentRepository
 from app.repositories.auth_session import AuthSessionRepository
+from app.repositories.career import CareerRepository
 from app.repositories.health import HealthRepository
+from app.repositories.hourly_rate import HourlyRateRepository
+from app.repositories.logbook import LogbookRepository
+from app.repositories.payroll_receipt import PayrollReceiptRepository
 from app.repositories.refresh_token import RefreshTokenRepository
 from app.repositories.role import RoleRepository
+from app.repositories.schedule import ScheduleRepository
+from app.repositories.subject import SubjectRepository
 from app.repositories.teacher import TeacherRepository
 from app.repositories.unit_of_work import UnitOfWork
 from app.repositories.user import UserRepository
+from app.schemas.common import PageParams
+from app.schemas.payroll import InstitutionResponse
 from app.services.account import AccountService
+from app.services.assignments import AssignmentService
 from app.services.auth import AuthService
+from app.services.catalogs import CatalogService
+from app.services.dashboard import DashboardService
 from app.services.health import HealthService
+from app.services.logbook import LogbookService
 from app.services.login_throttle import LoginThrottle
+from app.services.payroll import PayrollService
+from app.services.policy import BusinessPolicy
+from app.services.schedules import ScheduleService
 from app.services.sessions import ClientContext, Principal, SessionLifetimes, SessionManager
+from app.services.subjects import SubjectService
 
 DbSession = Annotated[Session, Depends(get_db)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
@@ -188,3 +205,105 @@ def require_roles(*roles: RoleCode) -> Callable[[Principal, AuthService], Princi
         return service.require_roles(principal, required)
 
     return dependency
+
+
+# --- Lógica de negocio (etapa 4) ---------------------------------------------------------
+def get_business_calendar() -> BusinessCalendar:
+    """Fecha y hora de la institución. Es independiente de ``get_clock`` para que las pruebas
+    fijen «hoy» sin invalidar los tokens de sesión (ver ``BusinessCalendar``)."""
+    return BusinessCalendar(utc_now)
+
+
+Calendar = Annotated[BusinessCalendar, Depends(get_business_calendar)]
+
+
+def get_business_policy(settings: AppSettings) -> BusinessPolicy:
+    return BusinessPolicy.from_settings(settings)
+
+
+Rules = Annotated[BusinessPolicy, Depends(get_business_policy)]
+
+
+def get_page_params(
+    page: Annotated[int, Query(ge=1, description="Página, empezando en 1")] = 1,
+    page_size: Annotated[
+        int, Query(ge=1, le=MAX_PAGE_SIZE, description="Elementos por página")
+    ] = DEFAULT_PAGE_SIZE,
+) -> PageParams:
+    return PageParams(page=page, page_size=page_size)
+
+
+Pagination = Annotated[PageParams, Depends(get_page_params)]
+
+
+def get_catalog_service(session: DbSession, rules: Rules, calendar: Calendar) -> CatalogService:
+    return CatalogService(CareerRepository(session), HourlyRateRepository(session), rules, calendar)
+
+
+def get_subject_service(session: DbSession) -> SubjectService:
+    return SubjectService(SubjectRepository(session), UnitOfWork(session))
+
+
+def get_assignment_service(session: DbSession, calendar: Calendar) -> AssignmentService:
+    return AssignmentService(
+        assignments=AssignmentRepository(session),
+        subjects=SubjectRepository(session),
+        careers=CareerRepository(session),
+        rates=HourlyRateRepository(session),
+        unit_of_work=UnitOfWork(session),
+        calendar=calendar,
+    )
+
+
+def get_schedule_service(session: DbSession, rules: Rules) -> ScheduleService:
+    return ScheduleService(
+        AssignmentRepository(session), ScheduleRepository(session), UnitOfWork(session), rules
+    )
+
+
+def get_logbook_service(session: DbSession, calendar: Calendar, rules: Rules) -> LogbookService:
+    return LogbookService(
+        assignments=AssignmentRepository(session),
+        schedules=ScheduleRepository(session),
+        logbook=LogbookRepository(session),
+        receipts=PayrollReceiptRepository(session),
+        teachers=TeacherRepository(session),
+        unit_of_work=UnitOfWork(session),
+        calendar=calendar,
+        policy=rules,
+    )
+
+
+def get_payroll_service(
+    session: DbSession, settings: AppSettings, calendar: Calendar, rules: Rules
+) -> PayrollService:
+    return PayrollService(
+        logbook=LogbookRepository(session),
+        schedules=ScheduleRepository(session),
+        receipts=PayrollReceiptRepository(session),
+        teachers=TeacherRepository(session),
+        unit_of_work=UnitOfWork(session),
+        calendar=calendar,
+        policy=rules,
+        institution=InstitutionResponse(
+            name=settings.institution_name, short_name=settings.institution_short_name
+        ),
+        folio_prefix=settings.payroll_folio_prefix,
+    )
+
+
+CatalogServiceDep = Annotated[CatalogService, Depends(get_catalog_service)]
+SubjectServiceDep = Annotated[SubjectService, Depends(get_subject_service)]
+AssignmentServiceDep = Annotated[AssignmentService, Depends(get_assignment_service)]
+ScheduleServiceDep = Annotated[ScheduleService, Depends(get_schedule_service)]
+LogbookServiceDep = Annotated[LogbookService, Depends(get_logbook_service)]
+PayrollServiceDep = Annotated[PayrollService, Depends(get_payroll_service)]
+
+
+def get_dashboard_service(
+    payroll: PayrollServiceDep, logbook: LogbookServiceDep, calendar: Calendar
+) -> DashboardService:
+    return DashboardService(payroll, logbook, calendar)
+
+
+DashboardServiceDep = Annotated[DashboardService, Depends(get_dashboard_service)]

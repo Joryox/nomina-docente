@@ -88,4 +88,20 @@ export const TEXTS = {
       production: "Producción",
     },
   },
+  calendar: {
+    weekdays: {
+      1: "lunes",
+      2: "martes",
+      3: "miércoles",
+      4: "jueves",
+      5: "viernes",
+      6: "sábado",
+      7: "domingo",
+    },
+    fortnights: {
+      1: "1.ª quincena",
+      2: "2.ª quincena",
+    },
+    hoursSuffix: "h",
+  },
 } as const;

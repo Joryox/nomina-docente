@@ -1,6 +1,9 @@
+import type { ApiErrorCode } from "@/lib/api-types";
+
 /**
  * Mensajes en español para los códigos de error estables de la API (y del cliente).
- * Cada mensaje dice qué pasó y cómo corregirlo.
+ * Cada mensaje dice qué pasó y cómo corregirlo. `API_ERROR_MESSAGES` usa `satisfies`
+ * contra el tipo generado del backend: si aparece un código nuevo, TypeScript exige su texto.
  */
 export const CLIENT_ERROR_CODES = {
   network: "NETWORK_ERROR",
@@ -9,7 +12,9 @@ export const CLIENT_ERROR_CODES = {
   unknown: "UNKNOWN_ERROR",
 } as const;
 
-export const ERROR_MESSAGES: Readonly<Record<string, string>> = {
+type ClientErrorCode = (typeof CLIENT_ERROR_CODES)[keyof typeof CLIENT_ERROR_CODES];
+
+const CLIENT_ERROR_MESSAGES: Readonly<Record<ClientErrorCode, string>> = {
   [CLIENT_ERROR_CODES.network]:
     "No hay conexión con el servidor. Revisa tu conexión a internet e intenta de nuevo.",
   [CLIENT_ERROR_CODES.backendUnavailable]:
@@ -17,6 +22,9 @@ export const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   [CLIENT_ERROR_CODES.invalidResponse]:
     "El servidor respondió con datos inesperados. Intenta de nuevo; si persiste, avisa al área de sistemas.",
   [CLIENT_ERROR_CODES.unknown]: "Ocurrió un error inesperado. Intenta de nuevo más tarde.",
+};
+
+export const API_ERROR_MESSAGES = {
   BAD_REQUEST: "La solicitud no es válida. Revisa los datos e intenta de nuevo.",
   NOT_FOUND: "No encontramos lo que buscas. Verifica que siga existiendo.",
   METHOD_NOT_ALLOWED: "Esta acción no está permitida.",
@@ -43,7 +51,73 @@ export const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   EMPLOYEE_NUMBER_ALREADY_REGISTERED:
     "Ese número de empleado ya está registrado en otra cuenta. Revísalo o déjalo en blanco.",
   PASSWORD_POLICY_VIOLATION: "La contraseña no cumple los requisitos de seguridad.",
+  CAREER_NOT_FOUND: "La carrera no existe. Elige una carrera de la lista.",
+  CAREER_INACTIVE: "La carrera ya no está disponible. Elige otra carrera de la lista.",
+  RATE_NOT_FOUND: "La tarifa no existe en el catálogo. Elige una tarifa de la lista.",
+  RATE_INACTIVE: "La tarifa ya no está vigente. Elige una tarifa vigente de la lista.",
+  SUBJECT_NOT_FOUND: "La materia no existe. Recarga la página y elígela de nuevo.",
+  SUBJECT_ALREADY_EXISTS: "Ya registraste una materia con ese nombre. Usa la que ya existe.",
+  SUBJECT_INACTIVE: "La materia está desactivada. Reactívala antes de usarla.",
+  SUBJECT_HAS_ACTIVE_ASSIGNMENTS:
+    "La materia tiene asignaciones activas. Desactívalas o elimínalas antes de quitarla.",
+  ASSIGNMENT_NOT_FOUND: "La asignación no existe. Recarga la página y elígela de nuevo.",
+  ASSIGNMENT_ALREADY_EXISTS:
+    "Ya tienes una asignación activa de esa materia en esa carrera. Cambia su tarifa en lugar de crear otra.",
+  ASSIGNMENT_INACTIVE: "La asignación está desactivada. Reactívala antes de modificarla.",
+  ASSIGNMENT_HAS_LOGBOOK:
+    "La asignación tiene sesiones en la bitácora: no se puede borrar ni cambiar su materia o carrera. Desactívala y crea una nueva.",
+  SCHEDULE_NOT_FOUND: "El horario no existe. Recarga la página.",
+  SCHEDULE_OVERLAP: "El horario se empalma con otra de tus clases. Elige otra hora.",
+  TIME_RANGE_INVALID:
+    "La hora de salida debe ser posterior a la hora de entrada. Una clase no puede cruzar la medianoche.",
+  CLASS_TOO_SHORT: "La clase dura menos de lo permitido. Revisa la hora de entrada y de salida.",
+  CLASS_TOO_LONG: "La clase dura más de lo permitido. Revisa la hora de entrada y de salida.",
+  LOGBOOK_ENTRY_NOT_FOUND: "La sesión no existe en tu bitácora. Recarga la página.",
+  SESSION_OVERLAP: "La sesión se empalma con otra sesión registrada ese día. Revisa las horas.",
+  SESSION_DATE_IN_FUTURE:
+    "No se registran sesiones con fecha futura. Elige hoy o una fecha anterior.",
+  SESSION_NOT_FINISHED: "La sesión todavía no termina. Regístrala después de la hora de salida.",
+  SESSION_DATE_TOO_OLD:
+    "La sesión es demasiado antigua para registrarla. Si falta, avisa a tu coordinación.",
+  ASSIGNMENT_INACTIVE_ON_DATE:
+    "La asignación no estaba activa en esa fecha. Elige una fecha anterior u otra asignación.",
+  SCHEDULE_NOT_ON_DATE: "El horario elegido no corresponde al día de la semana de la fecha.",
+  PERIOD_LOCKED: "La quincena ya tiene recibo emitido: su bitácora no se puede modificar.",
+  PERIOD_IN_FUTURE: "La quincena todavía no empieza.",
+  PERIOD_NOT_FINISHED: "La quincena todavía no termina. Emite el recibo cuando concluya.",
+  PERIOD_WITHOUT_SESSIONS:
+    "La quincena no tiene sesiones registradas. Registra tu bitácora antes de emitir el recibo.",
+  RECEIPT_ALREADY_ISSUED: "Ya emitiste el recibo de esta quincena.",
+  RECEIPT_NOT_FOUND: "El recibo no existe. Recarga la página.",
+} as const satisfies Record<ApiErrorCode, string>;
+
+export const ERROR_MESSAGES: Readonly<Record<string, string>> = {
+  ...CLIENT_ERROR_MESSAGES,
+  ...API_ERROR_MESSAGES,
 };
+
+/**
+ * Mensajes que usan los datos de `error.details` para decir exactamente qué pasó. Los
+ * datos ya vienen validados por `lib/api-error.ts`.
+ */
+export const DETAILED_ERROR_MESSAGES = {
+  scheduleOverlap: (subject: string, career: string, weekday: string, range: string) =>
+    `El horario se empalma con ${subject} (${career}), ${weekday} ${range}. Elige otra hora de entrada o de salida.`,
+  sessionOverlap: (subject: string, range: string) =>
+    `La sesión se empalma con ${subject}, registrada ese día de ${range}. Revisa la hora de entrada y de salida.`,
+  classTooShort: (minutes: number) =>
+    `La clase debe durar al menos ${minutes} minutos. Revisa la hora de entrada y de salida.`,
+  classTooLong: (minutes: number) =>
+    `La clase puede durar como máximo ${minutes} minutos. Revisa la hora de entrada y de salida.`,
+  sessionTooOld: (days: number) =>
+    `Solo se registran sesiones de los últimos ${days} días. Si falta una más antigua, avisa a tu coordinación.`,
+  receiptAlreadyIssued: (folio: string) =>
+    `Ya emitiste el recibo de esta quincena (folio ${folio}).`,
+  subjectAlreadyExists: (name: string, isActive: boolean) =>
+    isActive
+      ? `Ya registraste la materia «${name}». Usa la que ya existe.`
+      : `Ya registraste la materia «${name}», pero está desactivada. Reactívala para usarla.`,
+} as const;
 
 /** Mensajes de validación de los formularios (Zod). */
 export const VALIDATION_MESSAGES = {
@@ -52,4 +126,13 @@ export const VALIDATION_MESSAGES = {
   personName: "Usa solo letras, espacios, apóstrofos, guiones o puntos.",
   employeeNumber: "Usa solo letras, números y guiones, sin espacios.",
   maxLength: (max: number) => `Escribe como máximo ${max} caracteres.`,
+  subjectCode: "Usa solo letras, números y guiones, sin espacios, por ejemplo SCD-1004.",
+  selectOption: "Elige una opción de la lista.",
+  clockTime: "Escribe la hora en formato de 24 horas, por ejemplo 07:00.",
+  date: "Elige una fecha válida.",
+  endAfterStart: "La hora de salida debe ser posterior a la hora de entrada.",
+  classTooShort: (minutes: number) => `La clase debe durar al menos ${minutes} minutos.`,
+  classTooLong: (minutes: number) => `La clase puede durar como máximo ${minutes} minutos.`,
+  futureDate: "No se registran sesiones con fecha futura.",
+  dateTooOld: (days: number) => `Solo se registran sesiones de los últimos ${days} días.`,
 } as const;

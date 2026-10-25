@@ -122,3 +122,15 @@ def test_rejects_insecure_values(
         build_settings(valid_settings_values)
 
     assert variable.upper() in describe_validation_error(error.value)
+
+
+def test_rejects_minimum_class_duration_above_the_maximum(
+    valid_settings_values: dict[str, Any],
+) -> None:
+    valid_settings_values["class_min_duration_minutes"] = 120
+    valid_settings_values["class_max_duration_minutes"] = 60
+
+    with pytest.raises(ValidationError) as error:
+        build_settings(valid_settings_values)
+
+    assert "CLASS_MIN_DURATION_MINUTES" in describe_validation_error(error.value)

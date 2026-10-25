@@ -193,7 +193,7 @@ class TestReceiptLine:
         with violates(seeded_session, "ck_payroll_receipt_lines_amount_matches_rate"):
             seeded_session.add(line)
 
-    def test_one_line_per_assignment(
+    def test_one_line_per_assignment_and_rate(
         self, seeded_session: Session, receipt: PayrollReceipt, assignment: Assignment
     ) -> None:
         seeded_session.add(
@@ -201,10 +201,24 @@ class TestReceiptLine:
         )
         seeded_session.flush()
 
-        with violates(seeded_session, "uq_payroll_receipt_lines_receipt_id_assignment_id"):
+        with violates(
+            seeded_session, "uq_payroll_receipt_lines_receipt_id_assignment_id_hourly_rate"
+        ):
             seeded_session.add(
                 build_receipt_line(receipt, assignment, 30, Decimal("125.00"), Decimal("62.50"))
             )
+
+    def test_a_rate_change_inside_the_period_is_a_second_line(
+        self, seeded_session: Session, receipt: PayrollReceipt, assignment: Assignment
+    ) -> None:
+        seeded_session.add_all(
+            [
+                build_receipt_line(receipt, assignment, 60, Decimal("125.00"), Decimal("125.00")),
+                build_receipt_line(receipt, assignment, 60, Decimal("135.00"), Decimal("135.00")),
+            ]
+        )
+
+        seeded_session.flush()
 
     def test_assignment_must_belong_to_the_receipt_teacher(
         self,

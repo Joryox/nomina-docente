@@ -12,6 +12,42 @@ export const API_ROUTES = {
     me: "/auth/me",
     changePassword: "/auth/change-password",
   },
+  catalogs: {
+    careers: "/catalogs/careers",
+    hourlyRates: "/catalogs/hourly-rates",
+    businessRules: "/catalogs/business-rules",
+  },
+  subjects: {
+    collection: "/subjects",
+    item: (id: string) => `/subjects/${id}`,
+    reactivate: (id: string) => `/subjects/${id}/reactivate`,
+  },
+  assignments: {
+    collection: "/assignments",
+    item: (id: string) => `/assignments/${id}`,
+    deactivate: (id: string) => `/assignments/${id}/deactivate`,
+    reactivate: (id: string) => `/assignments/${id}/reactivate`,
+    schedules: (id: string) => `/assignments/${id}/schedules`,
+  },
+  schedules: {
+    weekly: "/schedules/weekly",
+    item: (id: string) => `/schedules/${id}`,
+  },
+  logbook: {
+    collection: "/logbook",
+    item: (id: string) => `/logbook/${id}`,
+    scheduled: "/logbook/scheduled",
+    quick: "/logbook/quick",
+  },
+  payroll: {
+    periods: "/payroll/periods",
+    preview: "/payroll/preview",
+    receipts: "/payroll/receipts",
+    receipt: (id: string) => `/payroll/receipts/${id}`,
+  },
+  dashboard: {
+    summary: "/dashboard/summary",
+  },
 } as const;
 
 /** Rutas de las páginas de la aplicación (en español). */
