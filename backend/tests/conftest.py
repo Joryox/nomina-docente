@@ -6,7 +6,7 @@ que se revierte al terminar. Si no hay conexión, las pruebas se saltan con un m
 explica cómo preparar la base, en lugar de fallar.
 """
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from decimal import Decimal
 from typing import Any
 
@@ -18,6 +18,7 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
+from app.api.v1.dependencies import get_clock
 from app.core.config import Settings, get_settings
 from app.db.session import get_db
 from app.main import create_app
@@ -25,7 +26,7 @@ from app.models import Career, HourlyRate
 from app.repositories.career import CareerRepository
 from app.repositories.hourly_rate import HourlyRateRepository
 from app.seeds.runner import run_seeds
-from tests.helpers import run_alembic
+from tests.helpers import FakeClock, run_alembic
 
 DB_UNAVAILABLE_HINT = (
     "No hay conexión a la base de pruebas {database} ({reason}). "
@@ -146,3 +147,39 @@ def db_client(app: FastAPI, db_session: Session) -> Iterator[TestClient]:
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def clock() -> FakeClock:
+    return FakeClock()
+
+
+@pytest.fixture
+def auth_app(
+    app: FastAPI, db_session: Session, clock: FakeClock, seeded_session: Session
+) -> FastAPI:
+    """Aplicación contra la base de pruebas (con catálogos) y con el reloj simulado."""
+    app.dependency_overrides[get_db] = lambda: db_session
+    app.dependency_overrides[get_clock] = lambda: clock
+    return app
+
+
+@pytest.fixture
+def make_client(auth_app: FastAPI) -> Iterator[Callable[[], TestClient]]:
+    """Fábrica de clientes: cada uno es un navegador distinto con sus propias cookies."""
+    clients: list[TestClient] = []
+
+    def factory() -> TestClient:
+        client = TestClient(auth_app)
+        clients.append(client)
+        return client
+
+    yield factory
+    for client in clients:
+        client.close()
+    auth_app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def browser(make_client: Callable[[], TestClient]) -> TestClient:
+    return make_client()

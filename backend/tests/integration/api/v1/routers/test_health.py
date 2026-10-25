@@ -7,6 +7,7 @@ from app.core.config import Settings
 from app.core.constants import REQUEST_ID_HEADER
 from app.schemas.health import DatabaseStatus, HealthResponse, ServiceStatus
 from app.services.health import HealthService
+from tests.auth import csrf_headers
 
 HEALTH_URL = "/api/v1/health"
 
@@ -42,8 +43,10 @@ def test_health_returns_request_id_header(app: FastAPI) -> None:
     assert response.headers[REQUEST_ID_HEADER] == "prueba-123"
 
 
-def test_health_rejects_unsupported_method_with_error_format(client: TestClient) -> None:
-    response = client.post(HEALTH_URL)
+def test_health_rejects_unsupported_method_with_error_format(
+    client: TestClient, settings: Settings
+) -> None:
+    response = client.post(HEALTH_URL, headers=csrf_headers(client, settings))
 
     assert response.status_code == 405
     assert response.json()["error"]["code"] == "METHOD_NOT_ALLOWED"
