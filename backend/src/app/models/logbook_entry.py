@@ -1,13 +1,26 @@
 from datetime import date, time
+from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, CheckConstraint, ForeignKeyConstraint, Index, String, text
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    String,
+    text,
+)
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.constants import LOGBOOK_NOTES_MAX_LENGTH
 from app.db.base import Base
 from app.db.checks import trimmed_not_blank, whole_minute
 from app.db.mixins import IdentityPkMixin, PublicIdMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.assignment import Assignment
+    from app.models.hourly_rate import HourlyRate
 
 
 class LogbookEntry(IdentityPkMixin, PublicIdMixin, TimestampMixin, Base):
@@ -49,3 +62,12 @@ class LogbookEntry(IdentityPkMixin, PublicIdMixin, TimestampMixin, Base):
     start_time: Mapped[time]
     end_time: Mapped[time]
     notes: Mapped[str | None] = mapped_column(String(LOGBOOK_NOTES_MAX_LENGTH))
+    # Tarifa vigente de la asignación cuando se registró la sesión. Como el importe de una
+    # tarifa es inmutable (RN-12), la llave foránea congela el precio de la sesión: cambiar
+    # la tarifa de la asignación no altera las sesiones ya registradas.
+    hourly_rate_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("hourly_rates.id", ondelete="RESTRICT"), index=True
+    )
+
+    assignment: Mapped["Assignment"] = relationship(viewonly=True, lazy="raise_on_sql")
+    hourly_rate: Mapped["HourlyRate"] = relationship(viewonly=True, lazy="raise_on_sql")

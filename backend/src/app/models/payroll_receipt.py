@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     BigInteger,
@@ -15,7 +16,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.constants import (
     EMPLOYEE_NUMBER_MAX_LENGTH,
@@ -36,6 +37,9 @@ from app.core.constants import (
 from app.db.base import Base
 from app.db.checks import trimmed_not_blank
 from app.db.mixins import IdentityPkMixin, PublicIdMixin
+
+if TYPE_CHECKING:
+    from app.models.payroll_receipt_line import PayrollReceiptLine
 
 # Consecutivo del folio (RN-30). Lo genera la base; el servicio lo pide antes de insertar
 # para armar el folio con el prefijo configurado.
@@ -110,3 +114,7 @@ class PayrollReceipt(IdentityPkMixin, PublicIdMixin, Base):
         Numeric(MONEY_AMOUNT_PRECISION, MONEY_DECIMAL_PLACES)
     )
     issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    lines: Mapped[list["PayrollReceiptLine"]] = relationship(
+        viewonly=True, lazy="raise_on_sql", order_by="PayrollReceiptLine.id"
+    )

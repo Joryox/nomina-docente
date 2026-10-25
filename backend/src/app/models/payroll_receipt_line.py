@@ -44,7 +44,9 @@ class PayrollReceiptLine(IdentityPkMixin, Base):
             ["assignments.id", "assignments.teacher_id"],
             ondelete="RESTRICT",
         ),
-        UniqueConstraint("receipt_id", "assignment_id"),
+        # Un renglón por asignación y tarifa: si la tarifa cambió dentro de la quincena, la
+        # misma asignación aparece en dos renglones, cada uno con su tarifa.
+        UniqueConstraint("receipt_id", "assignment_id", "hourly_rate"),
         Index("ix_payroll_receipt_lines_assignment_id_teacher_id", "assignment_id", "teacher_id"),
         Index("ix_payroll_receipt_lines_receipt_id_teacher_id", "receipt_id", "teacher_id"),
         CheckConstraint(trimmed_not_blank("subject_name"), name="subject_name_trimmed"),

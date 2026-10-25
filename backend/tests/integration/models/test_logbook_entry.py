@@ -94,6 +94,15 @@ def test_notes_must_be_trimmed_when_present(
         seeded_session.add(entry)
 
 
+def test_session_rate_must_exist_in_the_catalog(
+    seeded_session: Session, assignment: Assignment
+) -> None:
+    with violates(seeded_session, "fk_logbook_entries_hourly_rate_id_hourly_rates"):
+        entry = build_logbook_entry(assignment, date(2026, 10, 7), time(7), time(9))
+        entry.hourly_rate_id = -1
+        seeded_session.add(entry)
+
+
 def test_assignment_with_logbook_cannot_be_deleted(
     seeded_session: Session, entry: LogbookEntry, assignment: Assignment
 ) -> None:
