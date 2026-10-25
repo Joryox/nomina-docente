@@ -91,3 +91,34 @@ def test_reads_values_from_environment_variables(
     settings = build_settings(valid_settings_values)
 
     assert settings.payroll_folio_prefix == "REC"
+
+
+def test_production_requires_secure_cookies(valid_settings_values: dict[str, Any]) -> None:
+    valid_settings_values |= {"app_env": "production", "auth_cookie_secure": False}
+
+    with pytest.raises(ValidationError) as error:
+        build_settings(valid_settings_values)
+
+    assert "AUTH_COOKIE_SECURE debe ser true" in describe_validation_error(error.value)
+
+
+def test_cookie_names_must_be_distinct(valid_settings_values: dict[str, Any]) -> None:
+    valid_settings_values["refresh_cookie_name"] = valid_settings_values["access_cookie_name"]
+
+    with pytest.raises(ValidationError, match="deben ser distintos"):
+        build_settings(valid_settings_values)
+
+
+@pytest.mark.parametrize(
+    ("variable", "value"),
+    [("jwt_algorithm", "none"), ("auth_cookie_samesite", "none"), ("password_min_length", 6)],
+)
+def test_rejects_insecure_values(
+    valid_settings_values: dict[str, Any], variable: str, value: object
+) -> None:
+    valid_settings_values[variable] = value
+
+    with pytest.raises(ValidationError) as error:
+        build_settings(valid_settings_values)
+
+    assert variable.upper() in describe_validation_error(error.value)
