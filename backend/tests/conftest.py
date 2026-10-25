@@ -7,6 +7,7 @@ explica cómo preparar la base, en lugar de fallar.
 """
 
 from collections.abc import Callable, Iterator
+from datetime import UTC
 from decimal import Decimal
 from typing import Any
 
@@ -18,7 +19,8 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
-from app.api.v1.dependencies import get_clock
+from app.api.v1.dependencies import get_business_calendar, get_clock
+from app.core.clock import BusinessCalendar
 from app.core.config import Settings, get_settings
 from app.db.session import get_db
 from app.main import create_app
@@ -26,6 +28,7 @@ from app.models import Career, HourlyRate
 from app.repositories.career import CareerRepository
 from app.repositories.hourly_rate import HourlyRateRepository
 from app.seeds.runner import run_seeds
+from tests.business import BUSINESS_NOW, Api, register_teacher
 from tests.helpers import FakeClock, run_alembic
 
 DB_UNAVAILABLE_HINT = (
@@ -187,3 +190,31 @@ def make_client(auth_app: FastAPI) -> Iterator[Callable[[], TestClient]]:
 @pytest.fixture
 def browser(make_client: Callable[[], TestClient]) -> TestClient:
     return make_client()
+
+
+@pytest.fixture
+def business_clock() -> FakeClock:
+    """Reloj del negocio fijo en ``tests.business.BUSINESS_NOW``."""
+    return FakeClock(BUSINESS_NOW.astimezone(UTC))
+
+
+@pytest.fixture
+def business_app(auth_app: FastAPI, business_clock: FakeClock) -> FastAPI:
+    auth_app.dependency_overrides[get_business_calendar] = lambda: BusinessCalendar(business_clock)
+    return auth_app
+
+
+@pytest.fixture
+def teacher_api(
+    business_app: FastAPI, make_client: Callable[[], TestClient], settings: Settings
+) -> Api:
+    """Docente A registrado y con sesión iniciada."""
+    return register_teacher(make_client(), settings, 1)
+
+
+@pytest.fixture
+def other_api(
+    business_app: FastAPI, make_client: Callable[[], TestClient], settings: Settings
+) -> Api:
+    """Docente B, para probar el aislamiento de datos (RN-04)."""
+    return register_teacher(make_client(), settings, 2)

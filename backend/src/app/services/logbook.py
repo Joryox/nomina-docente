@@ -143,9 +143,11 @@ class LogbookService:
         criteria = LogbookFilter(teacher.id, date_from, date_to, assignment_key)
         entries, total = self._logbook.search(criteria, offset=page.offset, limit=page.page_size)
         count, minutes = self._logbook.totals(criteria)
-        result: LogbookPage = LogbookPage.build(self._responses(teacher, entries), page, total)
-        result.totals = LogbookTotals(
+        totals = LogbookTotals(
             session_count=count, total_minutes=minutes, total_hours=minutes_to_hours(minutes)
+        )
+        result: LogbookPage = LogbookPage.build(
+            self._responses(teacher, entries), page, total, totals=totals
         )
         return result
 

@@ -123,13 +123,17 @@ class Page[ItemT](BaseModel):
     total_pages: int = Field(ge=0)
 
     @classmethod
-    def build(cls, items: list[ItemT], params: PageParams, total_items: int) -> Any:
+    def build(
+        cls, items: list[ItemT], params: PageParams, total_items: int, **extra: Any
+    ) -> Any:
+        """Arma la página; ``extra`` recibe campos propios de un listado (p. ej. totales)."""
         return cls(
             items=items,
             page=params.page,
             page_size=params.page_size,
             total_items=total_items,
             total_pages=math.ceil(total_items / params.page_size),
+            **extra,
         )
 
 
