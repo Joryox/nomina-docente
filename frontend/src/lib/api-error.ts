@@ -1,7 +1,15 @@
 import { z } from "zod";
 
-import { CLIENT_ERROR_CODES, ERROR_MESSAGES } from "@/constants/error-messages";
+import {
+  CLIENT_ERROR_CODES,
+  DETAILED_ERROR_MESSAGES,
+  ERROR_MESSAGES,
+} from "@/constants/error-messages";
 import { BACKEND_UNAVAILABLE_STATUSES } from "@/constants/http";
+import { WARNING_MESSAGES } from "@/constants/warning-messages";
+
+import type { ApiErrorCode, ApiSchemas } from "./api-types";
+import { formatTimeRange, formatWeekday } from "./formatters";
 
 /** Formato único de error que responde el backend. */
 const apiErrorBodySchema = z.object({
@@ -12,13 +20,15 @@ const apiErrorBodySchema = z.object({
   }),
 });
 
+type Details = Readonly<Record<string, unknown>>;
+
 export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
-  readonly details: Readonly<Record<string, unknown>>;
+  readonly details: Details;
 
   constructor(code: string, status: number, details: Record<string, unknown> = {}) {
-    super(getErrorMessage(code));
+    super(getErrorMessage(code, details));
     this.name = "ApiError";
     this.code = code;
     this.status = status;
@@ -36,10 +46,89 @@ export class ApiError extends Error {
       : CLIENT_ERROR_CODES.unknown;
     return new ApiError(code, status);
   }
+
+  /** Permite reaccionar a un código de dominio sin comparar textos. */
+  is(code: ApiErrorCode): boolean {
+    return this.code === code;
+  }
 }
 
-export function getErrorMessage(code: string): string {
-  return ERROR_MESSAGES[code] ?? ERROR_MESSAGES[CLIENT_ERROR_CODES.unknown] ?? code;
+const weekday = z.literal([1, 2, 3, 4, 5, 6, 7]);
+const scheduleConflicts = z.object({
+  conflicts: z
+    .array(
+      z.object({
+        subject_name: z.string(),
+        career_name: z.string(),
+        weekday,
+        start_time: z.string(),
+        end_time: z.string(),
+      }),
+    )
+    .min(1),
+});
+const sessionConflicts = z.object({
+  conflicts: z
+    .array(z.object({ subject_name: z.string(), start_time: z.string(), end_time: z.string() }))
+    .min(1),
+});
+
+/** Mensajes que usan los datos del error; si los datos no vienen, se usa el texto general. */
+const DETAILED: Partial<Record<string, (details: Details) => string | undefined>> = {
+  SCHEDULE_OVERLAP: (details) => {
+    const parsed = scheduleConflicts.safeParse(details);
+    const first = parsed.data?.conflicts[0];
+    return first
+      ? DETAILED_ERROR_MESSAGES.scheduleOverlap(
+          first.subject_name,
+          first.career_name,
+          formatWeekday(first.weekday),
+          formatTimeRange(first.start_time, first.end_time),
+        )
+      : undefined;
+  },
+  SESSION_OVERLAP: (details) => {
+    const first = sessionConflicts.safeParse(details).data?.conflicts[0];
+    return first
+      ? DETAILED_ERROR_MESSAGES.sessionOverlap(
+          first.subject_name,
+          formatTimeRange(first.start_time, first.end_time),
+        )
+      : undefined;
+  },
+  CLASS_TOO_SHORT: (details) => {
+    const minutes = z.object({ min_minutes: z.number() }).safeParse(details).data?.min_minutes;
+    return minutes === undefined ? undefined : DETAILED_ERROR_MESSAGES.classTooShort(minutes);
+  },
+  CLASS_TOO_LONG: (details) => {
+    const minutes = z.object({ max_minutes: z.number() }).safeParse(details).data?.max_minutes;
+    return minutes === undefined ? undefined : DETAILED_ERROR_MESSAGES.classTooLong(minutes);
+  },
+  SESSION_DATE_TOO_OLD: (details) => {
+    const days = z.object({ max_age_days: z.number() }).safeParse(details).data?.max_age_days;
+    return days === undefined ? undefined : DETAILED_ERROR_MESSAGES.sessionTooOld(days);
+  },
+  RECEIPT_ALREADY_ISSUED: (details) => {
+    const folio = z.object({ folio: z.string() }).safeParse(details).data?.folio;
+    return folio === undefined ? undefined : DETAILED_ERROR_MESSAGES.receiptAlreadyIssued(folio);
+  },
+  SUBJECT_ALREADY_EXISTS: (details) => {
+    const subject = z
+      .object({ subject_name: z.string(), is_active: z.boolean() })
+      .safeParse(details).data;
+    return subject
+      ? DETAILED_ERROR_MESSAGES.subjectAlreadyExists(subject.subject_name, subject.is_active)
+      : undefined;
+  },
+};
+
+export function getErrorMessage(code: string, details: Details = {}): string {
+  return (
+    DETAILED[code]?.(details) ??
+    ERROR_MESSAGES[code] ??
+    ERROR_MESSAGES[CLIENT_ERROR_CODES.unknown] ??
+    code
+  );
 }
 
 /** Único punto que convierte cualquier error en un mensaje para la persona usuaria. */
@@ -48,4 +137,9 @@ export function toUserMessage(error: unknown): string {
     return error.message;
   }
   return getErrorMessage(CLIENT_ERROR_CODES.unknown);
+}
+
+/** Texto en español de una advertencia de la API, por su código estable. */
+export function toWarningMessage(warning: ApiSchemas["WarningItem"]): string {
+  return WARNING_MESSAGES[warning.code];
 }

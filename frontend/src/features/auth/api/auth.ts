@@ -1,7 +1,8 @@
 import { API_ROUTES } from "@/constants/routes";
 import { apiClient } from "@/lib/api-client";
+import { noContentSchema } from "@/lib/api-schemas";
 
-import { meResponseSchema, noContentSchema } from "../schemas/account";
+import { meResponseSchema } from "../schemas/account";
 import type { LoginPayload } from "../schemas/forms";
 import { passwordPolicySchema } from "../schemas/password-policy";
 import type { Me, PasswordPolicy, RegisterPayload } from "../types/auth";

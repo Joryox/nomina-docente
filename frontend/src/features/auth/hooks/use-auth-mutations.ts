@@ -2,16 +2,16 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 import { APP_ROUTES } from "@/constants/routes";
+import { queryKeys } from "@/lib/query-keys";
 
 import { login, logout, register } from "../api/auth";
 import type { Me } from "../types/auth";
-import { authQueryKeys } from "./query-keys";
 
 function useEnterPanel() {
   const queryClient = useQueryClient();
   const router = useRouter();
   return (me: Me, nextPath: string) => {
-    queryClient.setQueryData(authQueryKeys.me, me);
+    queryClient.setQueryData(queryKeys.auth.me, me);
     router.replace(nextPath);
   };
 }

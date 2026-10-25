@@ -11,7 +11,9 @@
     "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run lint && npm run typecheck && npm run format:check"
+    "check": "npm run lint && npm run typecheck && npm run format:check",
+    "api:types": "bash ../scripts/generate-api-types.sh",
+    "api:check": "bash ../scripts/generate-api-types.sh --check"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.2",
@@ -37,6 +39,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "eslint-config-prettier": "^10.1.8",
+    "openapi-typescript": "7.13.0",
     "prettier": "^3.9.10",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "^4",
