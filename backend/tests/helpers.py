@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from datetime import UTC, datetime, timedelta
 
 import psycopg
 import pytest
@@ -36,3 +37,16 @@ def violates(session: Session, constraint: str) -> Iterator[None]:
     error = caught.value.orig
     assert isinstance(error, psycopg.Error)
     assert error.diag.constraint_name == constraint
+
+
+class FakeClock:
+    """Reloj controlable: empieza en la hora real y avanza solo cuando la prueba lo pide."""
+
+    def __init__(self, start: datetime | None = None) -> None:
+        self.now = start or datetime.now(UTC)
+
+    def __call__(self) -> datetime:
+        return self.now
+
+    def advance(self, delta: timedelta) -> None:
+        self.now += delta

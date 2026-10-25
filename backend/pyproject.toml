@@ -9,7 +9,7 @@ dependencies = [
     "fastapi>=0.162.0",
     "psycopg[binary]>=3.3.6",
     "pwdlib[argon2]>=0.3.1",
-    "pydantic>=2.14.1",
+    "pydantic[email]>=2.14.1",
     "pydantic-settings>=2.16.1",
     "pyjwt>=2.15.1",
     "sqlalchemy>=2.1.6",
@@ -59,6 +59,10 @@ select = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106"]
+# S105 marca cualquier nombre con «password» o «token»; en estos archivos son códigos de
+# error, eventos de auditoría y motivos de revocación, no secretos.
+"src/app/core/{constants,exceptions}.py" = ["S105"]
+"src/app/core/security/audit.py" = ["S105"]
 
 [tool.ruff.format]
 quote-style = "double"

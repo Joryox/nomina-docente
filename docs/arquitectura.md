@@ -1,6 +1,6 @@
 # Arquitectura del Sistema de Nómina Docente
 
-Este documento describe el sistema a alto nivel: sus componentes, cómo se organizan las capas de cada aplicación y el modelo de datos conceptual. Las reglas de negocio completas y las convenciones están en [`CLAUDE.md`](../CLAUDE.md).
+Este documento describe el sistema a alto nivel: sus componentes, cómo se organizan las capas de cada aplicación y el modelo de datos conceptual. Las reglas de negocio completas y las convenciones están en [`CLAUDE.md`](../CLAUDE.md); el esquema de base de datos en [`base-de-datos.md`](base-de-datos.md) y la seguridad (autenticación, sesiones, CSRF, amenazas) en [`seguridad.md`](seguridad.md).
 
 ## 1. Visión general
 
@@ -25,11 +25,13 @@ flowchart LR
     end
 
     subgraph next[Servidor Next.js :3000]
+        guard[proxy.ts<br/>redirecciones por sesión]
         pages[Rutas y layouts<br/>App Router]
-        proxy[Proxy /api/*<br/>rewrites]
+        proxy[Reenvío /api/*<br/>rewrites]
     end
 
     subgraph api[Backend FastAPI :8000]
+        mw[Middlewares<br/>cabeceras, CORS, tamaño, CSRF]
         routers[Routers /api/v1]
         services[Servicios<br/>reglas de negocio]
         repos[Repositorios]
@@ -39,9 +41,11 @@ flowchart LR
     db[(PostgreSQL<br/>nomina_docente)]
 
     user --> ui
-    ui -->|HTML/JS| pages
+    ui -->|HTML/JS| guard
+    guard --> pages
     ui -->|JSON + cookie httpOnly| proxy
-    proxy --> routers
+    proxy --> mw
+    mw --> routers
     routers --> services
     services --> repos
     services --> pdf
@@ -98,7 +102,9 @@ flowchart TD
 | `schemas` | Define contratos de entrada y salida de la API | Depender de los modelos ORM |
 | `core` | Configuración tipada, seguridad, logging, middleware de peticiones, excepciones y constantes | Contener lógica de una funcionalidad concreta |
 
-**Arranque.** `main.create_app()` (patrón *app factory*) lee la configuración, configura el logging JSON y registra, en este orden, el middleware de contexto (asigna `X-Request-ID` y registra cada petición), CORS con la lista blanca de `CORS_ORIGINS`, los manejadores de errores y el router de `/api/v1`. `python -m app` levanta Uvicorn con el host y el puerto de la configuración. Si falta una variable de entorno, `get_settings()` lanza `ConfigurationError` con la lista de variables con problema y la app no inicia.
+**Arranque.** `main.create_app()` (patrón *app factory*) lee la configuración, configura el logging JSON y registra los middlewares (de afuera hacia adentro): contexto de petición (`X-Request-ID` y registro de cada petición), cabeceras de seguridad, CORS con la lista blanca de `CORS_ORIGINS`, límite de tamaño del cuerpo y CSRF *double-submit*; después, los manejadores de errores y el router de `/api/v1`. En producción no publica la documentación OpenAPI. `python -m app` levanta Uvicorn con el host y el puerto de la configuración. Si falta una variable de entorno, `get_settings()` lanza `ConfigurationError` con la lista de variables con problema y la app no inicia.
+
+**Autenticación y acceso.** `api/v1/dependencies.py` ofrece `get_current_user`, `get_current_teacher` y `require_roles(...)`: toda ruta de negocio los declara y pasa el docente autenticado al servicio, que filtra por él (RN-04). La validación del JWT, la rotación de sesiones y la revocación viven en `services/sessions.py`; el registro e inicio de sesión en `services/auth.py`; el perfil y el cambio de contraseña en `services/account.py`. El servicio controla la transacción con `repositories/unit_of_work.py`. Las piezas sin estado (Argon2, JWT, política de contraseñas, middlewares, auditoría) están en `core/security/`. Detalle y diagramas en [`seguridad.md`](seguridad.md).
 
 **Manejo de errores.** Los servicios lanzan excepciones de dominio (`NotFoundError`, `ConflictError`, `BusinessRuleError`, etc.). Un manejador central registrado en `main.py` las traduce a respuestas HTTP con un formato único:
 
@@ -160,6 +166,8 @@ flowchart TD
 
 Cada feature contiene `components/`, `hooks/`, `api/`, `schemas/` y `types/`. Una feature no importa archivos internos de otra; lo compartido se mueve a `components/`, `lib/` o `constants/`. La feature `system-status` es temporal (etapa 1): muestra el resultado de `GET /api/v1/health` en la página inicial y se retirará cuando exista el panel principal.
 
+**Rutas y sesión.** Las rutas están en español y centralizadas en `constants/routes.ts`: `/iniciar-sesion`, `/registro` y `/panel` (provisional hasta la etapa 6). `src/proxy.ts` (en Next.js 16, `middleware` se llama `proxy`) redirige a `/iniciar-sesion?siguiente=…` si no hay sesión y al panel si ya la hay, mirando solo una cookie indicadora; la autorización real la hace la API. La feature `auth` contiene las llamadas tipadas, los esquemas de Zod (construidos con la política de contraseñas que publica el backend), los hooks (`useSession`, `useLogin`, `useRegister`, `useLogout`, `usePasswordPolicy`) y los formularios.
+
 **Acceso a la API y errores.** El flujo de una consulta es siempre el mismo:
 
 ```mermaid
@@ -172,7 +180,7 @@ flowchart LR
     client -.error.-> apierr[lib/api-error.ts<br/>ApiError + mensaje es-MX<br/>desde constants/]
 ```
 
-- `api-client.ts` es el único módulo que usa `fetch` (lo garantiza una regla de ESLint). Envía `X-CSRF-Token` en los métodos que modifican datos, valida cada respuesta con un schema de Zod y convierte cualquier falla en `ApiError`.
+- `api-client.ts` es el único módulo que usa `fetch` (lo garantiza una regla de ESLint). Envía `X-CSRF-Token` en los métodos que modifican datos (y pide el token si aún no existe), valida cada respuesta con un schema de Zod y convierte cualquier falla en `ApiError`. Ante un 401 renueva la sesión **una sola vez**, compartida entre las peticiones simultáneas, y repite la petición; si no puede, avisa para llevar a iniciar sesión.
 - `api-error.ts` interpreta el formato único de error del backend. Si el backend no responde (el proxy devuelve 5xx sin JSON), usa el código local `BACKEND_UNAVAILABLE`. `toUserMessage()` es el único punto que traduce errores a textos en español.
 - Las variables de entorno se validan con Zod en `config/`. `next.config.ts` reutiliza esa validación para construir el proxy.
 
@@ -185,6 +193,8 @@ erDiagram
     USER ||--|| TEACHER : "tiene perfil"
     USER ||--o{ USER_ROLE : "tiene"
     ROLE ||--o{ USER_ROLE : "se asigna en"
+    USER ||--o{ AUTH_SESSION : "inicia"
+    AUTH_SESSION ||--|{ REFRESH_TOKEN : "rota"
 
     TEACHER ||--o{ SUBJECT : "registra"
     TEACHER ||--o{ ASSIGNMENT : "imparte"

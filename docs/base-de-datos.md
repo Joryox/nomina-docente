@@ -7,7 +7,7 @@ Este documento describe el esquema de PostgreSQL del sistema: el modelo entidad-
 | Motor | PostgreSQL 16 o superior (desarrollo con 18.3) |
 | Bases | `nomina_docente` (desarrollo) y `nomina_docente_test` (pruebas automatizadas) |
 | Codificación | UTF-8 (`TEMPLATE template0`) |
-| Fuente de verdad del esquema | Migración de Alembic [`20261025_1700_3295e857da8d_esquema_inicial_de_nomina_docente.py`](../backend/alembic/versions/20261025_1700_3295e857da8d_esquema_inicial_de_nomina_docente.py) |
+| Fuente de verdad del esquema | Migraciones de Alembic en [`backend/alembic/versions/`](../backend/alembic/versions/): esquema inicial (`3295e857da8d`, etapa 2) y sesiones y bloqueo de acceso (`067cd1ed562c`, etapa 3) |
 | Modelos ORM | [`backend/src/app/models/`](../backend/src/app/models/), un archivo por tabla |
 | Datos semilla | [`backend/src/app/seeds/data/`](../backend/src/app/seeds/data/) |
 
@@ -22,6 +22,8 @@ erDiagram
     users ||--o| teachers : "tiene perfil"
     users ||--o{ user_roles : "recibe"
     roles ||--o{ user_roles : "se otorga en"
+    users ||--o{ auth_sessions : "inicia"
+    auth_sessions ||--|{ refresh_tokens : "rota"
 
     career_types ||--o{ careers : "clasifica"
 
@@ -45,8 +47,31 @@ erDiagram
         varchar password_hash
         boolean is_active
         timestamptz last_login_at "nulo"
+        integer failed_login_attempts
+        timestamptz locked_until "nulo"
         timestamptz created_at
         timestamptz updated_at
+    }
+    auth_sessions {
+        bigint id PK
+        uuid public_id UK "sid del JWT"
+        bigint user_id FK
+        varchar user_agent "nulo"
+        inet ip_address "nulo"
+        timestamptz last_used_at
+        timestamptz expires_at
+        timestamptz revoked_at "nulo"
+        varchar revocation_reason "nulo"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    refresh_tokens {
+        bigint id PK
+        bigint session_id FK
+        varchar token_hash UK "SHA-256"
+        timestamptz expires_at
+        timestamptz used_at "nulo"
+        timestamptz created_at
     }
     roles {
         bigint id PK
@@ -191,7 +216,9 @@ Identidad y credenciales. El perfil del docente vive aparte, en `teachers`.
 | `email` | `varchar(254)` | No | Único; `ck_users_email_normalized` (`email = lower(btrim(email))`); `ck_users_email_format` (un `@`, sin espacios) | Correo, guardado en minúsculas y sin espacios (RN-02) |
 | `password_hash` | `varchar(255)` | No | | Hash Argon2id; la contraseña nunca se guarda |
 | `is_active` | `boolean` | No | Por defecto `true` | Permite suspender la cuenta sin borrarla |
-| `last_login_at` | `timestamptz` | Sí | | Último inicio de sesión exitoso |
+| `last_login_at` | `timestamptz` | Sí | | Último inicio de sesión exitoso (el registro cuenta como el primero) |
+| `failed_login_attempts` | `integer` | No | Por defecto `0`; `ck_users_failed_login_attempts_non_negative` (`>= 0`) | Intentos fallidos seguidos; vuelve a `0` al entrar o al bloquearse |
+| `locked_until` | `timestamptz` | Sí | | Fin del bloqueo temporal por fuerza bruta (`LOGIN_LOCKOUT_MINUTES`) |
 | `created_at` | `timestamptz` | No | Por defecto `now()` | Alta del registro |
 | `updated_at` | `timestamptz` | No | Por defecto `now()`, trigger | Última modificación |
 
@@ -357,7 +384,37 @@ Copia fija e inmutable de la nómina de un periodo (RN-28).
 
 Trigger `trg_payroll_receipt_lines_immutable`: rechaza todo `UPDATE` y `DELETE`.
 
-### 2.14 Objetos auxiliares
+### 2.14 `auth_sessions` — sesiones iniciadas
+
+Una fila por inicio de sesión en un dispositivo: es la «familia» de sus refresh tokens. El JWT de acceso lleva su `public_id` (`sid`) y cada petición comprueba que siga vigente, así que revocarla corta el acceso de inmediato. Detalle en [`seguridad.md`](seguridad.md).
+
+| Columna | Tipo | Nulo | Restricciones | Descripción |
+| --- | --- | --- | --- | --- |
+| `id` | `bigint` | No | PK, identity | Identificador interno |
+| `public_id` | `uuid` | No | Único | Identificador de la sesión dentro del JWT (`sid`) |
+| `user_id` | `bigint` | No | FK → `users.id` `ON DELETE CASCADE`; índice | Cuenta de la sesión |
+| `user_agent` | `varchar(255)` | Sí | | Navegador que inició la sesión (recortado a 255) |
+| `ip_address` | `inet` | Sí | | IP del cliente, solo si es una dirección válida |
+| `last_used_at` | `timestamptz` | No | | Última renovación |
+| `expires_at` | `timestamptz` | No | `ck_auth_sessions_expires_after_creation` (`> created_at`) | Vence si no se renueva en `REFRESH_TOKEN_EXPIRE_DAYS` |
+| `revoked_at` | `timestamptz` | Sí | | Momento de la revocación |
+| `revocation_reason` | `varchar(30)` | Sí | `ck_auth_sessions_revocation_reason_valid` (`logout`, `logout_all`, `password_changed`, `refresh_token_reused`); `ck_auth_sessions_revocation_consistent` (motivo si y solo si está revocada) | Por qué se revocó |
+| `created_at`, `updated_at` | `timestamptz` | No | Trigger de `updated_at` | Marcas de tiempo |
+
+### 2.15 `refresh_tokens` — refresh tokens
+
+Solo se guarda el **hash SHA-256** de cada token: quien lea la base no puede usarlos.
+
+| Columna | Tipo | Nulo | Restricciones | Descripción |
+| --- | --- | --- | --- | --- |
+| `id` | `bigint` | No | PK, identity | Identificador interno |
+| `session_id` | `bigint` | No | FK → `auth_sessions.id` `ON DELETE CASCADE`; índice; índice único parcial `uq_refresh_tokens_session_id_unused` (`WHERE used_at IS NULL`) | Sesión a la que pertenece; a lo más un token sin usar por sesión |
+| `token_hash` | `varchar(64)` | No | Único; `ck_refresh_tokens_token_hash_format` (`^[0-9a-f]{64}$`) | SHA-256 en hexadecimal del valor de la cookie |
+| `expires_at` | `timestamptz` | No | `> created_at` | Vencimiento del token |
+| `used_at` | `timestamptz` | Sí | | Cuándo se rotó; si vuelve a presentarse, es un reuso |
+| `created_at` | `timestamptz` | No | Por defecto `now()` | Emisión |
+
+### 2.16 Objetos auxiliares
 
 | Objeto | Tipo | Propósito |
 | --- | --- | --- |
@@ -372,7 +429,7 @@ Trigger `trg_payroll_receipt_lines_immutable`: rechaza todo `UPDATE` y `DELETE`.
 | `fn_logbook_entries_period_locked()` | Función de trigger | Cierra la bitácora de los periodos emitidos |
 | `payroll_receipts_folio_number_seq` | Secuencia | Consecutivo del folio; pertenece a `payroll_receipts.folio_number` |
 
-### 2.15 Índices
+### 2.17 Índices
 
 Además de los índices que crean automáticamente las llaves primarias, los `UNIQUE` y las restricciones de exclusión:
 
@@ -390,6 +447,9 @@ Además de los índices que crean automáticamente las llaves primarias, los `UN
 | `ix_logbook_entries_teacher_id_session_date` | `teacher_id, session_date` | Bitácora de un docente en un rango de fechas (vista previa del recibo, cierre del periodo) |
 | `ix_payroll_receipt_lines_receipt_id_teacher_id` | `receipt_id, teacher_id` | FK compuesta |
 | `ix_payroll_receipt_lines_assignment_id_teacher_id` | `assignment_id, teacher_id` | FK compuesta |
+| `ix_auth_sessions_user_id` | `user_id` | FK y revocación de todas las sesiones de una cuenta |
+| `ix_refresh_tokens_session_id` | `session_id` | FK y borrado en cascada |
+| `uq_refresh_tokens_session_id_unused` | `session_id` `WHERE used_at IS NULL` | Invariante de la rotación |
 
 Los recibos de un docente por periodo se consultan con el índice del `UNIQUE (teacher_id, year, month, fortnight)`. Una prueba de integración verifica que **toda** llave foránea tenga un índice que empiece por sus columnas.
 
@@ -488,6 +548,7 @@ Principio: **nunca se borra en cascada información con valor histórico**. Toda
 | --- | --- | --- |
 | `assignments → schedules` | `CASCADE` | Un horario no tiene valor sin su asignación; una asignación sin bitácora se puede borrar con sus horarios (RN-15) |
 | `users → user_roles` | `CASCADE` | El otorgamiento de un rol no tiene valor propio sin el usuario |
+| `users → auth_sessions → refresh_tokens` | `CASCADE` | Las sesiones y sus tokens son datos técnicos sin valor histórico propio |
 | `assignments → logbook_entries` | `RESTRICT` | Con bitácora, la asignación solo se desactiva (RN-15) |
 | `payroll_receipts → payroll_receipt_lines` | `RESTRICT` (+ trigger) | Un recibo emitido nunca se borra. Se cambió el `CASCADE` previsto en la etapa 0: con recibos inmutables no hay borrado que propagar |
 | Todas las demás | `RESTRICT` | Catálogos, docentes, materias y recibos se dan de baja con `is_active` o se conservan |
@@ -524,7 +585,12 @@ Los nombres estables permiten que el backend traduzca una violación a un códig
 
 ## 4. Migraciones
 
-La migración inicial se escribió y revisó a mano: *autogenerate* no detecta extensiones, tipos, funciones, secuencias ni triggers, y no compara bien las restricciones de exclusión. Usa SQL literal a propósito: una migración es una fotografía del esquema y no debe cambiar si cambian las constantes de la aplicación. Una prueba verifica que *autogenerate* no encuentre diferencias entre los modelos y la base migrada.
+| Revisión | Etapa | Contenido |
+| --- | --- | --- |
+| `3295e857da8d` | 2 | Esquema inicial: extensiones, tipos, funciones, triggers y las 13 tablas del sistema |
+| `067cd1ed562c` | 3 | Sesiones y bloqueo de acceso: `auth_sessions`, `refresh_tokens` y columnas de bloqueo en `users` |
+
+Las migraciones se escriben y revisan a mano: *autogenerate* no detecta extensiones, tipos, funciones, secuencias ni triggers, y no compara bien las restricciones de exclusión. Usa SQL literal a propósito: una migración es una fotografía del esquema y no debe cambiar si cambian las constantes de la aplicación. Una prueba verifica que *autogenerate* no encuentre diferencias entre los modelos y la base migrada.
 
 ```bash
 bash scripts/migrate.sh                  # aplica todas las migraciones pendientes (upgrade head)
@@ -577,12 +643,13 @@ Agregar una carrera (por ejemplo, Licenciatura en Derecho) es agregar una línea
 
 Conexión: `localhost:5432`, base `nomina_docente`, usuario de `DB_USER`.
 
-1. **Esquema `public` → Tablas**: las 13 tablas del sistema y `alembic_version` (versión aplicada).
+1. **Esquema `public` → Tablas**: las 15 tablas del sistema y `alembic_version` (versión aplicada).
 2. **`careers`, `career_types`, `hourly_rates`, `roles`**: datos semilla.
 3. **Cualquier tabla → pestaña *Constraints***: `CHECK`, `UNIQUE` y llaves foráneas con su `ON DELETE`. En `schedules` y `logbook_entries` aparecen las restricciones `ex_*_no_overlap`.
 4. **Pestaña *Triggers*** de `hourly_rates`, `logbook_entries`, `payroll_receipts` y `payroll_receipt_lines`.
-5. **Esquema `extensions`**: `btree_gist` y `unaccent`. **`public` → Tipos de datos**: `timerange`. **`public` → Funciones**: `normalize_name` y las funciones de trigger.
-6. **Diagrama ER**: clic derecho sobre el esquema `public` → *View Diagram*.
+5. **`auth_sessions` y `refresh_tokens`**: tras iniciar sesión aparece una sesión con su token; `token_hash` nunca contiene el valor de la cookie.
+6. **Esquema `extensions`**: `btree_gist` y `unaccent`. **`public` → Tipos de datos**: `timerange`. **`public` → Funciones**: `normalize_name` y las funciones de trigger.
+7. **Diagrama ER**: clic derecho sobre el esquema `public` → *View Diagram*.
 
 Comprobación rápida de que la base hace cumplir las reglas por sí misma (se revierte al final):
 

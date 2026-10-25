@@ -2,12 +2,14 @@
 
 from app.db.base import Base
 from app.models.assignment import Assignment
+from app.models.auth_session import AuthSession
 from app.models.career import Career
 from app.models.career_type import CareerType
 from app.models.hourly_rate import HourlyRate
 from app.models.logbook_entry import LogbookEntry
 from app.models.payroll_receipt import PayrollReceipt
 from app.models.payroll_receipt_line import PayrollReceiptLine
+from app.models.refresh_token import RefreshToken
 from app.models.role import Role
 from app.models.schedule import Schedule
 from app.models.subject import Subject
@@ -17,6 +19,7 @@ from app.models.user_role import UserRole
 
 __all__ = [
     "Assignment",
+    "AuthSession",
     "Base",
     "Career",
     "CareerType",
@@ -24,6 +27,7 @@ __all__ = [
     "LogbookEntry",
     "PayrollReceipt",
     "PayrollReceiptLine",
+    "RefreshToken",
     "Role",
     "Schedule",
     "Subject",

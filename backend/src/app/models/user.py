@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, String, true
+from sqlalchemy import CheckConstraint, DateTime, Integer, String, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.constants import EMAIL_MAX_LENGTH, PASSWORD_HASH_MAX_LENGTH
@@ -22,6 +22,7 @@ class User(IdentityPkMixin, PublicIdMixin, TimestampMixin, Base):
         # sin distinguir mayúsculas ni espacios.
         CheckConstraint("email = lower(btrim(email))", name="email_normalized"),
         CheckConstraint(r"email ~ '^[^@\s]+@[^@\s]+$'", name="email_format"),
+        CheckConstraint("failed_login_attempts >= 0", name="failed_login_attempts_non_negative"),
         {"comment": "Cuentas de acceso: identidad y credenciales."},
     )
 
@@ -29,6 +30,9 @@ class User(IdentityPkMixin, PublicIdMixin, TimestampMixin, Base):
     password_hash: Mapped[str] = mapped_column(String(PASSWORD_HASH_MAX_LENGTH))
     is_active: Mapped[bool] = mapped_column(default=True, server_default=true())
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Protección contra fuerza bruta: intentos fallidos seguidos y fin del bloqueo temporal.
+    failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     roles: Mapped[list["Role"]] = relationship(secondary="user_roles")
     # passive_deletes="all": el ORM no intenta desvincular el perfil al borrar la cuenta; la

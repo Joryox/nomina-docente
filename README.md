@@ -11,7 +11,7 @@ Sistema web para que el personal docente del **Tecnológico de Estudios Superior
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-06B6D4?logo=tailwindcss&logoColor=white)
 ![Licencia MIT](https://img.shields.io/badge/Licencia-MIT-informational)
 
-> **Estado:** en desarrollo. Etapa 2 concluida (base de datos: modelos, migraciones, restricciones y catálogos semilla). Consulta la [hoja de ruta](#hoja-de-ruta).
+> **Estado:** en desarrollo. Etapa 3 concluida (autenticación: registro, inicio de sesión, sesiones con rotación y seguridad). Consulta la [hoja de ruta](#hoja-de-ruta).
 
 ---
 
@@ -49,14 +49,14 @@ nomina-docente/
 ├── backend/        API REST en FastAPI (arquitectura limpia por capas)
 ├── frontend/       Aplicación web en Next.js (organizada por funcionalidades)
 │   └── public/brand/   Logos institucionales
-├── docs/           Documentación técnica (arquitectura, base de datos y diagramas)
+├── docs/           Documentación técnica (arquitectura, base de datos, seguridad y diagramas)
 ├── scripts/        Utilidades para el entorno de desarrollo
 ├── CLAUDE.md       Reglas de negocio, convenciones y bitácora técnica del proyecto
 ├── README.md
 └── LICENSE
 ```
 
-La arquitectura se explica en [`docs/arquitectura.md`](docs/arquitectura.md) y el esquema de base de datos (diagrama entidad-relación, diccionario de datos y decisiones de diseño) en [`docs/base-de-datos.md`](docs/base-de-datos.md).
+La arquitectura se explica en [`docs/arquitectura.md`](docs/arquitectura.md) y el esquema de base de datos (diagrama entidad-relación, diccionario de datos y decisiones de diseño) en [`docs/base-de-datos.md`](docs/base-de-datos.md) y la seguridad (flujos de autenticación, amenazas y mitigaciones) en [`docs/seguridad.md`](docs/seguridad.md).
 
 ## Requisitos
 
@@ -156,6 +156,15 @@ bash scripts/dev.sh
 
 La página inicial muestra el estado de la API y de la base de datos. `Ctrl+C` detiene ambos servidores.
 
+### Probar el registro y el inicio de sesión
+
+1. Con `bash scripts/dev.sh` en marcha, abre http://localhost:3000/panel: como no hay sesión, te lleva a **Iniciar sesión**.
+2. Entra a **Regístrate** (http://localhost:3000/registro), captura tus datos y una contraseña que cumpla los requisitos que se muestran (al menos 12 caracteres, una letra y un número, sin tu nombre ni tu correo). Al crear la cuenta llegas al **panel**, que muestra tu nombre.
+3. Pulsa **Cerrar sesión**: vuelves a Iniciar sesión y `/panel` deja de estar disponible.
+4. Inicia sesión con tu correo y contraseña. Con una contraseña incorrecta verás «Correo o contraseña incorrectos»; tras 5 intentos fallidos seguidos la cuenta se bloquea 15 minutos.
+
+En las herramientas del navegador (Aplicación → Cookies) verás `nomina_access`, `nomina_refresh` (ruta `/api/v1/auth`) y `nomina_session` como `HttpOnly`, y `nomina_csrf` legible. La API documentada está en http://127.0.0.1:8000/docs (sección *autenticación*).
+
 Para levantar cada app por separado: `uv run python -m app` dentro de `backend/` y `npm run dev` dentro de `frontend/`.
 
 ### 5. Pruebas y calidad
@@ -187,7 +196,7 @@ Más detalles en [`scripts/README.md`](scripts/README.md).
 - [x] 0. Cimientos y documentación
 - [x] 1. Arquitectura base del backend y frontend
 - [x] 2. Base de datos: modelos, migraciones y catálogo de carreras
-- [ ] 3. Autenticación: registro, inicio de sesión, sesión y seguridad
+- [x] 3. Autenticación: registro, inicio de sesión, sesión y seguridad
 - [ ] 4. Lógica de negocio: materias, asignaciones, horarios, bitácora y cálculo de nómina
 - [ ] 5. Sistema de diseño
 - [ ] 6. Pantallas: inicio de sesión, registro y panel principal
