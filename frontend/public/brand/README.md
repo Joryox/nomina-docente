@@ -4,12 +4,12 @@ En esta carpeta van los **logos oficiales del TESH** que se usan en la interfaz 
 
 ## Archivos esperados
 
-| Archivo | Uso |
-| --- | --- |
-| `logo.svg` | Logo principal (encabezado de la aplicación y del recibo) |
-| `logo-monochrome.svg` | Versión de una sola tinta (fondos oscuros, impresión) |
-| `isotype.svg` | Símbolo sin texto (espacios reducidos) |
-| `favicon.svg` | Ícono de la pestaña del navegador |
+| Archivo               | Uso                                                       |
+| --------------------- | --------------------------------------------------------- |
+| `logo.svg`            | Logo principal (encabezado de la aplicación y del recibo) |
+| `logo-monochrome.svg` | Versión de una sola tinta (fondos oscuros, impresión)     |
+| `isotype.svg`         | Símbolo sin texto (espacios reducidos)                    |
+| `favicon.svg`         | Ícono de la pestaña del navegador                         |
 
 ## Lineamientos
 
