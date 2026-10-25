@@ -93,7 +93,12 @@ class AuthService:
         try:
             with self._unit_of_work.transaction():
                 user = self._users.add(
-                    User(email=data.email, password_hash=self._hasher.hash(data.password))
+                    User(
+                        email=data.email,
+                        password_hash=self._hasher.hash(data.password),
+                        # El registro inicia sesión: cuenta como el primer acceso.
+                        last_login_at=self._clock(),
+                    )
                 )
                 user.roles.append(role)
                 self._teachers.add(
@@ -177,7 +182,10 @@ class AuthService:
             if session is not None:
                 self._sessions.revoke(session, SessionRevocationReason.LOGOUT)
         if session is not None:
-            log_security_event(SecurityEvent.LOGOUT, reason=SessionRevocationReason.LOGOUT.value)
+            owner = self._users.get(session.user_id)
+            log_security_event(
+                SecurityEvent.LOGOUT, user_id=str(owner.public_id) if owner is not None else None
+            )
 
     def logout_all(self, principal: Principal) -> int:
         with self._unit_of_work.transaction():
