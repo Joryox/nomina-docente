@@ -3,13 +3,13 @@
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
-from pydantic import Field, SecretStr, ValidationError, field_validator
+from pydantic import Field, SecretStr, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy import URL
 
-from app.core.constants import DATABASE_DRIVER, JWT_SECRET_MIN_LENGTH
+from app.core.constants import DATABASE_DRIVER, JWT_SECRET_MIN_LENGTH, PASSWORD_MAX_LENGTH
 
 BACKEND_DIR = Path(__file__).resolve().parents[3]
 ENV_FILE = BACKEND_DIR / ".env"
@@ -22,6 +22,10 @@ class Environment(StrEnum):
 
 
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+# Solo HMAC: así nunca se acepta un token con "alg": "none" ni se confunden claves.
+JwtAlgorithm = Literal["HS256", "HS384", "HS512"]
+# "none" no se admite: sin SameSite la cookie viajaría en peticiones de otros sitios.
+CookieSameSite = Literal["lax", "strict"]
 
 
 class Settings(BaseSettings):
@@ -49,11 +53,23 @@ class Settings(BaseSettings):
     db_name_test: str = Field(min_length=1)
 
     jwt_secret: SecretStr
-    jwt_algorithm: str = Field(min_length=1)
+    jwt_algorithm: JwtAlgorithm
     access_token_expire_minutes: int = Field(gt=0)
-    auth_cookie_name: str = Field(min_length=1)
+    refresh_token_expire_days: int = Field(gt=0)
+    refresh_token_reuse_grace_seconds: int = Field(ge=0)
+
+    access_cookie_name: str = Field(min_length=1)
+    refresh_cookie_name: str = Field(min_length=1)
+    session_hint_cookie_name: str = Field(min_length=1)
     csrf_cookie_name: str = Field(min_length=1)
     auth_cookie_secure: bool
+    auth_cookie_samesite: CookieSameSite
+
+    login_max_failed_attempts: int = Field(gt=0)
+    login_lockout_minutes: int = Field(gt=0)
+    password_min_length: int = Field(ge=8, le=PASSWORD_MAX_LENGTH)
+
+    max_request_body_bytes: int = Field(gt=0)
 
     cors_origins: Annotated[list[str], NoDecode]
 
@@ -72,6 +88,28 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
+
+    @model_validator(mode="after")
+    def _require_secure_cookies_in_production(self) -> Self:
+        if self.app_env is Environment.PRODUCTION and not self.auth_cookie_secure:
+            raise ValueError("AUTH_COOKIE_SECURE debe ser true en producción (HTTPS)")
+        return self
+
+    @model_validator(mode="after")
+    def _require_distinct_cookie_names(self) -> Self:
+        names = [
+            self.access_cookie_name,
+            self.refresh_cookie_name,
+            self.session_hint_cookie_name,
+            self.csrf_cookie_name,
+        ]
+        if len(set(names)) != len(names):
+            raise ValueError("los nombres de las cookies de sesión y CSRF deben ser distintos")
+        return self
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env is Environment.PRODUCTION
 
     @property
     def database_url(self) -> URL:
@@ -99,7 +137,11 @@ class ConfigurationError(RuntimeError):
 def describe_validation_error(error: ValidationError) -> str:
     problems: list[str] = []
     for issue in error.errors():
-        variable = str(issue["loc"][0]).upper() if issue["loc"] else "(desconocida)"
+        if not issue["loc"]:
+            # Reglas entre variables (model_validator): el mensaje ya nombra cada variable.
+            problems.append(f"  - {issue['msg'].removeprefix('Value error, ')}")
+            continue
+        variable = str(issue["loc"][0]).upper()
         if issue["type"] == "missing":
             problems.append(f"  - {variable}: falta la variable")
         else:

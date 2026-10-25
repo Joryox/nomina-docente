@@ -84,3 +84,46 @@ class RoleCode(StrEnum):
 
     TEACHER = "teacher"
     ADMIN = "admin"
+
+
+# --- Autenticación y sesión (sección 6 de CLAUDE.md) -------------------------------------
+AUTH_ROUTE_PREFIX: Final = "/auth"
+# La cookie de refresh solo viaja a las rutas de autenticación (path restringido).
+REFRESH_COOKIE_PATH: Final = f"{API_V1_PREFIX}{AUTH_ROUTE_PREFIX}"
+SESSION_COOKIE_PATH: Final = "/"
+
+JWT_ISSUER: Final = "nomina-docente"
+JWT_AUDIENCE: Final = "nomina-docente-api"
+ACCESS_TOKEN_TYPE: Final = "access"
+# Bytes aleatorios del refresh token y del token CSRF (256 bits): no se pueden adivinar.
+OPAQUE_TOKEN_BYTES: Final = 32
+TOKEN_HASH_HEX_LENGTH: Final = 64  # SHA-256 en hexadecimal.
+SESSION_HINT_COOKIE_VALUE: Final = "1"
+
+# Argon2 acepta cualquier longitud; el máximo evita gastar CPU con entradas enormes.
+PASSWORD_MAX_LENGTH: Final = 128
+# Partes del correo o del nombre más cortas que esto no se buscan dentro de la contraseña
+# (evita rechazar «Ana2026…» solo porque contiene «an»).
+PASSWORD_PERSONAL_DATA_MIN_LENGTH: Final = 3
+
+USER_AGENT_MAX_LENGTH: Final = 255
+SESSION_REVOCATION_REASON_MAX_LENGTH: Final = 30
+# Huella del correo en los registros de seguridad: identifica intentos repetidos sin
+# escribir el correo en claro.
+EMAIL_FINGERPRINT_LENGTH: Final = 16
+
+# Nombres de personas: letras (cualquier alfabeto), espacios simples, apóstrofo, guion y punto.
+PERSON_NAME_PATTERN: Final = r"^\p{L}+(?:[ '.\-]\p{L}+)*\.?$"
+EMPLOYEE_NUMBER_PATTERN: Final = r"^[A-Za-z0-9][A-Za-z0-9\-]*$"
+
+
+class SessionRevocationReason(StrEnum):
+    LOGOUT = "logout"
+    LOGOUT_ALL = "logout_all"
+    PASSWORD_CHANGED = "password_changed"
+    REFRESH_TOKEN_REUSED = "refresh_token_reused"
+
+
+# --- Endurecimiento HTTP -----------------------------------------------------------------
+SAFE_HTTP_METHODS: Final = frozenset({"GET", "HEAD", "OPTIONS", "TRACE"})
+DOCS_PATHS: Final = ("/docs", "/redoc", f"{API_V1_PREFIX}/openapi.json")
