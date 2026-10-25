@@ -60,7 +60,7 @@ Cada regla tiene un identificador (`RN-XX`) para citarla en código, pruebas y c
 
 ### 2.2 Carreras
 
-- **RN-05 Catálogo de carreras.** Las carreras son un catálogo administrado en base de datos (por ejemplo: Ingeniería en Sistemas Computacionales, Derecho, Bachillerato). El catálogo completo del TESH se carga con datos semilla en la etapa 2.
+- **RN-05 Catálogo de carreras.** Las carreras son un catálogo administrado en base de datos, cada una con clave corta única, nombre oficial, tipo (catálogo `career_types`: ingeniería o licenciatura) y estado activo. El catálogo oficial del TESH (fuente: **volante oficial de admisión 2024 del TESH**) tiene 7 carreras: Ingeniería Civil (`ICIV`), Ingeniería Industrial (`IIND`), Ingeniería Mecatrónica (`IMEC`), Ingeniería en Sistemas Computacionales (`ISC`), Licenciatura en Administración (`LADM`), Licenciatura en Biología (`LBIO`) y Licenciatura en Gastronomía (`LGAS`). Se carga con datos semilla; agregar una carrera o un tipo nuevo (por ejemplo, Derecho o Bachillerato) es editar `backend/src/app/seeds/data/` y ejecutar `scripts/seed.sh`, sin tocar código.
 - **RN-06 Selección, no captura.** El docente elige la carrera de un menú. Nunca la escribe a mano. Los docentes no pueden crear, editar ni borrar carreras.
 - **RN-07 Baja lógica.** Una carrera se desactiva (`is_active = false`), no se borra, para no romper el historial. Las carreras inactivas no aparecen en los selectores pero se siguen mostrando en registros históricos.
 
@@ -78,7 +78,7 @@ Cada regla tiene un identificador (`RN-XX`) para citarla en código, pruebas y c
 ### 2.5 Asignaciones
 
 - **RN-13 Definición.** Una asignación es la unión **docente + materia + carrera + tarifa por hora**.
-- **RN-14 Unicidad.** Un docente no puede tener dos asignaciones con la misma materia en la misma carrera.
+- **RN-14 Unicidad.** Un docente no puede tener dos asignaciones **activas** con la misma materia en la misma carrera. Una asignación desactivada conserva su historial y permite crear otra (por ejemplo, con una tarifa distinta).
 - **RN-15 Borrado protegido.** Una asignación con sesiones en bitácora no se puede borrar; solo se puede desactivar. Sin bitácora, se puede borrar previa confirmación (sus horarios se eliminan con ella).
 
 ### 2.6 Horarios
@@ -147,7 +147,7 @@ Stack definitivo. Cambiar una pieza requiere registrar la decisión en la secci�
 
 - PostgreSQL local (versión instalada en el equipo de desarrollo: 18).
 - `nomina_docente` para desarrollo y `nomina_docente_test` para pruebas automatizadas.
-- Extensiones previstas: `btree_gist` (restricciones de no empalme, sección 5.3) y `unaccent` (comparación de nombres de materia, RN-09). La fuente de verdad es una migración de Alembic (`CREATE EXTENSION IF NOT EXISTS`), nunca un paso manual. `scripts/create-databases.sh` también habilita `btree_gist` de forma idempotente al crear las bases; no contradice a la migración.
+- Extensiones: `btree_gist` (restricciones de no empalme, sección 5.4) y `unaccent` (comparación de nombres de materia, RN-09), instaladas en su propio esquema `extensions`. Las crea **solo** la migración inicial de Alembic (`CREATE EXTENSION IF NOT EXISTS … SCHEMA extensions`), nunca un paso manual ni un script.
 - Conexión: variables separadas `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` y `DB_NAME_TEST`. `Settings` arma la URL con `sqlalchemy.URL.create` (codifica bien contraseñas con caracteres especiales) y el script de bases lee las mismas variables.
 
 ### 3.4 Comunicación frontend ↔ backend
@@ -181,7 +181,7 @@ backend/
 │   ├── main.py              → solo crea la app (create_app) y registra routers y middlewares
 │   ├── __main__.py          → arranque de Uvicorn con host/puerto de Settings (`python -m app`)
 │   ├── core/                → config (pydantic-settings), seguridad, logging, middleware, excepciones, constantes
-│   ├── db/                  → motor, sesión (get_db), base declarativa con convención de nombres
+│   ├── db/                  → motor, sesión (get_db), base declarativa con convención de nombres, mixins y CHECK reutilizables
 │   ├── models/              → modelos ORM (un archivo por entidad, registrados en __init__.py)
 │   ├── schemas/             → modelos Pydantic de entrada/salida
 │   ├── repositories/        → acceso a datos (sin lógica de negocio)
@@ -190,14 +190,15 @@ backend/
 │   │   ├── router.py        → router raíz con el prefijo /api/v1
 │   │   ├── dependencies.py  → raíz de composición: servicio + repositorios + sesión
 │   │   └── routers/         → endpoints delgados (validan, llaman al service, responden)
-│   ├── seeds/               → datos semilla (carreras, tarifas, roles) separados de la lógica
-│   └── utils/
+│   ├── seeds/               → datos semilla: data/*.json, validación (schemas, loader) y carga idempotente (runner)
+│   └── utils/               → utilidades sin estado (formato del folio)
 ├── alembic/                 → migraciones (URL desde Settings, nunca en alembic.ini)
 ├── alembic.ini
 ├── tests/
 │   ├── conftest.py          → fixtures; las pruebas @pytest.mark.db se saltan si no hay base de pruebas
+│   ├── factories.py, helpers.py → fábricas de datos y violates() (exige que la BASE rechace)
 │   ├── unit/                → espejo de src/app/
-│   └── integration/         → espejo de src/app/
+│   └── integration/         → espejo de src/app/ (+ db/ para el esquema y las migraciones)
 ├── pyproject.toml           → dependencias y configuración de Ruff, mypy, pytest y coverage
 ├── uv.lock
 ├── .python-version
@@ -260,7 +261,7 @@ Reglas:
 - **Reglas de periodo, formatos y zona horaria:** constantes con nombre en un solo módulo por app (`backend/src/app/core/constants.py`; `frontend/src/constants/`). Ejemplos: `FIRST_FORTNIGHT_LAST_DAY = 15`, `TIMEZONE = "America/Mexico_City"`, `MONEY_DECIMAL_PLACES = 2`. Nada de números mágicos repartidos por el código.
 - **Textos de la interfaz y mensajes de error:** centralizados en `frontend/src/constants/`, no regados en los componentes.
 - **Colores, espaciados y tipografía:** tokens de diseño en variables CSS expuestas a Tailwind. Prohibido escribir colores sueltos (`#1a2b3c`, `rgb(...)`, `bg-[#...]`) dentro de componentes.
-- **Datos semilla** (carreras, tarifas, roles): en `backend/src/app/seeds/`, separados de la lógica, cargados por un comando idempotente.
+- **Datos semilla** (carreras, tipos de carrera, tarifas, roles): en `backend/src/app/seeds/data/*.json`, separados de la lógica, cargados por un comando idempotente (`scripts/seed.sh`) que inserta lo nuevo, actualiza lo que cambió y nunca borra.
 
 ### 4.5 Principios de código
 
@@ -280,47 +281,61 @@ Reglas:
 
 ## 5. Modelo de datos
 
-Diseño de referencia para la etapa 2. Tablas y columnas en inglés `snake_case`, nombres de tabla en plural. Todas las tablas tienen `id` (`bigint` identity) y, cuando aplica, `created_at` / `updated_at` (`timestamptz`).
+Implementado en la etapa 2. Referencia completa (diagrama entidad-relación, diccionario de datos y justificación de cada decisión): [`docs/base-de-datos.md`](docs/base-de-datos.md). Tablas y columnas en inglés `snake_case`, nombres de tabla en plural.
 
-### 5.1 Tablas
+### 5.1 Identificadores y columnas comunes
+
+- Toda tabla tiene `id` `bigint GENERATED ALWAYS AS IDENTITY` (la aplicación no puede escribirlo).
+- Las entidades del docente que expone la API (`users`, `subjects`, `assignments`, `schedules`, `logbook_entries`, `payroll_receipts`) tienen además `public_id uuid` (`gen_random_uuid()`). **La API nunca expone el `id` secuencial**: usa `public_id`.
+- `created_at` / `updated_at` son `timestamptz` con `now()` por defecto; `updated_at` lo mantiene un trigger de la base (`trg_<tabla>_set_updated_at`). Mixins en `backend/src/app/db/mixins.py`.
+
+### 5.2 Tablas
 
 | Tabla | Propósito | Columnas clave |
 | --- | --- | --- |
-| `users` | Identidad y credenciales | `email` (único, normalizado), `password_hash`, `is_active` |
-| `roles` | Catálogo de roles | `code` (único, p. ej. `teacher`), `name` |
-| `user_roles` | Relación N:M usuario–rol | `user_id`, `role_id` (PK compuesta) |
-| `teachers` | Perfil del docente | `user_id` (único, FK), `first_names`, `paternal_surname`, `maternal_surname`, `employee_number` (único, nulo permitido) |
-| `careers` | Catálogo de carreras | `name` (único), `is_active` |
-| `subjects` | Materias del docente | `teacher_id`, `name`, `code` (opcional); único por docente sobre el nombre normalizado |
-| `hourly_rates` | Catálogo de tarifas | `amount` `NUMERIC(10,2)` único, `CHECK (amount > 0)`, `is_active` |
-| `assignments` | Docente + materia + carrera + tarifa | `teacher_id`, `subject_id`, `career_id`, `hourly_rate_id`, `is_active`; único `(teacher_id, subject_id, career_id)` |
+| `users` | Identidad y credenciales | `email` (único, guardado normalizado; `CHECK email = lower(btrim(email))`), `password_hash`, `is_active`, `last_login_at` |
+| `roles` | Catálogo de roles | `code` (único: `teacher`; `admin` cargado inactivo, reservado), `name`, `description`, `is_active` |
+| `user_roles` | Relación N:M usuario–rol | `user_id`, `role_id` (PK compuesta), `created_at` |
+| `teachers` | Perfil del docente (1:1) | `user_id` (único, FK), `first_names`, `paternal_surname`, `maternal_surname` (nulo permitido), `employee_number` (único, nulo permitido) |
+| `career_types` | Catálogo de tipos de carrera | `code` (`engineering`, `bachelor`), `name` |
+| `careers` | Catálogo de carreras | `code` (único, mayúsculas), `name` (único), `career_type_id`, `is_active` |
+| `hourly_rates` | Catálogo de tarifas | `amount` `NUMERIC(10,2)` único, `CHECK (amount > 0)`, inmutable por trigger, `is_active` |
+| `subjects` | Materias del docente | `teacher_id`, `name`, `code` (opcional), `name_normalized` (columna generada con `normalize_name()` = `unaccent` + minúsculas + espacios simples); único `(teacher_id, name_normalized)` |
+| `assignments` | Docente + materia + carrera + tarifa | `teacher_id`, `subject_id`, `career_id`, `hourly_rate_id`, `is_active`; único parcial `(teacher_id, subject_id, career_id) WHERE is_active` |
 | `schedules` | Horario semanal | `assignment_id`, `teacher_id`, `weekday` (1 = lunes … 7 = domingo, ISO 8601), `start_time`, `end_time` |
 | `logbook_entries` | Sesiones impartidas | `assignment_id`, `teacher_id`, `session_date`, `start_time`, `end_time`, `notes` |
-| `payroll_receipts` | Recibo emitido | `teacher_id`, `folio` (único), `year`, `month`, `fortnight` (1 o 2), `period_start`, `period_end`, `total_amount` `NUMERIC(12,2)`, `issued_at`; único `(teacher_id, year, month, fortnight)` |
-| `payroll_receipt_lines` | Renglones congelados del recibo | `receipt_id`, `assignment_id`, `subject_name`, `career_name`, `minutes`, `hourly_rate`, `amount` |
+| `payroll_receipts` | Recibo emitido (copia fija) | `teacher_id`, `folio_number` (secuencia de la base), `folio` (único), `year`, `month`, `fortnight`, `period_start`, `period_end`, `teacher_full_name` y `teacher_employee_number` (copias), `total_minutes`, `total_hours` (generada), `total_amount` `NUMERIC(12,2)`, `issued_at`; único `(teacher_id, year, month, fortnight)` |
+| `payroll_receipt_lines` | Renglones congelados del recibo | `receipt_id`, `teacher_id`, `assignment_id`, `subject_name`, `career_name`, `minutes`, `hours` (generada), `hourly_rate`, `amount` |
 
-### 5.2 Roles sin rehacer tablas
+Tipos: dinero `NUMERIC(10,2)` (tarifas) y `NUMERIC(12,2)` (importes y totales), horas `NUMERIC(8,2)`, minutos `integer`. Longitudes y precisiones son constantes en `core/constants.py`.
 
-La identidad (`users`) está separada del perfil (`teachers`) y los permisos se asignan por `user_roles`. En esta versión todo usuario registrado recibe el rol `teacher`. Agregar un administrador en el futuro es insertar un rol y, si hace falta, una tabla de perfil propia; las tablas existentes no cambian.
+### 5.3 Roles sin rehacer tablas
 
-### 5.3 Restricciones en base de datos (tercer nivel de validación)
+La identidad (`users`) está separada del perfil (`teachers`) y los permisos se asignan por `user_roles`. En esta versión todo usuario registrado recibe el rol `teacher`. Agregar un administrador en el futuro es activar el rol `admin` y, si hace falta, crear una tabla de perfil propia; las tablas existentes no cambian.
 
-- `CHECK (end_time > start_time)` en `schedules` y `logbook_entries` (RN-17).
-- `CHECK (weekday BETWEEN 1 AND 7)` y `CHECK (fortnight IN (1, 2))`.
-- **No empalme (RN-18, RN-22):** `schedules` y `logbook_entries` guardan `teacher_id` de forma redundante, amarrado con una FK compuesta `(assignment_id, teacher_id) → assignments(id, teacher_id)` para que nunca diverja. Con eso se define una restricción de exclusión con `btree_gist`:
-  - PostgreSQL no incluye un tipo de rango para `time`, así que una migración crea `CREATE TYPE timerange AS RANGE (subtype = time)`.
+### 5.4 Restricciones en base de datos (tercer nivel de validación)
+
+- `CHECK (end_time > start_time)` en `schedules` y `logbook_entries` (RN-17); horas sin segundos (`*_whole_minute`).
+- `CHECK (weekday BETWEEN 1 AND 7)`, `CHECK (fortnight IN (1, 2))`, `CHECK (month BETWEEN 1 AND 12)`; `period_start` y `period_end` deben coincidir exactamente con año, mes y quincena (incluido febrero bisiesto).
+- Textos recortados y no vacíos (`*_trimmed`), formato de claves de catálogo y de correo.
+- **No empalme (RN-18, RN-22):** `schedules` y `logbook_entries` guardan `teacher_id` de forma redundante, amarrado con una FK compuesta `(assignment_id, teacher_id) → assignments(id, teacher_id)` para que nunca diverja. La migración crea `CREATE TYPE timerange AS RANGE (subtype = time, subtype_diff = time_subtype_diff)` y las restricciones de exclusión con `btree_gist`:
   - `schedules`: `EXCLUDE USING gist (teacher_id WITH =, weekday WITH =, timerange(start_time, end_time, '[)') WITH &&)`.
   - `logbook_entries`: `EXCLUDE USING gist (teacher_id WITH =, session_date WITH =, timerange(start_time, end_time, '[)') WITH &&)`.
-  El servicio valida antes (para dar un mensaje claro) y la base de datos garantiza el invariante ante cualquier condición de carrera.
-- Llaves foráneas con `ON DELETE RESTRICT` por defecto; `CASCADE` solo de `assignments` a `schedules` (RN-15) y de `payroll_receipts` a `payroll_receipt_lines`.
-- Las líneas del recibo copian nombre de materia, nombre de carrera y tarifa (RN-28): el recibo emitido no depende de que los catálogos sigan iguales.
+  El servicio valida antes (para dar un mensaje claro) y la base garantiza el invariante ante cualquier condición de carrera.
+- **FK compuestas de aislamiento (RN-04):** la materia de una asignación y la asignación de un renglón de recibo deben ser del mismo docente.
+- **Triggers:** `trg_hourly_rates_amount_immutable` (RN-12), `trg_logbook_entries_period_locked` (RN-23: no se crea, edita ni borra bitácora de un periodo emitido), `trg_payroll_receipts_immutable` y `trg_payroll_receipt_lines_immutable` (RN-28). Responden con SQLSTATE `23000` y el nombre del trigger como nombre de restricción.
+- `CHECK (amount = round(minutes * hourly_rate / 60, 2))` en `payroll_receipt_lines` (RN-25, RN-26).
+- **Borrado:** `ON DELETE RESTRICT` por defecto. `CASCADE` solo de `assignments` a `schedules` (RN-15) y de `users` a `user_roles`. De `payroll_receipts` a sus renglones es `RESTRICT`: los recibos nunca se borran.
+- Las líneas y el encabezado del recibo copian nombres, tarifa y datos del docente (RN-28): el recibo emitido no depende de que los catálogos sigan iguales.
+- **Lo que valida solo el servicio:** fecha de sesión no futura (RN-22) y periodo no futuro (RN-29), porque un `CHECK` con `current_date` no es válido; total del recibo = suma de renglones (involucra varias filas).
+- Nombres de restricciones e índices según la convención de `db/base.py` (`pk_`, `fk_`, `uq_`, `ck_`, `ex_`, `ix_`, y `trg_` para triggers); una prueba lo verifica.
 
 ---
 
 ## 6. Seguridad
 
 - **Contraseñas:** hash Argon2id; nunca se registran ni se devuelven. Longitud mínima de 8 caracteres (constante con nombre).
-- **Sesión:** JWT firmado (HS256 por defecto, configurable) con `sub` = id de usuario y expiración configurable (`ACCESS_TOKEN_EXPIRE_MINUTES`).
+- **Sesión:** JWT firmado (HS256 por defecto, configurable) con `sub` = `users.public_id` (UUID, nunca el `id` secuencial) y expiración configurable (`ACCESS_TOKEN_EXPIRE_MINUTES`).
 - **Cookie:** `httpOnly`, `SameSite=Lax`, `Secure` configurable (`AUTH_COOKIE_SECURE`, `false` solo en desarrollo local por HTTP), `Path=/`.
 - **CSRF:** como la sesión vive en una cookie, las peticiones que modifican datos (`POST`, `PUT`, `PATCH`, `DELETE`) usan el patrón *double-submit*: una cookie legible `csrf_token` y el encabezado `X-CSRF-Token` deben coincidir.
 - **Autorización:** toda consulta se filtra por el docente autenticado en la capa de repositorio (RN-04).
@@ -452,6 +467,8 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 | --- | --- |
 | Preparar entorno | `bash scripts/setup.sh` |
 | Crear bases de datos | `bash scripts/create-databases.sh` |
+| Aplicar migraciones | `bash scripts/migrate.sh` (con argumentos: `current`, `downgrade base`…) |
+| Cargar datos semilla | `bash scripts/seed.sh` |
 | Levantar todo | `bash scripts/dev.sh` |
 | Verificar backend | `cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest` |
 | Verificar frontend | `cd frontend && npm run check && npm run build` |
@@ -462,7 +479,7 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 
 - [x] **0. Cimientos y CLAUDE.md**
 - [x] **1. Arquitectura base del backend y frontend** (proyectos inicializados y conectados)
-- [ ] **2. Base de datos:** modelos, migraciones y catálogo de carreras
+- [x] **2. Base de datos:** modelos, migraciones y catálogo de carreras
 - [ ] **3. Autenticación:** registro, login, sesión y seguridad
 - [ ] **4. Lógica de negocio:** materias, asignaciones, horarios, bitácora y cálculo de nómina
 - [ ] **5. Sistema de diseño** (colores, tipografía, componentes)
@@ -488,7 +505,6 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 | --- | --- | --- |
 | Generación del PDF del recibo | 8 | Generarlo en el backend (una sola fuente de cálculo y formato). Elegir la biblioteca en la etapa 8 considerando que funcione sin dependencias de sistema complicadas en Linux y Windows |
 | Paleta institucional y tipografía | 5 / 11 | Depende de los logos oficiales del TESH |
-| Catálogo completo de carreras del TESH | 2 | Se carga como datos semilla; confirmar la lista oficial |
 | Usuario de base de datos de la app | 2 | Hoy se usa `postgres` en desarrollo local. Evaluar un rol propio con privilegios mínimos (dueño de las bases) antes de la revisión de seguridad de la etapa 10 |
 | Migrar el `TestClient` a `httpx2` | 3 o posterior | Starlette 1.x anuncia el cambio; se adopta cuando FastAPI lo incluya en sus dependencias de pruebas. Mientras, el aviso se filtra en `pyproject.toml` |
 
@@ -561,3 +577,38 @@ Formato: fecha, etapa, qué se hizo y decisiones importantes. Lo más reciente v
 
 - Escribir la contraseña real de PostgreSQL en `DB_PASSWORD` (`backend/.env`) y ejecutar `bash scripts/create-databases.sh`. Con eso, la prueba de salud con base de datos deja de saltarse y `/api/v1/health` responde `ok`.
 - Llenar los créditos del README y el titular de `LICENSE`.
+
+### 2026-10-25 — Etapa 2: Base de datos
+
+**Qué se hizo**
+
+- **Conexión y bases:** la contraseña real ya está en `backend/.env` (el pendiente de la etapa 1 quedó resuelto). Se corrigió `scripts/create-databases.sh`: fallaba con `error de sintaxis en o cerca de «:»` porque psql no interpola variables (`:'name'`) en SQL pasado con `-c`. Ahora envía el SQL por stdin con `--set`, valida el nombre de la base, crea con `ENCODING 'UTF8' TEMPLATE template0`, y fija `PGCLIENTENCODING=UTF8` y `OUTPUT_CHARSET=UTF-8` para que los mensajes de PostgreSQL ya no aparezcan como `Â«` en Git Bash. Se probó en Git Bash (Windows 11); en Linux no se ejecutó, pero solo usa Bash, `mktemp`, `tr` y opciones estándar de psql. Ya no crea extensiones.
+- **Modelos ORM** (13 tablas, un archivo por entidad): `users`, `roles`, `user_roles`, `teachers`, `career_types`, `careers`, `hourly_rates`, `subjects`, `assignments`, `schedules`, `logbook_entries`, `payroll_receipts`, `payroll_receipt_lines`. Mixins de identificadores y marcas de tiempo (`db/mixins.py`), expresiones `CHECK` reutilizables (`db/checks.py`) y constantes de esquema, calendario y folio en `core/constants.py`.
+- **Migración inicial** `3295e857da8d` escrita y revisada a mano: esquema `extensions` con `btree_gist` y `unaccent`, tipo `timerange`, función `normalize_name()`, funciones y triggers (`updated_at`, inmutabilidad, cierre de bitácora), secuencia del folio, tablas, `CHECK`, FK compuestas, restricciones de exclusión e índices. Ciclo `upgrade head → downgrade base → upgrade head` verificado en `nomina_docente` y, por prueba automatizada, en `nomina_docente_test`.
+- **Datos semilla** en `seeds/data/*.json` (7 carreras del TESH, 2 tipos de carrera, 3 tarifas y 2 roles), validados con Pydantic y cargados por `python -m app.seeds` / `scripts/seed.sh` en una transacción. Se ejecutó dos veces en desarrollo: la segunda reporta todo "sin cambios". `scripts/migrate.sh` envuelve Alembic.
+- **Repositorios:** `BaseRepository` genérico tipado (`get`, `add` con `flush`, `_find_one`) y repositorios de usuarios, roles, docentes, carreras, tipos de carrera y tarifas, con lo que necesitan la autenticación (etapa 3) y las semillas. Sin servicios ni routers de negocio.
+- **Pruebas:** 159 en verde (antes 22). Las de integración migran la base de pruebas al iniciar y aíslan cada prueba en una transacción revertida; el ayudante `violates()` exige que la **base** rechace la operación con el nombre exacto de la restricción. Cubren tarifa fuera del catálogo, salida ≤ entrada, empalmes de horarios (entre asignaciones, contiguos, otros días, otros docentes) y de bitácora, recibos y correos duplicados, cierre de periodo emitido, inmutabilidad de tarifas y recibos, redondeo `ROUND_HALF_UP` en la base, febrero bisiesto, idempotencia de semillas, convención de nombres, índice en cada FK, modelos sincronizados con la migración y el ciclo de migración.
+- **Documentación:** `docs/base-de-datos.md` (diagrama ER, diccionario de datos, decisiones, migraciones, semillas y revisión en DBeaver); actualizados `docs/arquitectura.md`, README principal, `backend/README.md` y `scripts/README.md`.
+- **Verificación:** Ruff, formato, mypy estricto y pytest en verde; frontend `npm run check` y `npm run build` en verde; con `dev.sh`, `GET /api/v1/health` responde `{"status":"ok","database":"ok"}` directo y a través del proxy.
+
+**Decisiones**
+
+1. **Identificadores:** `bigint GENERATED ALWAYS AS IDENTITY` en todas las tablas y, en las entidades del docente expuestas por la API, un `public_id` UUID v4. El `sub` del JWT será `users.public_id` (sección 6).
+2. **`career_types` como catálogo** (no `CHECK`) para que un tipo nuevo, como bachillerato, sea solo un dato semilla. Claves de carrera: `ICIV`, `IIND`, `IMEC`, `ISC`, `LADM`, `LBIO`, `LGAS`. Fuente: volante oficial de admisión 2024 del TESH.
+3. **RN-14 sobre asignaciones activas** (índice único parcial): desactivar conserva el historial y permite reasignar con otra tarifa.
+4. **`maternal_surname` opcional** en la base, porque hay personas con un solo apellido. El formulario de registro (etapa 6) decide si lo pide.
+5. **Nombre de materia normalizado por la base:** columna generada `name_normalized = normalize_name(name)` (`unaccent` con diccionario explícito, declarada `IMMUTABLE`). Ningún escritor puede saltarse la normalización de RN-09.
+6. **Extensiones en el esquema `extensions`**, creadas solo por la migración. `create-databases.sh` dejó de habilitar `btree_gist` (antes lo hacía; sección 3.3 actualizada).
+7. **Recibo inmutable en la base:** triggers que rechazan `UPDATE`/`DELETE` en recibos y renglones, `RESTRICT` (en lugar del `CASCADE` previsto en la etapa 0) de recibos a renglones, copia del nombre y número de empleado del docente, `CHECK` del periodo exacto y del importe de cada renglón.
+8. **RN-23 en la base:** trigger `trg_logbook_entries_period_locked` que cierra la bitácora de un periodo emitido, incluso al mover una sesión hacia ese periodo.
+9. **RN-12 en la base:** trigger que impide cambiar el importe de una tarifa.
+10. **`updated_at` por trigger** y no por el ORM, para que también cambie con SQL directo (DBeaver, cargas masivas).
+11. **Minutos enteros:** `CHECK` sin segundos en horarios y sesiones; horas como columnas generadas `NUMERIC(8,2)`.
+12. **Folio:** la base entrega el consecutivo (`payroll_receipts_folio_number_seq`, columna `folio_number`) y `utils/folio.py` arma el texto con el prefijo configurable; si el consecutivo supera 6 dígitos, se escribe completo (nunca se trunca).
+13. **Semillas que nunca borran:** un registro que desaparece del archivo se conserva; la baja es `is_active: false`. Se identifican por llave natural (`code`, `amount`).
+14. **Fecha no futura (RN-22, RN-29) y total = suma de renglones** se validan en el servicio (etapa 4): un `CHECK` con `current_date` no es válido y la suma involucra varias filas.
+15. **Relación `User.teacher` con `passive_deletes="all"`:** el ORM no intenta desvincular el perfil al borrar una cuenta; decide la FK `RESTRICT`.
+
+**Pendiente**
+
+- Nada bloqueante. Siguen abiertas las decisiones de la sección 11 (rol de base de datos con privilegios mínimos antes de la etapa 10, biblioteca de PDF, paleta y logos).
