@@ -1,0 +1,100 @@
+[project]
+name = "nomina-docente-backend"
+version = "0.1.0"
+description = "API REST del Sistema de Nómina Docente (TESH)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.20.1",
+    "fastapi>=0.162.0",
+    "psycopg[binary]>=3.3.6",
+    "pwdlib[argon2]>=0.3.1",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.1",
+    "pyjwt>=2.15.1",
+    "sqlalchemy>=2.1.6",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "app"
+
+# --- Ruff --------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "W",    # pycodestyle (advertencias)
+    "F",    # pyflakes
+    "I",    # orden de imports
+    "N",    # nombres PEP 8
+    "UP",   # sintaxis moderna
+    "B",    # bugbear
+    "S",    # seguridad (bandit)
+    "C4",   # comprensiones
+    "DTZ",  # fechas sin zona horaria
+    "T20",  # print olvidados
+    "SIM",  # simplificaciones
+    "PTH",  # pathlib en lugar de os.path
+    "ERA",  # código comentado
+    "RUF",  # reglas propias de Ruff
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+# --- mypy --------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+files = ["src", "tests", "alembic"]
+plugins = ["pydantic.mypy"]
+warn_unreachable = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+# --- pytest ------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+markers = [
+    "db: requiere la base de datos de pruebas (nomina_docente_test)",
+]
+filterwarnings = [
+    "error",
+    # Starlette 1.x anuncia el cambio de httpx a httpx2 en su TestClient; se migrará
+    # cuando FastAPI lo adopte en sus dependencias de pruebas.
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
