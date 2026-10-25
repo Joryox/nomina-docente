@@ -29,7 +29,7 @@
 | --- | --- |
 | Nombre | Sistema de Nómina Docente |
 | Repositorio | `nomina-docente` (público en GitHub, evidencia de trabajo revisada por un profesor investigador) |
-| Institución | TESH (Tecnológico de Estudios Superiores). Logos oficiales pendientes; van en `frontend/public/brand/` |
+| Institución | **Tecnológico de Estudios Superiores de Huixquilucan (TESH)** — nombre oficial confirmado por el responsable (2026-10-25). Logos oficiales pendientes; van en `frontend/public/brand/` |
 | Usuarios | Exclusivamente **docentes**. Cada docente se registra, inicia sesión y solo ve y administra **su propia** información |
 | Roles | Sin administrador en esta versión. El modelo de datos ya incluye roles para agregarlos después sin rehacer tablas |
 | Idioma de la interfaz | Español de México (`es-MX`) |
@@ -131,10 +131,12 @@ Stack definitivo. Cambiar una pieza requiere registrar la decisión en la secci�
 
 | Pieza | Elección |
 | --- | --- |
-| Framework | Next.js con App Router |
+| Framework | Next.js 16 con App Router y Turbopack (`cacheComponents` y `partialPrefetching` activos, valores por defecto de la versión) |
+| Runtime | Node.js 24 LTS (`frontend/.nvmrc`, `engines` en `package.json`) |
 | Lenguaje | TypeScript con `strict: true`; prohibido `any` |
 | Estilos | Tailwind CSS con tokens en variables CSS |
-| Componentes | shadcn/ui (adaptado a las reglas de diseño de la sección 7) |
+| Estilos (versión) | Tailwind CSS 4, configuración en CSS (`@theme inline` en `src/styles/globals.css`), sin `tailwind.config` |
+| Componentes | shadcn/ui, estilo `radix-nova` sobre Radix (adaptado a las reglas de diseño de la sección 7) |
 | Animación | Framer Motion (respetando `prefers-reduced-motion`) |
 | Formularios | React Hook Form + Zod |
 | Datos del servidor | TanStack Query |
@@ -145,12 +147,13 @@ Stack definitivo. Cambiar una pieza requiere registrar la decisión en la secci�
 
 - PostgreSQL local (versión instalada en el equipo de desarrollo: 18).
 - `nomina_docente` para desarrollo y `nomina_docente_test` para pruebas automatizadas.
-- Extensiones previstas: `btree_gist` (restricciones de no empalme, sección 5.3) y `unaccent` (comparación de nombres de materia, RN-09). Se habilitan desde una migración de Alembic, nunca a mano.
+- Extensiones previstas: `btree_gist` (restricciones de no empalme, sección 5.3) y `unaccent` (comparación de nombres de materia, RN-09). La fuente de verdad es una migración de Alembic (`CREATE EXTENSION IF NOT EXISTS`), nunca un paso manual. `scripts/create-databases.sh` también habilita `btree_gist` de forma idempotente al crear las bases; no contradice a la migración.
+- Conexión: variables separadas `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` y `DB_NAME_TEST`. `Settings` arma la URL con `sqlalchemy.URL.create` (codifica bien contraseñas con caracteres especiales) y el script de bases lee las mismas variables.
 
 ### 3.4 Comunicación frontend ↔ backend
 
 - API REST versionada bajo `/api/v1`.
-- En desarrollo, Next.js reenvía `/api/*` al backend mediante `rewrites` (destino tomado de la variable `API_PROXY_TARGET`). Así el navegador solo habla con un origen, la cookie de sesión es de primera parte y se evitan problemas de CORS. CORS se configura de todos modos con una lista blanca explícita (`CORS_ORIGINS`).
+- En desarrollo, Next.js reenvía `NEXT_PUBLIC_API_BASE_PATH/*` (`/api/v1/*`) al backend mediante `rewrites` en `next.config.ts` (destino tomado de la variable `API_PROXY_TARGET`, validada con Zod en `src/config/server-env.ts`). Así el navegador solo habla con un origen, la cookie de sesión es de primera parte y se evitan problemas de CORS. CORS se configura de todos modos con una lista blanca explícita (`CORS_ORIGINS`).
 - Formato de errores único (sección 4.5).
 
 ---
@@ -175,21 +178,29 @@ Nada más: ningún archivo de código, configuración de una app ni archivos sue
 ```
 backend/
 ├── src/app/
-│   ├── main.py              → solo crea la app y registra routers y middlewares
-│   ├── core/                → config (pydantic-settings), seguridad, logging, excepciones, constantes
-│   ├── db/                  → sesión, base declarativa
-│   ├── models/              → modelos ORM (un archivo por entidad)
+│   ├── main.py              → solo crea la app (create_app) y registra routers y middlewares
+│   ├── __main__.py          → arranque de Uvicorn con host/puerto de Settings (`python -m app`)
+│   ├── core/                → config (pydantic-settings), seguridad, logging, middleware, excepciones, constantes
+│   ├── db/                  → motor, sesión (get_db), base declarativa con convención de nombres
+│   ├── models/              → modelos ORM (un archivo por entidad, registrados en __init__.py)
 │   ├── schemas/             → modelos Pydantic de entrada/salida
 │   ├── repositories/        → acceso a datos (sin lógica de negocio)
 │   ├── services/            → lógica de negocio (sin saber de HTTP)
-│   ├── api/v1/routers/      → endpoints delgados (validan, llaman al service, responden)
+│   ├── api/v1/
+│   │   ├── router.py        → router raíz con el prefijo /api/v1
+│   │   ├── dependencies.py  → raíz de composición: servicio + repositorios + sesión
+│   │   └── routers/         → endpoints delgados (validan, llaman al service, responden)
 │   ├── seeds/               → datos semilla (carreras, tarifas, roles) separados de la lógica
 │   └── utils/
-├── alembic/                 → migraciones
+├── alembic/                 → migraciones (URL desde Settings, nunca en alembic.ini)
+├── alembic.ini
 ├── tests/
+│   ├── conftest.py          → fixtures; las pruebas @pytest.mark.db se saltan si no hay base de pruebas
 │   ├── unit/                → espejo de src/app/
 │   └── integration/         → espejo de src/app/
-├── pyproject.toml
+├── pyproject.toml           → dependencias y configuración de Ruff, mypy, pytest y coverage
+├── uv.lock
+├── .python-version
 └── .env.example
 ```
 
@@ -197,7 +208,8 @@ backend/
 
 | Capa | Puede importar | No puede |
 | --- | --- | --- |
-| `api/v1/routers` | `services`, `schemas`, dependencias de `core` | usar `Session`, `repositories` o `models` |
+| `api/v1/routers` | `services`, `schemas`, `api/v1/dependencies`, dependencias de `core` | usar `Session`, `repositories` o `models` |
+| `api/v1/dependencies.py` | `services`, `repositories`, `db.session`, `core` | contener lógica (solo construye objetos) |
 | `services` | `repositories`, `schemas`, `core` | conocer `Request`, `Response`, `HTTPException` ni códigos HTTP |
 | `repositories` | `models`, `db` | aplicar reglas de negocio |
 | `models` | `db.base` | importar cualquier capa superior |
@@ -217,14 +229,19 @@ frontend/
 ├── src/
 │   ├── app/                 → solo rutas y layouts de Next.js
 │   ├── features/            → auth/, assignments/, schedules/, logbook/, payroll/
+│   │   │                      (+ system-status/, temporal de la etapa 1)
 │   │   └── <feature>/       → components/, hooks/, api/, schemas/, types/
 │   ├── components/ui/       → componentes base (shadcn)
-│   ├── components/layout/   → encabezado, barra lateral, etc.
-│   ├── lib/                 → cliente HTTP, utilidades, formateadores (moneda, fechas)
-│   ├── config/              → configuración leída de variables de entorno
-│   ├── constants/           → textos y rutas centralizados
-│   └── styles/              → tokens de diseño (variables CSS)
+│   ├── components/layout/   → encabezado, barra lateral, providers globales (TanStack Query)
+│   ├── lib/                 → api-client.ts, api-error.ts, query-client.ts, formateadores, utils (cn)
+│   ├── config/              → env.ts (públicas), server-env.ts (solo servidor), validadas con Zod
+│   ├── constants/           → textos, mensajes de error, rutas, HTTP, localización
+│   └── styles/              → tokens.css (variables CSS) y globals.css (mapeo a Tailwind)
 ├── public/brand/            → logos oficiales
+├── next.config.ts           → rewrites del proxy hacia el backend
+├── components.json          → configuración de shadcn/ui
+├── eslint.config.mjs  .prettierrc.json  tsconfig.json  .nvmrc
+├── AGENTS.md                → reglas para agentes que `next dev` regenera; se versiona
 └── .env.example
 ```
 
@@ -232,7 +249,7 @@ Reglas:
 
 - `app/` no contiene lógica: compone componentes de `features/` y `components/`.
 - Una feature no importa archivos internos de otra feature; lo compartido sube a `components/`, `lib/` o `constants/`.
-- Todo acceso a la API pasa por el cliente HTTP de `lib/` y por los módulos `features/<feature>/api/`. Los componentes nunca llaman a `fetch` directamente.
+- Todo acceso a la API pasa por el cliente HTTP de `lib/` y por los módulos `features/<feature>/api/`. Los componentes nunca llaman a `fetch` directamente (ESLint lo prohíbe fuera de `lib/api-client.ts`). Cada respuesta se valida con un schema de Zod.
 - Los schemas de Zod viven en `features/<feature>/schemas/` y sus mensajes salen de `constants/`.
 
 ### 4.4 Cero hardcodeo (aplica a todo el proyecto, siempre)
@@ -374,7 +391,7 @@ Los formateadores están en `frontend/src/lib/` y el backend usa las mismas regl
 ## 8. Convenciones del equipo
 
 - **Idioma:** código (variables, funciones, clases, archivos) en inglés; textos visibles al usuario en español; tablas y columnas en inglés `snake_case`. La documentación del repositorio está en español.
-- **Commits:** Conventional Commits en español, en modo imperativo de tercera persona. Ejemplos: `feat: agrega registro de docentes`, `fix: corrige el cálculo de la segunda quincena`, `docs: actualiza la hoja de ruta`. Tipos: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `build`, `ci`, `perf`.
+- **Commits:** Conventional Commits en español, en modo imperativo de tercera persona. Ejemplos: `feat: agrega registro de docentes`, `fix: corrige el cálculo de la segunda quincena`, `docs: actualiza la hoja de ruta`. Tipos: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `build`, `ci`, `perf`. Los mensajes de commit **no** llevan la línea `Co-Authored-By` ni ninguna otra atribución automática.
 - **Ramas:** `main` siempre estable. Trabajo de cada etapa en `etapa-XX-descripcion` cuando aplique.
 - **Secretos:** nunca se suben. Todo va en `.env` (ignorado) y se documenta en el `.env.example` de cada app con valores de ejemplo, nunca reales.
 - **Definición de terminado de cada etapa:** código funcionando, pruebas pasando, lint y tipos sin errores, y CLAUDE.md actualizado (hoja de ruta + registro de avances).
@@ -392,17 +409,28 @@ Los formateadores están en `frontend/src/lib/` y el backend usa las mismas regl
 | Herramienta | Versión mínima | Uso |
 | --- | --- | --- |
 | git | 2.40 | control de versiones |
-| Python | 3.12 | backend (uv puede administrar la versión) |
+| Python | 3.12 | backend (uv puede administrar la versión; `backend/.python-version` fija 3.13) |
 | uv | 0.5 | dependencias y entorno virtual del backend |
-| Node.js | 20.9 (se recomienda la LTS vigente) | frontend |
+| Node.js | 24 LTS (`frontend/.nvmrc`) | frontend |
 | npm | 10 | dependencias del frontend |
 | PostgreSQL / psql | 16 | base de datos y scripts |
 
 ### 9.2 Plataforma
 
-- El proyecto se documenta para **Linux**. Los scripts de `scripts/` son Bash y también deben funcionar en Windows con Git Bash.
-- Estado del equipo actual (verificado en la etapa 0, 2026-10-25): Windows 11 con Git Bash; PostgreSQL 18 instalado como servicio pero `psql` fuera del `PATH`. Ver sección 12.
-- Finales de línea: LF en todo el repositorio (`.editorconfig`). En Windows, el repositorio local se configura con `git config core.autocrlf false` y `git config core.eol lf` (no se usa `.gitattributes` para respetar la regla de raíz ordenada, sección 4.1).
+- **Entorno principal: Windows 11 con Git Bash.** El proyecto se mantiene compatible con **Linux**. Los scripts de `scripts/` son Bash y funcionan en ambos (en Windows agregan por su cuenta las rutas habituales de uv, Node.js y PostgreSQL si la terminal no las tiene).
+- Ubicación del repositorio en el equipo actual: `C:\dev\nomina-docente` (fuera de OneDrive, para evitar bloqueos de sincronización sobre `node_modules/` y `.venv/`).
+- Equipo actual (verificado en la etapa 1, 2026-10-25):
+
+  | Herramienta | Versión | Ubicación |
+  | --- | --- | --- |
+  | git | 2.51.1 | Git for Windows (Git Bash) |
+  | Python | 3.13.2 | `python` (no existe `python3`) |
+  | uv | 0.13.5 | `C:\Users\jorge\.local\bin` (instalador oficial, ya en el `PATH` de usuario) |
+  | Node.js / npm | 24.22.1 LTS / 11.19.1 | `C:\Program Files\nodejs` (winget `OpenJS.NodeJS.LTS`) |
+  | PostgreSQL / psql | 18.3 | servicio `postgresql-x64-18`; `C:\Program Files\PostgreSQL\18\bin` agregado al `PATH` de usuario |
+
+- La consola de Windows no usa UTF-8 por defecto: `scripts/dev.sh` exporta `PYTHONUTF8=1`. Los mensajes del servidor PostgreSQL en español pueden verse con acentos dañados en la terminal; es solo de visualización.
+- Finales de línea: LF en todo el repositorio (`.editorconfig`, `endOfLine: lf` en Prettier). En Windows, el repositorio local se configura con `git config core.autocrlf false` y `git config core.eol lf` (no se usa `.gitattributes` para respetar la regla de raíz ordenada, sección 4.1).
 
 ### 9.3 Puertos y URLs locales
 
@@ -414,14 +442,26 @@ Los formateadores están en `frontend/src/lib/` y el backend usa las mismas regl
 
 ### 9.4 Variables de entorno
 
-Documentadas en [`backend/.env.example`](backend/.env.example) y [`frontend/.env.example`](frontend/.env.example). Toda variable nueva se agrega primero ahí y en el módulo de configuración tipado.
+Documentadas en [`backend/.env.example`](backend/.env.example) y [`frontend/.env.example`](frontend/.env.example). Toda variable nueva se agrega primero ahí y en el módulo de configuración tipado (`backend/src/app/core/config.py`, `frontend/src/config/`). Todas son obligatorias: no hay valores por defecto en el código.
+
+Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_PUBLIC_CSRF_COOKIE_NAME` (frontend); `API_HOST`/`API_PORT` (backend) ↔ `API_PROXY_TARGET` (frontend); `DEV_SERVER_PORT` (frontend) debe estar en `CORS_ORIGINS` (backend).
+
+### 9.5 Comandos habituales
+
+| Tarea | Comando (desde la raíz) |
+| --- | --- |
+| Preparar entorno | `bash scripts/setup.sh` |
+| Crear bases de datos | `bash scripts/create-databases.sh` |
+| Levantar todo | `bash scripts/dev.sh` |
+| Verificar backend | `cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest` |
+| Verificar frontend | `cd frontend && npm run check && npm run build` |
 
 ---
 
 ## 10. Hoja de ruta
 
 - [x] **0. Cimientos y CLAUDE.md**
-- [ ] **1. Arquitectura base del backend y frontend** (proyectos inicializados y conectados)
+- [x] **1. Arquitectura base del backend y frontend** (proyectos inicializados y conectados)
 - [ ] **2. Base de datos:** modelos, migraciones y catálogo de carreras
 - [ ] **3. Autenticación:** registro, login, sesión y seguridad
 - [ ] **4. Lógica de negocio:** materias, asignaciones, horarios, bitácora y cálculo de nómina
@@ -449,7 +489,8 @@ Documentadas en [`backend/.env.example`](backend/.env.example) y [`frontend/.env
 | Generación del PDF del recibo | 8 | Generarlo en el backend (una sola fuente de cálculo y formato). Elegir la biblioteca en la etapa 8 considerando que funcione sin dependencias de sistema complicadas en Linux y Windows |
 | Paleta institucional y tipografía | 5 / 11 | Depende de los logos oficiales del TESH |
 | Catálogo completo de carreras del TESH | 2 | Se carga como datos semilla; confirmar la lista oficial |
-| Nombre completo de la institución | 1 | Confirmar el nombre oficial para `INSTITUTION_NAME` |
+| Usuario de base de datos de la app | 2 | Hoy se usa `postgres` en desarrollo local. Evaluar un rol propio con privilegios mínimos (dueño de las bases) antes de la revisión de seguridad de la etapa 10 |
+| Migrar el `TestClient` a `httpx2` | 3 o posterior | Starlette 1.x anuncia el cambio; se adopta cuando FastAPI lo incluya en sus dependencias de pruebas. Mientras, el aviso se filtra en `pyproject.toml` |
 
 ---
 
@@ -486,3 +527,37 @@ Formato: fecha, etapa, qué se hizo y decisiones importantes. Lo más reciente v
 7. **Proxy de Next.js** (`rewrites`) para que el navegador hable con un solo origen y la cookie de sesión sea de primera parte; CSRF con *double-submit*.
 8. **Zona horaria, días de quincena y formatos** como constantes en código (no variables de entorno), porque son reglas de negocio, no configuración del despliegue.
 9. **Sin `.gitattributes`** para respetar la regla de raíz; los finales de línea se controlan con `.editorconfig` y la configuración local de git.
+
+### 2026-10-25 — Etapa 1: Arquitectura base del backend y frontend
+
+**Qué se hizo**
+
+- **Entorno (Windows 11 + Git Bash):** uv 0.13.5 instalado con el instalador oficial; `C:\Program Files\PostgreSQL\18\bin` agregado al `PATH` de usuario sin duplicados; Node 25 (*Current*) sustituido por Node 24.22.1 LTS con winget. El repositorio vive en `C:\dev\nomina-docente`; se verificó que no quedan rutas de OneDrive en archivos del proyecto.
+- **Backend:** proyecto uv con layout `src/app/` y todas las capas. `Settings` con pydantic-settings (todas las variables obligatorias y error claro que nombra cada variable), logging JSON con `request_id`, middleware de contexto (`X-Request-ID`), excepciones de dominio con manejadores globales (formato único de error, también para 404/405, validación y errores inesperados), motor y sesión SQLAlchemy 2 síncronos con psycopg 3, base declarativa con convención de nombres, `create_app()` y `GET /api/v1/health` (router → servicio → repositorio). Alembic configurado sin URL en `alembic.ini` y con plantilla de migración compatible con Ruff y mypy. Ruff y mypy estricto. 22 pruebas: 21 pasan y 1 se salta (necesita la base de pruebas).
+- **Frontend:** Next.js 16.4.3 (Turbopack, React 19.3) creado en una carpeta temporal y movido a `frontend/` conservando el README. Estructura por features, shadcn/ui inicializado, TanStack Query, React Hook Form, Zod, Framer Motion y Prettier con el plugin de Tailwind. Variables de entorno validadas con Zod, proxy `rewrites` hacia FastAPI, cliente HTTP tipado (valida respuestas con Zod, CSRF double-submit, errores centralizados), tokens de diseño provisionales y página temporal de estado del sistema.
+- **Scripts:** `setup.sh`, `create-databases.sh`, `dev.sh` y `lib/common.sh`, probados en Git Bash.
+- **Verificación:** Ruff, formato, mypy y pytest en verde; ESLint, `tsc` y `next build` en verde; con `dev.sh`, `GET http://localhost:3000/api/v1/health` responde a través del proxy (con `degraded`/`unavailable` hasta que se configure la contraseña de PostgreSQL). Ctrl+C detiene ambos servidores y libera los puertos.
+
+**Decisiones**
+
+1. **Node 24 LTS en lugar de Node 25.** winget no permite instalar una versión menor encima de una mayor (`WIX_DOWNGRADE_DETECTED`), así que se desinstaló Node 25 antes de instalar la LTS. El único paquete global (`pnpm`) sigue funcionando. `.nvmrc` = `24` y `engines.node` = `>=24.0.0`.
+2. **Conexión a la base en variables separadas** (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_NAME_TEST`) en lugar de `DATABASE_URL`: el script de bases y la app leen lo mismo, y `URL.create` codifica las contraseñas con caracteres especiales.
+3. **Contraseña de PostgreSQL no adivinada.** El servidor exige `scram-sha-256` y no hay `pgpass`. `backend/.env` quedó con el marcador `PENDIENTE-…` y `create-databases.sh` lo detecta y se detiene con un mensaje claro.
+4. **Usuario `postgres` en desarrollo local** para no exigir un rol adicional; el rol propio con privilegios mínimos queda como decisión pendiente (sección 11).
+5. **`btree_gist` también desde el script** (idempotente). La migración de la etapa 2 sigue siendo la fuente de verdad (sección 3.3).
+6. **Raíz de composición `api/v1/dependencies.py`:** construye servicios con sus repositorios, así los routers no conocen `Session` ni repositorios.
+7. **Salud con 200 y `status: degraded`** cuando la base no responde, en lugar de 503: la página de estado puede mostrar el detalle y el formato de error queda reservado para errores reales.
+8. **Proxy con `rewrites`** y no con un *route handler*: reenvía `Cookie`, `Set-Cookie` y el encabezado CSRF sin código propio. Cuando el backend está apagado, el proxy responde 500 sin JSON y el cliente lo convierte en `BACKEND_UNAVAILABLE`.
+9. **Fuentes del sistema** en lugar de Geist (`next/font/google`): el build no depende de internet y la tipografía definitiva se decide en la etapa 5. Se quitaron el favicon y los SVG de demostración de Next.js.
+10. **Variante `dark:` ligada a la clase `.dark`** y sin tokens oscuros: el tema oscuro no está en el alcance, y así el sistema operativo no activa estilos oscuros incompletos.
+11. **`@hookform/resolvers` 5.9.x** en lugar de 6.0.0: la 6.0.0 (publicada el 2026-10-19) tiene un conflicto de *peers* opcionales (`effect`), y no se usa `--legacy-peer-deps`.
+12. **Paquete `cn`** (de shadcn, repo `shadcn-ui/cn`) que el CLI actual instala en lugar de `clsx` + `tailwind-merge`. Se verificó su origen antes de aceptarlo.
+13. **No se instaló `httpx2`**, aunque Starlette 1.x lo sugiere: no se pidió y no se verificó; el aviso se filtra en pytest (sección 11).
+14. **`frontend/AGENTS.md` se versiona:** `next dev` lo regenera, y versionarlo mantiene limpio el árbol de trabajo.
+15. **Sin `.gitignore` propio en `frontend/`:** el generado ignoraba `.env*` (incluido `.env.example`); el de la raíz ya cubre todo.
+16. **Commits sin la línea `Co-Authored-By`** ni otra atribución automática (sección 8, instrucción del responsable).
+
+**Pendiente del responsable**
+
+- Escribir la contraseña real de PostgreSQL en `DB_PASSWORD` (`backend/.env`) y ejecutar `bash scripts/create-databases.sh`. Con eso, la prueba de salud con base de datos deja de saltarse y `/api/v1/health` responde `ok`.
+- Llenar los créditos del README y el titular de `LICENSE`.

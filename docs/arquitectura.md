@@ -4,7 +4,7 @@ Este documento describe el sistema a alto nivel: sus componentes, cómo se organ
 
 ## 1. Visión general
 
-El sistema permite a cada docente del TESH registrar las materias que imparte, sus horarios y las sesiones que realmente dio, y obtener a partir de ello su recibo de nómina quincenal, calculado automáticamente y descargable en PDF.
+El sistema permite a cada docente del Tecnológico de Estudios Superiores de Huixquilucan (TESH) registrar las materias que imparte, sus horarios y las sesiones que realmente dio, y obtener a partir de ello su recibo de nómina quincenal, calculado automáticamente y descargable en PDF.
 
 Se compone de tres piezas que se ejecutan en el equipo local:
 
@@ -48,7 +48,7 @@ flowchart LR
     repos -->|psycopg 3| db
 ```
 
-El navegador solo se comunica con el origen del frontend. Next.js reenvía las peticiones `/api/*` al backend, de modo que la cookie de sesión es de primera parte y no se requieren excepciones de CORS en el uso normal.
+El navegador solo se comunica con el origen del frontend. Next.js reenvía las peticiones `NEXT_PUBLIC_API_BASE_PATH/*` (`/api/v1/*`) a `API_PROXY_TARGET` mediante `rewrites`, de modo que la cookie de sesión es de primera parte y no se requieren excepciones de CORS en el uso normal. Se eligieron `rewrites` y no un *route handler* propio porque reenvían de forma transparente las cabeceras `Cookie` y `Set-Cookie` y el encabezado CSRF, sin código adicional que mantener. El destino se calcula al iniciar `next dev` o al compilar con `next build`.
 
 ## 3. Capas y regla de dependencias
 
@@ -91,11 +91,14 @@ flowchart TD
 | Capa | Hace | No hace |
 | --- | --- | --- |
 | `api/v1/routers` | Recibe la petición, valida con `schemas`, obtiene al docente autenticado, llama al servicio y responde | Consultar la base de datos o aplicar reglas de negocio |
+| `api/v1/dependencies.py` | Raíz de composición: construye cada servicio con sus repositorios y la sesión (`get_db`) y lo entrega a los routers mediante `Depends` | Contener lógica; es el único punto de la capa API que conoce sesiones y repositorios |
 | `services` | Aplica las reglas de negocio (RN-XX), coordina repositorios, controla la transacción y lanza excepciones de dominio | Conocer `Request`, `Response` o códigos HTTP |
 | `repositories` | Lee y escribe entidades, siempre filtradas por el docente dueño | Decidir si una operación es válida |
 | `models` | Define tablas, relaciones y restricciones | Importar capas superiores |
 | `schemas` | Define contratos de entrada y salida de la API | Depender de los modelos ORM |
-| `core` | Configuración tipada, seguridad, logging, excepciones y constantes | Contener lógica de una funcionalidad concreta |
+| `core` | Configuración tipada, seguridad, logging, middleware de peticiones, excepciones y constantes | Contener lógica de una funcionalidad concreta |
+
+**Arranque.** `main.create_app()` (patrón *app factory*) lee la configuración, configura el logging JSON y registra, en este orden, el middleware de contexto (asigna `X-Request-ID` y registra cada petición), CORS con la lista blanca de `CORS_ORIGINS`, los manejadores de errores y el router de `/api/v1`. `python -m app` levanta Uvicorn con el host y el puerto de la configuración. Si falta una variable de entorno, `get_settings()` lanza `ConfigurationError` con la lista de variables con problema y la app no inicia.
 
 **Manejo de errores.** Los servicios lanzan excepciones de dominio (`NotFoundError`, `ConflictError`, `BusinessRuleError`, etc.). Un manejador central registrado en `main.py` las traduce a respuestas HTTP con un formato único:
 
@@ -155,7 +158,23 @@ flowchart TD
     ui --> styles
 ```
 
-Cada feature contiene `components/`, `hooks/`, `api/`, `schemas/` y `types/`. Una feature no importa archivos internos de otra; lo compartido se mueve a `components/`, `lib/` o `constants/`.
+Cada feature contiene `components/`, `hooks/`, `api/`, `schemas/` y `types/`. Una feature no importa archivos internos de otra; lo compartido se mueve a `components/`, `lib/` o `constants/`. La feature `system-status` es temporal (etapa 1): muestra el resultado de `GET /api/v1/health` en la página inicial y se retirará cuando exista el panel principal.
+
+**Acceso a la API y errores.** El flujo de una consulta es siempre el mismo:
+
+```mermaid
+flowchart LR
+    comp[Componente] --> hook[hook de la feature<br/>useQuery]
+    hook --> fapi[features/*/api]
+    fapi --> client[lib/api-client.ts<br/>valida con Zod]
+    client -->|/api/v1/* mismo origen| proxy[rewrites de Next.js]
+    proxy --> backend[FastAPI]
+    client -.error.-> apierr[lib/api-error.ts<br/>ApiError + mensaje es-MX<br/>desde constants/]
+```
+
+- `api-client.ts` es el único módulo que usa `fetch` (lo garantiza una regla de ESLint). Envía `X-CSRF-Token` en los métodos que modifican datos, valida cada respuesta con un schema de Zod y convierte cualquier falla en `ApiError`.
+- `api-error.ts` interpreta el formato único de error del backend. Si el backend no responde (el proxy devuelve 5xx sin JSON), usa el código local `BACKEND_UNAVAILABLE`. `toUserMessage()` es el único punto que traduce errores a textos en español.
+- Las variables de entorno se validan con Zod en `config/`. `next.config.ts` reutiliza esa validación para construir el proxy.
 
 ## 4. Modelo de datos conceptual
 
