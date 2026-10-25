@@ -123,9 +123,7 @@ class Page[ItemT](BaseModel):
     total_pages: int = Field(ge=0)
 
     @classmethod
-    def build(
-        cls, items: list[ItemT], params: PageParams, total_items: int, **extra: Any
-    ) -> Any:
+    def build(cls, items: list[ItemT], params: PageParams, total_items: int, **extra: Any) -> Any:
         """Arma la página; ``extra`` recibe campos propios de un listado (p. ej. totales)."""
         return cls(
             items=items,

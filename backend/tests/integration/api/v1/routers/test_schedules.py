@@ -1,11 +1,12 @@
 import pytest
+from httpx import Response
 
 from tests.business import Api, add_schedule, create_assignment, error, ok
 
 pytestmark = pytest.mark.db
 
 
-def _schedule(api: Api, assignment_id: str, weekday: int, start: str, end: str):  # type: ignore[no-untyped-def]
+def _schedule(api: Api, assignment_id: str, weekday: int, start: str, end: str) -> Response:
     return api.post(
         f"/assignments/{assignment_id}/schedules",
         {"weekday": weekday, "start_time": start, "end_time": end},
