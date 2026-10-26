@@ -288,7 +288,7 @@
   --width-auth: 27rem;
   --width-dialog: 32rem;
   --width-prose: 65ch;
-  --sidebar-width: 15rem;
+  --sidebar-width: 16rem;
   --sidebar-width-collapsed: 3.75rem;
   --topbar-height: 3.5rem;
   --dialog-max-height: calc(100dvh - 2rem);

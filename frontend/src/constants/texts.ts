@@ -12,6 +12,7 @@ export const TEXTS = {
     collapseSidebar: "Contraer la barra lateral",
     expandSidebar: "Expandir la barra lateral",
     comingSoon: "Próximamente",
+    comingSoonShort: "Pronto",
     comingSoonHint: (stage: number) => `Disponible a partir de la etapa ${stage}.`,
     userMenu: "Menú de la cuenta",
     profile: "Mi perfil",

@@ -39,7 +39,7 @@ export function Logo({ variant = "compact", tone = "default", className }: LogoP
         <span className="grid min-w-0 leading-tight">
           <span
             className={cn(
-              "truncate text-label font-semibold",
+              "text-label leading-tight font-semibold text-balance",
               inverse ? "text-on-primary" : "text-fg",
             )}
           >

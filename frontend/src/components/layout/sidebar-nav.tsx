@@ -91,8 +91,8 @@ function NavEntry({
       {collapsed ? (
         <span className="sr-only">({TEXTS.layout.comingSoon})</span>
       ) : (
-        <Badge tone="neutral" className="ml-auto">
-          {TEXTS.layout.comingSoon}
+        <Badge tone="neutral" className="ml-auto shrink-0" title={TEXTS.layout.comingSoon}>
+          {TEXTS.layout.comingSoonShort}
         </Badge>
       )}
     </span>

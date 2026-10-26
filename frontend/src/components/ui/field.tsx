@@ -136,8 +136,10 @@ export function Fieldset({
       className={cn("grid gap-2", className)}
     >
       <legend className="mb-1.5 text-label text-fg">
-        {label}
-        {required ? <RequiredMark /> : null}
+        <span className="inline-flex items-baseline gap-1">
+          {label}
+          {required ? <RequiredMark /> : null}
+        </span>
       </legend>
       {hint ? (
         <p id={hintId} className="-mt-1 text-small text-fg-muted">

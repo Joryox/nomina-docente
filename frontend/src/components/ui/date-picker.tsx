@@ -22,8 +22,10 @@ export interface DatePickerProps {
   onBlur?: FocusEventHandler<HTMLButtonElement>;
   /** Primera fecha permitida (ISO). */
   min?: string;
-  /** Última fecha permitida (ISO). Para «sin fechas futuras», pasa `todayIso()`. */
+  /** Última fecha permitida (ISO). */
   max?: string;
+  /** Sin fechas posteriores a hoy (en la Ciudad de México). Se combina con `max`. */
+  disableFuture?: boolean;
   placeholder?: string;
   disabled?: boolean;
   id?: string;
@@ -43,6 +45,7 @@ export function DatePicker({
   onBlur,
   min,
   max,
+  disableFuture = false,
   placeholder = TEXTS.ui.datePicker.placeholder,
   disabled,
   className,
@@ -79,6 +82,7 @@ export function DatePicker({
             value={value}
             min={min}
             max={max}
+            disableFuture={disableFuture}
             onSelect={(next) => {
               onChange(next);
               setOpen(false);
@@ -94,15 +98,18 @@ export function DatePicker({
 function DatePickerCalendar({
   value,
   min,
-  max,
+  max: requestedMax,
+  disableFuture,
   onSelect,
 }: {
   value: string | null;
   min?: string;
   max?: string;
+  disableFuture: boolean;
   onSelect: (value: string | null) => void;
 }) {
   const today = todayIso();
+  const max = disableFuture && (!requestedMax || requestedMax > today) ? today : requestedMax;
   const minDate = min ? isoToLocalDate(min) : undefined;
   const maxDate = max ? isoToLocalDate(max) : undefined;
   const disabledDays: Matcher[] = [];

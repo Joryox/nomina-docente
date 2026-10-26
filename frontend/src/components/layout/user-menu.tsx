@@ -85,8 +85,8 @@ export function UserMenu({ user, onLogout, loggingOut = false }: UserMenuProps) 
             <DropdownMenuItem key={item.id} disabled>
               <Icon aria-hidden="true" />
               {item.label}
-              <Badge tone="neutral" className="ml-auto">
-                {texts.comingSoon}
+              <Badge tone="neutral" className="ml-auto shrink-0">
+                {texts.comingSoonShort}
               </Badge>
             </DropdownMenuItem>
           );
