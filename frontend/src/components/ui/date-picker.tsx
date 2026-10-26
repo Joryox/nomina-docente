@@ -1,0 +1,136 @@
+"use client";
+
+import { CalendarDays } from "lucide-react";
+import { useState, type FocusEventHandler } from "react";
+import type { Matcher } from "react-day-picker";
+
+import { TEXTS } from "@/constants/texts";
+import { isoToLocalDate, localDateToIso, todayIso } from "@/lib/calendar";
+import { formatLongDate } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
+
+import { Button } from "./button";
+import { Calendar } from "./calendar";
+import { controlHeight, controlSurface } from "./control-styles";
+import { useFieldControl } from "./field";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+
+export interface DatePickerProps {
+  /** Fecha ISO ("2026-10-15") o `null`. */
+  value: string | null;
+  onChange: (value: string | null) => void;
+  onBlur?: FocusEventHandler<HTMLButtonElement>;
+  /** Primera fecha permitida (ISO). */
+  min?: string;
+  /** Última fecha permitida (ISO). Para «sin fechas futuras», pasa `todayIso()`. */
+  max?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  id?: string;
+  className?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
+}
+
+/**
+ * Selector de fecha. La persona elige del calendario (no escribe), así que la fecha siempre
+ * es válida; las fechas fuera de `min`/`max` aparecen tachadas y no se pueden elegir. «Hoy»
+ * es el día en la Ciudad de México, no en el reloj del equipo.
+ */
+export function DatePicker({
+  value,
+  onChange,
+  onBlur,
+  min,
+  max,
+  placeholder = TEXTS.ui.datePicker.placeholder,
+  disabled,
+  className,
+  ...props
+}: DatePickerProps) {
+  const controlProps = useFieldControl(props);
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          onBlur={onBlur}
+          aria-haspopup="dialog"
+          data-slot="date-picker-trigger"
+          className={cn(
+            controlSurface,
+            controlHeight,
+            "flex items-center justify-between gap-2 text-left",
+            !value && "text-fg-muted",
+            className,
+          )}
+          {...controlProps}
+        >
+          <span className="truncate">{value ? formatLongDate(value) : placeholder}</span>
+          <CalendarDays aria-hidden="true" className="size-4 shrink-0 text-fg-muted" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto" aria-label={TEXTS.ui.datePicker.openCalendar}>
+        {open ? (
+          <DatePickerCalendar
+            value={value}
+            min={min}
+            max={max}
+            onSelect={(next) => {
+              onChange(next);
+              setOpen(false);
+            }}
+          />
+        ) : null}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** Solo se monta con el calendario abierto: «hoy» se calcula en el navegador, no al prerenderizar. */
+function DatePickerCalendar({
+  value,
+  min,
+  max,
+  onSelect,
+}: {
+  value: string | null;
+  min?: string;
+  max?: string;
+  onSelect: (value: string | null) => void;
+}) {
+  const today = todayIso();
+  const minDate = min ? isoToLocalDate(min) : undefined;
+  const maxDate = max ? isoToLocalDate(max) : undefined;
+  const disabledDays: Matcher[] = [];
+  if (minDate) disabledDays.push({ before: minDate });
+  if (maxDate) disabledDays.push({ after: maxDate });
+  const todayAllowed = (!min || today >= min) && (!max || today <= max);
+  const selected = value ? isoToLocalDate(value) : undefined;
+
+  return (
+    <div className="grid gap-3">
+      <Calendar
+        mode="single"
+        selected={selected}
+        defaultMonth={selected ?? maxDate ?? isoToLocalDate(today)}
+        today={isoToLocalDate(today)}
+        startMonth={minDate}
+        endMonth={maxDate}
+        disabled={disabledDays}
+        onSelect={(date) => onSelect(date ? localDateToIso(date) : null)}
+        autoFocus
+      />
+      {todayAllowed ? (
+        <div className="flex justify-end border-t border-line pt-2">
+          <Button variant="ghost" size="sm" onClick={() => onSelect(today)}>
+            {TEXTS.ui.datePicker.today}
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
