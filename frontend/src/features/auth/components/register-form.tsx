@@ -5,7 +5,11 @@ import { useMemo } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Field, FormRequiredNote } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TEXTS } from "@/constants/texts";
 import { ApiError, toUserMessage } from "@/lib/api-error";
 import { applyServerFieldErrors } from "@/lib/form-errors";
@@ -19,8 +23,6 @@ import {
   type RegisterFormValues,
 } from "../schemas/forms";
 import type { PasswordPolicy, RegisterPayload } from "../types/auth";
-import { FormAlert } from "./form-alert";
-import { FormField } from "./form-field";
 import { describeRule, PasswordRequirements } from "./password-requirements";
 
 const texts = TEXTS.auth;
@@ -97,71 +99,74 @@ function RegisterFormFields({ policy }: { policy: PasswordPolicy }) {
     (fieldError.code in FIELD_BY_ERROR_CODE ||
       brokenRulesSchema.safeParse(fieldError.details).success);
 
+  const generalError =
+    registerMutation.isError && !handledByField ? toUserMessage(registerMutation.error) : null;
+
   return (
-    <form onSubmit={onSubmit} noValidate className="grid gap-4">
-      <FormAlert
-        message={
-          registerMutation.isError && !handledByField ? toUserMessage(registerMutation.error) : null
-        }
-      />
-      <FormField
+    <form onSubmit={onSubmit} noValidate className="grid gap-(--field-gap)">
+      <FormRequiredNote />
+      {generalError ? (
+        <Alert tone="danger" announce>
+          {generalError}
+        </Alert>
+      ) : null}
+      <Field
         id="first_names"
-        autoComplete="given-name"
         label={texts.fields.firstNames}
+        required
         error={errors.first_names?.message}
-        {...form.register("first_names")}
-      />
-      <FormField
+      >
+        <Input autoComplete="given-name" {...form.register("first_names")} />
+      </Field>
+      <Field
         id="paternal_surname"
-        autoComplete="family-name"
         label={texts.fields.paternalSurname}
+        required
         error={errors.paternal_surname?.message}
-        {...form.register("paternal_surname")}
-      />
-      <FormField
+      >
+        <Input autoComplete="family-name" {...form.register("paternal_surname")} />
+      </Field>
+      <Field
         id="maternal_surname"
-        autoComplete="additional-name"
         label={texts.fields.maternalSurname}
-        optionalLabel={texts.fields.optional}
         hint={texts.hints.maternalSurname}
         error={errors.maternal_surname?.message}
-        {...form.register("maternal_surname")}
-      />
-      <FormField
+      >
+        <Input autoComplete="additional-name" {...form.register("maternal_surname")} />
+      </Field>
+      <Field
         id="employee_number"
         label={texts.fields.employeeNumber}
-        optionalLabel={texts.fields.optional}
         hint={texts.hints.employeeNumber}
         error={errors.employee_number?.message}
-        {...form.register("employee_number")}
-      />
-      <FormField
+      >
+        <Input {...form.register("employee_number")} />
+      </Field>
+      <Field
         id="email"
-        type="email"
-        autoComplete="email"
         label={texts.fields.email}
         hint={texts.hints.email}
+        required
         error={errors.email?.message}
-        {...form.register("email")}
-      />
-      <div className="grid gap-2">
-        <FormField
-          id="password"
+      >
+        <Input type="email" autoComplete="email" {...form.register("email")} />
+      </Field>
+      <Field id="password" label={texts.fields.password} required error={errors.password?.message}>
+        <Input
           type="password"
           autoComplete="new-password"
-          label={texts.fields.password}
-          error={errors.password?.message}
           aria-describedby="password-requisitos"
           {...form.register("password")}
         />
-        <PasswordRequirements id="password-requisitos" policy={policy} password={password} />
-      </div>
+      </Field>
+      <PasswordRequirements id="password-requisitos" policy={policy} password={password} />
       <Button
         type="submit"
-        disabled={registerMutation.isPending}
-        aria-busy={registerMutation.isPending}
+        size="lg"
+        loading={registerMutation.isPending}
+        loadingLabel={texts.register.submitting}
       >
-        {registerMutation.isPending ? texts.register.submitting : texts.register.submit}
+        {texts.register.submit}
       </Button>
     </form>
   );
@@ -172,10 +177,24 @@ export function RegisterForm() {
   const policy = usePasswordPolicy();
 
   if (policy.isPending) {
-    return <p className="text-sm text-muted-foreground">{texts.passwordRequirements.loading}</p>;
+    return (
+      <div className="grid gap-(--field-gap)" aria-busy="true">
+        {Array.from({ length: 4 }, (_, index) => (
+          <div key={index} className="grid gap-1.5">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-(--control-height-md) w-full" />
+          </div>
+        ))}
+        <p className="sr-only">{texts.passwordRequirements.loading}</p>
+      </div>
+    );
   }
   if (policy.isError) {
-    return <FormAlert message={toUserMessage(policy.error)} />;
+    return (
+      <Alert tone="danger" announce>
+        {toUserMessage(policy.error)}
+      </Alert>
+    );
   }
   return <RegisterFormFields policy={policy.data} />;
 }

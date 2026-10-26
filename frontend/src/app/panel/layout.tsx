@@ -1,10 +1,5 @@
-import { SessionExpiryHandler } from "@/features/auth/components/session-expiry-handler";
+import { AuthenticatedShell } from "@/features/auth/components/authenticated-shell";
 
 export default function PanelLayout({ children }: LayoutProps<"/panel">) {
-  return (
-    <>
-      <SessionExpiryHandler />
-      {children}
-    </>
-  );
+  return <AuthenticatedShell>{children}</AuthenticatedShell>;
 }

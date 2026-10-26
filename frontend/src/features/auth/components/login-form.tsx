@@ -4,7 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { APP_ROUTES, NEXT_PATH_PARAM } from "@/constants/routes";
 import { TEXTS } from "@/constants/texts";
 import { toUserMessage } from "@/lib/api-error";
@@ -13,8 +16,6 @@ import { safeInternalPath } from "@/lib/navigation";
 
 import { useLogin } from "../hooks/use-auth-mutations";
 import { loginFormSchema, type LoginFormValues, type LoginPayload } from "../schemas/forms";
-import { FormAlert } from "./form-alert";
-import { FormField } from "./form-field";
 
 const texts = TEXTS.auth;
 const FIELDS = ["email", "password"] as const;
@@ -43,26 +44,25 @@ export function LoginForm() {
   });
 
   return (
-    <form onSubmit={onSubmit} noValidate className="grid gap-4">
-      <FormAlert message={loginMutation.isError ? toUserMessage(loginMutation.error) : null} />
-      <FormField
-        id="email"
-        type="email"
-        autoComplete="username"
-        label={texts.fields.email}
-        error={errors.email?.message}
-        {...form.register("email")}
-      />
-      <FormField
-        id="password"
-        type="password"
-        autoComplete="current-password"
-        label={texts.fields.password}
-        error={errors.password?.message}
-        {...form.register("password")}
-      />
-      <Button type="submit" disabled={loginMutation.isPending} aria-busy={loginMutation.isPending}>
-        {loginMutation.isPending ? texts.login.submitting : texts.login.submit}
+    <form onSubmit={onSubmit} noValidate className="grid gap-(--field-gap)">
+      {loginMutation.isError ? (
+        <Alert tone="danger" announce>
+          {toUserMessage(loginMutation.error)}
+        </Alert>
+      ) : null}
+      <Field id="email" label={texts.fields.email} error={errors.email?.message}>
+        <Input type="email" autoComplete="username" {...form.register("email")} />
+      </Field>
+      <Field id="password" label={texts.fields.password} error={errors.password?.message}>
+        <Input type="password" autoComplete="current-password" {...form.register("password")} />
+      </Field>
+      <Button
+        type="submit"
+        size="lg"
+        loading={loginMutation.isPending}
+        loadingLabel={texts.login.submitting}
+      >
+        {texts.login.submit}
       </Button>
     </form>
   );

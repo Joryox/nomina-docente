@@ -1,33 +1,26 @@
 "use client";
 
+import { RefreshCw } from "lucide-react";
+
+import { Alert } from "@/components/ui/alert";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TEXTS } from "@/constants/texts";
 import { toUserMessage } from "@/lib/api-error";
-import { cn } from "@/lib/utils";
 import { formatTime } from "@/lib/formatters";
 
 import { useHealth } from "../hooks/use-health";
 
-type Tone = "success" | "warning" | "destructive" | "muted";
-
-const TONE_CLASSES: Record<Tone, string> = {
-  success: "bg-success",
-  warning: "bg-warning",
-  destructive: "bg-destructive",
-  muted: "bg-muted-foreground",
-};
-
 const texts = TEXTS.systemStatus;
 
-function StatusRow({ label, value, tone }: { label: string; value: string; tone?: Tone }) {
+function StatusRow({ label, value, tone }: { label: string; value: string; tone?: BadgeTone }) {
   return (
     <div className="flex items-center justify-between gap-4 py-3">
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="flex items-center gap-2 text-sm font-medium text-foreground">
-        {tone ? (
-          <span aria-hidden="true" className={cn("size-2 rounded-full", TONE_CLASSES[tone])} />
-        ) : null}
-        {value}
+      <dt className="text-body text-fg-muted">{label}</dt>
+      <dd className="text-body font-medium text-fg">
+        {tone ? <Badge tone={tone}>{value}</Badge> : value}
       </dd>
     </div>
   );
@@ -39,30 +32,34 @@ export function SystemStatusPanel() {
   const checkedAt = Math.max(dataUpdatedAt, errorUpdatedAt);
 
   return (
-    <section aria-labelledby="system-status-title" className="rounded-lg border bg-card">
-      <div className="border-b px-6 py-5">
-        <h1 id="system-status-title" className="text-xl font-semibold text-foreground">
-          {texts.title}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">{texts.description}</p>
-      </div>
+    <Card aria-labelledby="system-status-title">
+      <CardHeader>
+        <div>
+          <h1 id="system-status-title" className="font-serif text-title text-fg">
+            {texts.title}
+          </h1>
+          <CardDescription>{texts.description}</CardDescription>
+        </div>
+      </CardHeader>
 
-      <div className="px-6" aria-live="polite" aria-busy={isFetching}>
+      <CardContent className="py-0" aria-live="polite" aria-busy={isFetching}>
         {isPending ? (
-          <p className="py-6 text-sm text-muted-foreground">{texts.checking}</p>
+          <div className="grid gap-4 py-4">
+            <Skeleton className="h-5 w-full" />
+            <Skeleton className="h-5 w-full" />
+            <p className="sr-only">{texts.checking}</p>
+          </div>
         ) : error ? (
-          <dl className="divide-y">
-            <StatusRow
-              label={texts.labels.api}
-              value={texts.status.unreachable}
-              tone="destructive"
-            />
-            <p role="alert" className="py-4 text-sm text-destructive">
+          <div className="grid gap-3 py-4">
+            <dl>
+              <StatusRow label={texts.labels.api} value={texts.status.unreachable} tone="danger" />
+            </dl>
+            <Alert tone="danger" announce>
               {toUserMessage(error)}
-            </p>
-          </dl>
+            </Alert>
+          </div>
         ) : (
-          <dl className="divide-y">
+          <dl className="divide-y divide-line">
             <StatusRow
               label={texts.labels.api}
               value={data.status === "ok" ? texts.status.ok : texts.status.degraded}
@@ -71,7 +68,7 @@ export function SystemStatusPanel() {
             <StatusRow
               label={texts.labels.database}
               value={data.database === "ok" ? texts.status.ok : texts.status.unavailable}
-              tone={data.database === "ok" ? "success" : "destructive"}
+              tone={data.database === "ok" ? "success" : "danger"}
             />
             <StatusRow label={texts.labels.version} value={data.version} />
             <StatusRow
@@ -80,16 +77,17 @@ export function SystemStatusPanel() {
             />
           </dl>
         )}
-      </div>
+      </CardContent>
 
-      <div className="flex items-center justify-between gap-4 border-t px-6 py-4">
-        <p className="text-xs text-muted-foreground">
+      <CardFooter className="justify-between">
+        <p className="text-small text-fg-muted figures">
           {checkedAt > 0 ? `${texts.lastChecked}: ${formatTime(new Date(checkedAt))}` : null}
         </p>
-        <Button variant="outline" onClick={() => void refetch()} disabled={isFetching}>
-          {isFetching ? texts.checking : texts.refresh}
+        <Button variant="outline" size="sm" onClick={() => void refetch()} loading={isFetching}>
+          <RefreshCw aria-hidden="true" />
+          {texts.refresh}
         </Button>
-      </div>
-    </section>
+      </CardFooter>
+    </Card>
   );
 }
