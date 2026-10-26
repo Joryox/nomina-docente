@@ -151,15 +151,17 @@ flowchart TD
         logbook[logbook]
         payroll[payroll]
         dashboard[dashboard]
+        designsystem[design-system<br/>guía viva]
     end
 
     subgraph shared[Compartido]
-        ui[components/ui<br/>shadcn]
-        layout[components/layout]
+        ui[components/ui<br/>base, sobre Radix]
+        domain[components/domain<br/>Money, Hours, PeriodLabel]
+        layout[components/layout<br/>AppShell, AuthLayout]
         lib[lib<br/>cliente HTTP, tipos generados,<br/>claves de consulta, formateadores,<br/>manejo de errores]
         config[config<br/>variables de entorno]
         constants[constants<br/>textos y rutas]
-        styles[styles<br/>tokens de diseño]
+        styles[styles<br/>tokens de diseño y marca]
     end
 
     app --> features
@@ -167,12 +169,16 @@ flowchart TD
     features --> ui
     features --> lib
     features --> constants
+    features --> domain
     layout --> ui
+    domain --> ui
     lib --> config
     ui --> styles
 ```
 
 Cada feature contiene `components/`, `hooks/`, `api/`, `schemas/` y `types/`. Una feature no importa archivos internos de otra; lo compartido se mueve a `components/`, `lib/` o `constants/`. La feature `system-status` es temporal (etapa 1): muestra el resultado de `GET /api/v1/health` en la página inicial y se retirará cuando exista el panel principal. En la etapa 4 las features `catalogs`, `subjects`, `assignments`, `schedules`, `logbook`, `payroll` y `dashboard` tienen su capa de datos (`api/`, `hooks/`, `schemas/`, `types/`); sus componentes llegan en las etapas 6 a 8.
+
+**Sistema de diseño (etapa 5).** `styles/` es la única fuente de valores visuales: `brand.css` (color institucional), `tokens.css` (primitivos y semánticos en OKLCH para modo claro y oscuro, tipografía, espaciado, formas, sombras, capas y movimiento) y `globals.css` (mapeo a Tailwind; las escalas por defecto se eliminan para que solo existan utilidades semánticas). `components/ui/` tiene los componentes base sobre Radix, `components/domain/` los que conocen el dominio (`Money`, `Hours`, `PeriodLabel`, `Folio`, `StatusBadge`) y `components/layout/` la estructura (`AppShell`, `AuthLayout`, `PageHeader`, `Logo`). Los componentes de `components/` no importan features: `features/auth/components/authenticated-shell.tsx` es quien conecta el `AppShell` con la sesión. El tema se aplica antes de pintar con un script en `<head>` (`lib/theme/`). La identidad se configura en `config/brand.ts` y las fuentes en `config/fonts.ts`. Detalle, reglas de uso y verificaciones en [`sistema-de-diseno.md`](sistema-de-diseno.md).
 
 **Rutas y sesión.** Las rutas están en español y centralizadas en `constants/routes.ts`: `/iniciar-sesion`, `/registro` y `/panel` (provisional hasta la etapa 6). `src/proxy.ts` (en Next.js 16, `middleware` se llama `proxy`) redirige a `/iniciar-sesion?siguiente=…` si no hay sesión y al panel si ya la hay, mirando solo una cookie indicadora; la autorización real la hace la API. La feature `auth` contiene las llamadas tipadas, los esquemas de Zod (construidos con la política de contraseñas que publica el backend), los hooks (`useSession`, `useLogin`, `useRegister`, `useLogout`, `usePasswordPolicy`) y los formularios.
 

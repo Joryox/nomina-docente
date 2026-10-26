@@ -7,13 +7,14 @@ Aplicación construida con **Next.js 16 (App Router, Turbopack)**, **TypeScript 
 | Ruta                     | Propósito                                                                                                                                                                                                                                                                           |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/app/`               | Solo rutas y layouts de Next.js                                                                                                                                                                                                                                                     |
-| `src/features/`          | Funcionalidades (`auth`, `catalogs`, `subjects`, `assignments`, `schedules`, `logbook`, `payroll`, `dashboard` y la temporal `system-status`), cada una con `components/`, `hooks/`, `api/`, `schemas/` y `types/`                                                                  |
-| `src/components/ui/`     | Componentes base de shadcn/ui                                                                                                                                                                                                                                                       |
-| `src/components/layout/` | Encabezado y _providers_ globales (TanStack Query)                                                                                                                                                                                                                                  |
+| `src/features/`          | Funcionalidades (`auth`, `catalogs`, `subjects`, `assignments`, `schedules`, `logbook`, `payroll`, `dashboard`, `design-system` —la guía viva— y la temporal `system-status`), cada una con `components/`, `hooks/`, `api/`, `schemas/` y `types/`                                  |
+| `src/components/ui/`     | Componentes base sobre Radix (Button, Field, Select, Combobox, DatePicker, TimeInput, DataTable, diálogos, avisos…), adaptados a los tokens                                                                                                                                         |
+| `src/components/domain/` | Componentes del dominio: `Money`, `Hours`, `PeriodLabel`, `Folio`, `StatusBadge`                                                                                                                                                                                                    |
+| `src/components/layout/` | `AppShell`, `AuthLayout`, `SiteHeader`, `PageHeader`, `Logo`, selector de tema y _providers_ globales (TanStack Query, tooltips, notificaciones)                                                                                                                                    |
 | `src/lib/`               | Cliente HTTP (`api-client.ts`), tipos generados del OpenAPI (`api-types.gen.ts`, no se edita), schemas compartidos (`api-schemas.ts`), claves de consulta e invalidación (`query-keys.ts`, `query-invalidation.ts`), errores de la API (`api-error.ts`), formateadores y utilidades |
-| `src/config/`            | Variables de entorno validadas con Zod (`env.ts` públicas, `server-env.ts` solo servidor)                                                                                                                                                                                           |
-| `src/constants/`         | Textos, mensajes de error, rutas, constantes HTTP y de localización                                                                                                                                                                                                                 |
-| `src/styles/`            | Tokens de diseño (`tokens.css`) y su mapeo a Tailwind (`globals.css`)                                                                                                                                                                                                               |
+| `src/config/`            | Variables de entorno validadas con Zod (`env.ts` públicas, `server-env.ts` solo servidor), marca (`brand.ts`) y tipografías (`fonts.ts`)                                                                                                                                            |
+| `src/constants/`         | Textos, mensajes de error, rutas, navegación, preferencias, constantes HTTP y de localización                                                                                                                                                                                       |
+| `src/styles/`            | Color de marca (`brand.css`), tokens de diseño (`tokens.css`), su mapeo a Tailwind (`globals.css`), catálogo de tokens y pruebas de contraste y de valores literales                                                                                                                |
 | `public/brand/`          | Logos oficiales de la institución                                                                                                                                                                                                                                                   |
 
 ## Comunicación con el backend
@@ -23,6 +24,13 @@ El navegador solo habla con Next.js. `next.config.ts` reenvía `NEXT_PUBLIC_API_
 **Contratos generados.** Los tipos de la API se generan desde el OpenAPI del backend (`npm run api:types`) y nunca se escriben a mano. Cada schema de Zod se declara con `satisfies z.ZodType<…>` contra el tipo generado, y los textos de los códigos de error y de advertencia (`src/constants/`) son `Record` sobre los códigos generados: si el backend cambia, `npm run typecheck` señala qué ajustar. `npm run api:check` falla si los tipos versionados están desactualizados.
 
 **Dinero y horas** llegan como cadenas decimales (`"1250.00"`) y `src/lib/formatters.ts` los formatea sin convertirlos a número (`$1,250.00 MXN`, `12.50 h`).
+
+## Sistema de diseño
+
+Reglas, tokens y guía de uso de cada componente: [`docs/sistema-de-diseno.md`](../docs/sistema-de-diseno.md). La **guía viva** está en <http://localhost:3000/sistema-diseno> (solo en desarrollo, con `DESIGN_GUIDE_ENABLED=true`; en un build de producción responde 404).
+
+- Los componentes solo usan tokens semánticos (`bg-surface`, `text-fg-muted`, `text-label`…). Las escalas por defecto de Tailwind no existen.
+- `npm test` falla si un par de texto y fondo no cumple WCAG AA en algún modo, o si aparecen colores literales o medidas arbitrarias fuera de los tokens.
 
 ## Configuración
 
@@ -40,6 +48,7 @@ Todos se ejecutan dentro de `frontend/`. La versión de Node está en `.nvmrc`.
 | `npm run lint`      | ESLint (sin advertencias permitidas)                 |
 | `npm run typecheck` | Genera tipos de rutas y ejecuta `tsc --noEmit`       |
 | `npm run format`    | Prettier (`format:check` para solo verificar)        |
-| `npm run check`     | Lint + tipos + formato                               |
+| `npm test`          | Vitest: contraste, valores literales y lógica pura   |
+| `npm run check`     | Lint + tipos + formato + pruebas                     |
 | `npm run api:types` | Regenera `src/lib/api-types.gen.ts` desde el backend |
 | `npm run api:check` | Verifica que los tipos generados estén al día        |
