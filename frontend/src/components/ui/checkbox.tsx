@@ -43,9 +43,9 @@ export function Checkbox({ label, description, className, id, ...props }: Checkb
     >
       <CheckboxPrimitive.Indicator className="inline-flex">
         {props.checked === "indeterminate" ? (
-          <Minus aria-hidden="true" className="size-3.5" strokeWidth={3} />
+          <Minus aria-hidden="true" className="size-3.5" />
         ) : (
-          <Check aria-hidden="true" className="size-3.5" strokeWidth={3} />
+          <Check aria-hidden="true" className="size-3.5" />
         )}
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>

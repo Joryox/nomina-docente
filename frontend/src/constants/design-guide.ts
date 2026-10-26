@@ -132,7 +132,6 @@ export const DESIGN_GUIDE = {
     disabledLabel: "Deshabilitado",
     errorMessage: "Escribe la clave con letras, números y guiones, por ejemplo SCD-1004.",
     timeTitle: "Hora de 24 h y rango",
-    timeHint: "Prueba escribir «730», usar ↑ ↓ o elegir de la lista.",
   },
   data: {
     caption: "Sesiones de la 2.ª quincena de octubre de 2026 (ejemplo)",

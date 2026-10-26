@@ -119,7 +119,7 @@ export function FormsSection() {
       </GuideExample>
 
       <GuideExample title={texts.forms.timeTitle} className="grid sm:grid-cols-2">
-        <Field label={TEXTS.ui.timeRange.start} hint={texts.forms.timeHint}>
+        <Field label={TEXTS.ui.timeRange.start} hint={TEXTS.ui.timeInput.hint}>
           <TimeInput value={standaloneTime} onChange={setStandaloneTime} />
         </Field>
         <Switch

@@ -15,8 +15,6 @@ export const TEXTS = {
     comingSoonShort: "Pronto",
     comingSoonHint: (stage: number) => `Disponible a partir de la etapa ${stage}.`,
     userMenu: "Menú de la cuenta",
-    profile: "Mi perfil",
-    changePassword: "Cambiar contraseña",
     appearance: "Apariencia",
     logout: "Cerrar sesión",
     loggingOut: "Cerrando sesión…",
@@ -66,13 +64,11 @@ export const TEXTS = {
       placeholder: "Selecciona una opción",
       searchPlaceholder: "Escribe para buscar…",
       empty: "No hay coincidencias. Revisa lo que escribiste.",
-      clear: "Quitar la selección",
     },
     datePicker: {
       placeholder: "Elige una fecha",
       openCalendar: "Abrir el calendario",
       today: "Hoy",
-      outOfRange: "Esa fecha no está disponible.",
     },
     timeInput: {
       placeholder: "HH:MM",
@@ -91,8 +87,6 @@ export const TEXTS = {
     table: {
       sortAscending: "Ordenar de menor a mayor",
       sortDescending: "Ordenar de mayor a menor",
-      sortedAscending: "orden ascendente",
-      sortedDescending: "orden descendente",
       loading: "Cargando los registros…",
     },
     pagination: {
@@ -164,8 +158,6 @@ export const TEXTS = {
       employeeNumber: "Número de empleado",
       notCaptured: "Sin capturar",
       loading: "Cargando tu información…",
-      logout: "Cerrar sesión",
-      loggingOut: "Cerrando sesión…",
     },
   },
   systemStatus: {

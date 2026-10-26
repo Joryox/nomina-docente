@@ -301,6 +301,9 @@
   --corner-md: 0.25rem;
   --corner-lg: 0.375rem;
 
+  /* Iconos */
+  --icon-stroke: 1.75;
+
   /* Bordes y foco */
   --border-width: 1px;
   --border-width-strong: 2px;

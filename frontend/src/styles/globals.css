@@ -154,6 +154,10 @@
     outline: var(--focus-width) solid var(--focus);
     outline-offset: var(--focus-offset);
   }
+  /* Iconos de lucide con el mismo grosor en todo el sistema. */
+  svg.lucide {
+    stroke-width: var(--icon-stroke);
+  }
   ::selection {
     background-color: var(--primary-soft-hover);
     color: var(--fg);
