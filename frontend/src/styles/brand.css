@@ -1,0 +1,26 @@
+/*
+ * Color de marca (primitivos). ÚNICO lugar donde vive el color institucional.
+ *
+ * Provisional: azul marino sobrio mientras llegan los logos oficiales del TESH. Para cambiar
+ * de marca se reemplaza esta escala (mismos 11 pasos, del más claro al más oscuro) y se
+ * corre `npm test`: la prueba de contraste confirma que los pares de texto y fondo siguen
+ * cumpliendo WCAG AA en modo claro y oscuro. Los tokens semánticos (`tokens.css`) eligen
+ * pasos de esta escala, así que ningún componente cambia.
+ *
+ * Valores en OKLCH (claridad, croma, tono), dentro del gamut sRGB; ver
+ * docs/sistema-de-diseno.md, «Cómo reemplazar la marca».
+ */
+
+:root {
+  --brand-50: oklch(0.97 0.014 259);
+  --brand-100: oklch(0.94 0.027 259);
+  --brand-200: oklch(0.89 0.052 259);
+  --brand-300: oklch(0.82 0.089 259);
+  --brand-400: oklch(0.73 0.123 259);
+  --brand-500: oklch(0.63 0.142 259);
+  --brand-600: oklch(0.53 0.15 259);
+  --brand-700: oklch(0.45 0.138 259);
+  --brand-800: oklch(0.38 0.12 259);
+  --brand-900: oklch(0.31 0.093 259);
+  --brand-950: oklch(0.24 0.068 259);
+}

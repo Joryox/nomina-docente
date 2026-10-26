@@ -1,62 +1,359 @@
 /*
- * Tokens de diseño provisionales.
- * Única fuente de colores, tipografía, radios y movimiento. Los componentes nunca
- * definen valores propios: usan las utilidades de Tailwind mapeadas en globals.css.
- * La paleta institucional del TESH sustituirá estos valores en la etapa 5.
+ * Tokens de diseño: única fuente de colores, tipografía, espaciado, formas, sombras, capas y
+ * movimiento. Este archivo solo define VALORES; `globals.css` los expone a Tailwind.
+ *
+ * Dos niveles de color:
+ *   1. Primitivos (`--neutral-*`, `--green-*`…, y `--brand-*` en brand.css): escalas completas.
+ *      Ningún componente los usa directamente.
+ *   2. Semánticos (`--canvas`, `--fg`, `--primary`…): el papel de cada color. Son lo único
+ *      que ven los componentes, y lo que cambia entre modo claro y oscuro.
+ *
+ * El modo lo fija `data-theme` en <html> (script de tema en el layout raíz, antes de pintar).
+ * Cualquier elemento con `data-theme` fuerza un modo en su subárbol (la guía viva lo usa
+ * para mostrar ambos modos lado a lado).
+ * La prueba src/styles/tokens.test.ts verifica el contraste WCAG AA de cada par de texto y
+ * fondo en ambos modos, y que ningún color salga del gamut sRGB.
  */
 
+/* ---------------------------------------------------------------------------------------
+ * 1. Primitivos de color
+ * ------------------------------------------------------------------------------------- */
+
 :root {
-  /* Neutros */
-  --background: oklch(0.99 0.002 250);
-  --foreground: oklch(0.22 0.015 255);
-  --card: oklch(1 0 0);
-  --card-foreground: var(--foreground);
-  --popover: oklch(1 0 0);
-  --popover-foreground: var(--foreground);
-  --muted: oklch(0.96 0.004 250);
-  --muted-foreground: oklch(0.48 0.015 255);
-  --border: oklch(0.9 0.006 250);
-  --input: oklch(0.86 0.008 250);
+  /* Neutros fríos (tono 255): papel, tinta y líneas. */
+  --neutral-0: oklch(1 0 0);
+  --neutral-25: oklch(0.985 0.002 255);
+  --neutral-50: oklch(0.975 0.004 255);
+  --neutral-100: oklch(0.955 0.005 255);
+  --neutral-150: oklch(0.935 0.006 255);
+  --neutral-200: oklch(0.905 0.008 255);
+  --neutral-300: oklch(0.85 0.011 255);
+  --neutral-400: oklch(0.74 0.014 255);
+  --neutral-500: oklch(0.6 0.016 255);
+  --neutral-600: oklch(0.49 0.018 255);
+  --neutral-700: oklch(0.4 0.018 255);
+  --neutral-800: oklch(0.31 0.016 255);
+  --neutral-850: oklch(0.25 0.013 255);
+  --neutral-900: oklch(0.205 0.012 255);
+  --neutral-950: oklch(0.17 0.01 255);
+  --neutral-1000: oklch(0.14 0.008 255);
 
-  /* Primario provisional: azul institucional sobrio. Se cambia solo aquí. */
-  --primary: oklch(0.4 0.09 252);
-  --primary-foreground: oklch(0.985 0.002 250);
-  --ring: oklch(0.55 0.1 252);
+  /* Verde (éxito). */
+  --green-50: oklch(0.97 0.016 152);
+  --green-100: oklch(0.94 0.029 152);
+  --green-200: oklch(0.89 0.052 152);
+  --green-300: oklch(0.82 0.081 152);
+  --green-400: oklch(0.73 0.107 152);
+  --green-500: oklch(0.63 0.123 152);
+  --green-600: oklch(0.53 0.13 152);
+  --green-700: oklch(0.45 0.118 152);
+  --green-800: oklch(0.38 0.1 152);
+  --green-900: oklch(0.31 0.081 152);
+  --green-950: oklch(0.24 0.059 152);
 
-  --secondary: oklch(0.95 0.008 252);
-  --secondary-foreground: oklch(0.3 0.05 252);
-  --accent: oklch(0.95 0.008 252);
-  --accent-foreground: oklch(0.3 0.05 252);
+  /* Ámbar (advertencia). */
+  --amber-50: oklch(0.97 0.019 75);
+  --amber-100: oklch(0.94 0.035 75);
+  --amber-200: oklch(0.89 0.064 75);
+  --amber-300: oklch(0.82 0.099 75);
+  --amber-400: oklch(0.73 0.131 75);
+  --amber-500: oklch(0.63 0.132 75);
+  --amber-600: oklch(0.53 0.112 75);
+  --amber-700: oklch(0.45 0.095 75);
+  --amber-800: oklch(0.38 0.082 75);
+  --amber-900: oklch(0.31 0.067 75);
+  --amber-950: oklch(0.24 0.056 75);
+
+  /* Rojo (peligro y errores). */
+  --red-50: oklch(0.97 0.014 27);
+  --red-100: oklch(0.94 0.03 27);
+  --red-200: oklch(0.89 0.056 27);
+  --red-300: oklch(0.82 0.1 27);
+  --red-400: oklch(0.73 0.164 27);
+  --red-500: oklch(0.63 0.19 27);
+  --red-600: oklch(0.53 0.2 27);
+  --red-700: oklch(0.45 0.184 27);
+  --red-800: oklch(0.38 0.156 27);
+  --red-900: oklch(0.31 0.124 27);
+  --red-950: oklch(0.24 0.09 27);
+
+  /* Azul verdoso (información); distinto del primario para no confundirse con una acción. */
+  --info-50: oklch(0.97 0.013 232);
+  --info-100: oklch(0.94 0.024 232);
+  --info-200: oklch(0.89 0.044 232);
+  --info-300: oklch(0.82 0.068 232);
+  --info-400: oklch(0.73 0.09 232);
+  --info-500: oklch(0.63 0.104 232);
+  --info-600: oklch(0.53 0.108 232);
+  --info-700: oklch(0.45 0.091 232);
+  --info-800: oklch(0.38 0.078 232);
+  --info-900: oklch(0.31 0.064 232);
+  --info-950: oklch(0.24 0.05 232);
+}
+
+/* ---------------------------------------------------------------------------------------
+ * 2. Semánticos de color — modo claro (predeterminado)
+ * ------------------------------------------------------------------------------------- */
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Superficies */
+  --canvas: var(--neutral-50);
+  --surface: var(--neutral-0);
+  --surface-raised: var(--neutral-0);
+  --surface-sunken: var(--neutral-100);
+  --surface-hover: var(--neutral-50);
+  --overlay: oklch(0.205 0.012 255 / 0.45);
+
+  /* Líneas */
+  --line: var(--neutral-200);
+  --line-strong: var(--neutral-500);
+
+  /* Texto */
+  --fg: var(--neutral-850);
+  --fg-muted: var(--neutral-600);
+  --fg-disabled: var(--neutral-400);
+
+  /* Primario (acciones) */
+  --primary: var(--brand-800);
+  --primary-hover: var(--brand-900);
+  --primary-pressed: var(--brand-950);
+  --on-primary: var(--neutral-0);
+  --primary-soft: var(--brand-50);
+  --primary-soft-hover: var(--brand-100);
+  --primary-ink: var(--brand-700);
+  --focus: var(--brand-600);
 
   /* Estados */
-  --success: oklch(0.5 0.12 150);
-  --success-foreground: oklch(0.985 0 0);
-  --warning: oklch(0.62 0.14 70);
-  --warning-foreground: oklch(0.2 0.02 70);
-  --destructive: oklch(0.53 0.2 27);
-  --destructive-foreground: oklch(0.985 0 0);
+  --success: var(--green-700);
+  --on-success: var(--neutral-0);
+  --success-soft: var(--green-50);
+  --success-ink: var(--green-700);
+  --success-line: var(--green-200);
 
-  /* Barra lateral (se usará en el panel principal) */
-  --sidebar: oklch(0.975 0.003 250);
-  --sidebar-foreground: var(--foreground);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: var(--accent);
-  --sidebar-accent-foreground: var(--accent-foreground);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--ring);
+  --warning: var(--amber-400);
+  --on-warning: var(--neutral-850);
+  --warning-soft: var(--amber-50);
+  --warning-ink: var(--amber-700);
+  --warning-line: var(--amber-200);
 
-  /* Forma: bordes discretos, nada súper redondeado */
-  --radius: 0.375rem;
+  --danger: var(--red-600);
+  --danger-hover: var(--red-700);
+  --on-danger: var(--neutral-0);
+  --danger-soft: var(--red-50);
+  --danger-ink: var(--red-700);
+  --danger-line: var(--red-200);
 
-  /* Tipografía provisional: fuentes del sistema, sin descargas externas */
+  --info: var(--info-600);
+  --on-info: var(--neutral-0);
+  --info-soft: var(--info-50);
+  --info-ink: var(--info-700);
+  --info-line: var(--info-200);
+
+  /* Sombras: tinte de la tinta del sistema, nunca negro puro. */
+  --shadow-tint-soft: oklch(0.24 0.03 259 / 0.06);
+  --shadow-tint-strong: oklch(0.24 0.03 259 / 0.14);
+}
+
+/* ---------------------------------------------------------------------------------------
+ * 3. Semánticos de color — modo oscuro
+ * ------------------------------------------------------------------------------------- */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas: var(--neutral-950);
+  --surface: var(--neutral-900);
+  --surface-raised: var(--neutral-850);
+  --surface-sunken: var(--neutral-1000);
+  --surface-hover: var(--neutral-850);
+  --overlay: oklch(0.1 0.006 255 / 0.65);
+
+  --line: var(--neutral-800);
+  --line-strong: var(--neutral-500);
+
+  --fg: var(--neutral-100);
+  --fg-muted: var(--neutral-400);
+  --fg-disabled: var(--neutral-600);
+
+  --primary: var(--brand-600);
+  --primary-hover: var(--brand-700);
+  --primary-pressed: var(--brand-800);
+  --on-primary: var(--neutral-0);
+  --primary-soft: var(--brand-950);
+  --primary-soft-hover: var(--brand-900);
+  --primary-ink: var(--brand-300);
+  --focus: var(--brand-400);
+
+  --success: var(--green-600);
+  --on-success: var(--neutral-0);
+  --success-soft: var(--green-950);
+  --success-ink: var(--green-300);
+  --success-line: var(--green-800);
+
+  --warning: var(--amber-400);
+  --on-warning: var(--neutral-900);
+  --warning-soft: var(--amber-950);
+  --warning-ink: var(--amber-300);
+  --warning-line: var(--amber-800);
+
+  --danger: var(--red-600);
+  --danger-hover: var(--red-700);
+  --on-danger: var(--neutral-0);
+  --danger-soft: var(--red-950);
+  --danger-ink: var(--red-300);
+  --danger-line: var(--red-800);
+
+  --info: var(--info-600);
+  --on-info: var(--neutral-0);
+  --info-soft: var(--info-950);
+  --info-ink: var(--info-300);
+  --info-line: var(--info-800);
+
+  --shadow-tint-soft: oklch(0.08 0.006 255 / 0.4);
+  --shadow-tint-strong: oklch(0.08 0.006 255 / 0.6);
+}
+
+/* ---------------------------------------------------------------------------------------
+ * 4. Tipografía, espaciado, formas, sombras, capas y movimiento (iguales en ambos modos)
+ * ------------------------------------------------------------------------------------- */
+
+:root {
+  /* Familias: --font-public-sans y --font-source-serif las crea next/font (config/fonts.ts). */
   --typeface-sans:
-    "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    var(--font-public-sans), "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial,
+    sans-serif;
+  --typeface-serif: var(--font-source-serif), Georgia, "Times New Roman", serif;
   --typeface-mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
 
-  /* Movimiento */
+  /* Escala tipográfica semántica: tamaño / interlineado / peso. */
+  --type-display-size: 2rem;
+  --type-display-leading: 2.5rem;
+  --type-display-weight: 600;
+  --type-display-tracking: -0.01em;
+
+  --type-title-size: 1.5rem;
+  --type-title-leading: 2rem;
+  --type-title-weight: 600;
+  --type-title-tracking: -0.005em;
+
+  --type-subtitle-size: 1.125rem;
+  --type-subtitle-leading: 1.5rem;
+  --type-subtitle-weight: 600;
+
+  --type-body-size: 0.9375rem;
+  --type-body-leading: 1.5rem;
+  --type-body-weight: 400;
+
+  --type-small-size: 0.8125rem;
+  --type-small-leading: 1.25rem;
+  --type-small-weight: 400;
+
+  --type-label-size: 0.875rem;
+  --type-label-leading: 1.25rem;
+  --type-label-weight: 500;
+
+  --type-overline-size: 0.75rem;
+  --type-overline-leading: 1rem;
+  --type-overline-weight: 600;
+  --type-overline-tracking: 0.06em;
+
+  --type-figure-size: 1.75rem;
+  --type-figure-leading: 2.25rem;
+  --type-figure-weight: 600;
+  --type-figure-tracking: -0.01em;
+
+  /* Unidades junto a una cifra (MXN, h): relativas a la cifra que acompañan. */
+  --type-unit-size: 0.8em;
+
+  /* En celular los campos usan 16 px: con menos, iOS hace zoom al enfocarlos. */
+  --type-control-size: 1rem;
+
+  /* Espaciado de composición (la escala base es la de Tailwind: múltiplos de 0.25 rem). */
+  --page-gutter: 1rem;
+  --page-block: 1.5rem;
+  --section-gap: 2rem;
+  --field-gap: 1.25rem;
+
+  /* Alturas de control: botones, campos y selectores comparten medidas. */
+  --control-height-sm: 2rem;
+  --control-height-md: 2.25rem;
+  --control-height-lg: 2.75rem;
+
+  /* Anchos de composición */
+  --width-content: 80rem;
+  --width-form: 40rem;
+  --width-auth: 27rem;
+  --width-dialog: 32rem;
+  --width-prose: 65ch;
+  --sidebar-width: 15rem;
+  --sidebar-width-collapsed: 3.75rem;
+  --topbar-height: 3.5rem;
+  --dialog-max-height: calc(100dvh - 2rem);
+  --dialog-viewport-width: calc(100% - 2rem);
+  --sheet-max-width: 85vw;
+
+  /* Formas: radios pequeños; nada de esquinas «de burbuja». */
+  --corner-xs: 0.125rem;
+  --corner-sm: 0.1875rem;
+  --corner-md: 0.25rem;
+  --corner-lg: 0.375rem;
+
+  /* Bordes y foco */
+  --border-width: 1px;
+  --border-width-strong: 2px;
+  --focus-width: 2px;
+  --focus-offset: 2px;
+
+  /* Sombras: solo para separar capas que flotan (menús, diálogos), nunca como adorno. */
+  --elevation-xs: 0 1px 0 0 var(--shadow-tint-soft);
+  --elevation-sm: 0 1px 2px 0 var(--shadow-tint-soft), 0 4px 10px -4px var(--shadow-tint-strong);
+  --elevation-md:
+    0 2px 4px -1px var(--shadow-tint-soft), 0 16px 32px -12px var(--shadow-tint-strong);
+
+  /* Capas (z-index) */
+  --layer-base: 0;
+  --layer-sticky: 10;
+  --layer-sidebar: 20;
+  --layer-overlay: 40;
+  --layer-modal: 50;
+  --layer-popover: 60;
+  --layer-toast: 70;
+  --layer-tooltip: 80;
+  --layer-skip-link: 90;
+
+  /* Movimiento (src/styles/motion.ts repite estos valores para Framer Motion; una prueba
+     verifica que coincidan). */
   --duration-fast: 120ms;
-  --duration-base: 200ms;
-  --duration-slow: 320ms;
+  --duration-base: 180ms;
+  --duration-slow: 280ms;
+  --duration-emphasis: 400ms;
   --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --easing-enter: cubic-bezier(0, 0, 0.2, 1);
+  --easing-exit: cubic-bezier(0.4, 0, 1, 1);
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --page-gutter: 1.5rem;
+    --page-block: 2rem;
+  }
+}
+
+@media (min-width: 80rem) {
+  :root {
+    --page-gutter: 2rem;
+  }
+}
+
+/* Con movimiento reducido, las transiciones basadas en tokens se vuelven instantáneas. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+    --duration-emphasis: 0ms;
+  }
 }
