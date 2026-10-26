@@ -7,6 +7,7 @@ const serverEnvSchema = z.object({
     .url({ protocol: /^https?$/, error: "debe ser una URL http(s) válida" })
     .refine((value) => !value.endsWith("/"), "no debe terminar con /"),
   SESSION_HINT_COOKIE_NAME: z.string().trim().min(1, "no puede estar vacía"),
+  DESIGN_GUIDE_ENABLED: z.enum(["true", "false"], { error: "debe ser true o false" }),
 });
 
 /** Variables solo de servidor (nunca llegan al navegador). Las usan next.config.ts y el proxy. */
@@ -16,11 +17,15 @@ export function getServerEnv() {
     {
       API_PROXY_TARGET: process.env.API_PROXY_TARGET,
       SESSION_HINT_COOKIE_NAME: process.env.SESSION_HINT_COOKIE_NAME,
+      DESIGN_GUIDE_ENABLED: process.env.DESIGN_GUIDE_ENABLED,
     },
     "frontend/.env.local",
   );
   return {
     apiProxyTarget: parsed.API_PROXY_TARGET,
     sessionHintCookieName: parsed.SESSION_HINT_COOKIE_NAME,
+    // La guía viva nunca se publica en un build de producción, diga lo que diga la variable.
+    designGuideEnabled:
+      parsed.DESIGN_GUIDE_ENABLED === "true" && process.env.NODE_ENV !== "production",
   } as const;
 }

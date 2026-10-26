@@ -5,6 +5,103 @@ export const TEXTS = {
   },
   layout: {
     skipToContent: "Saltar al contenido",
+    mainNavigation: "Navegación principal",
+    breadcrumbs: "Ruta de navegación",
+    openNavigation: "Abrir el menú de navegación",
+    closeNavigation: "Cerrar el menú de navegación",
+    collapseSidebar: "Contraer la barra lateral",
+    expandSidebar: "Expandir la barra lateral",
+    comingSoon: "Próximamente",
+    comingSoonShort: "Pronto",
+    comingSoonHint: (stage: number) => `Disponible a partir de la etapa ${stage}.`,
+    userMenu: "Menú de la cuenta",
+    appearance: "Apariencia",
+    logout: "Cerrar sesión",
+    loggingOut: "Cerrando sesión…",
+    loadingUser: "Cargando tu cuenta…",
+    authAside:
+      "Registra tus clases, consulta tu horario y revisa el cálculo de cada quincena antes de emitir tu recibo de nómina.",
+    authAsideFacts: [
+      "Bitácora de clases con validación de horarios",
+      "Cálculo quincenal automático con importes exactos",
+      "Recibos con folio y copia fija de cada periodo",
+    ],
+  },
+  status: {
+    sessionRegistered: "Registrada",
+    sessionPending: "Sin registrar",
+    sessionLocked: "Bloqueada",
+    sessionOffSchedule: "Fuera de horario",
+    periodFuture: "Próxima",
+    periodOpen: "En curso",
+    periodClosed: "Lista para emitir",
+    periodIssued: "Recibo emitido",
+    active: "Activa",
+    inactive: "Inactiva",
+    warning: "Revisar",
+  },
+  theme: {
+    label: "Tema de color",
+    options: {
+      system: "Como el sistema",
+      light: "Claro",
+      dark: "Oscuro",
+    },
+  },
+  ui: {
+    loading: "Cargando…",
+    processing: "Procesando…",
+    close: "Cerrar",
+    notifications: "Notificaciones",
+    cancel: "Cancelar",
+    required: "obligatorio",
+    requiredNote: "Los campos marcados con * son obligatorios.",
+    characterCount: (count: number, max: number) => `${count} de ${max} caracteres`,
+    select: {
+      placeholder: "Selecciona una opción",
+    },
+    combobox: {
+      placeholder: "Selecciona una opción",
+      searchPlaceholder: "Escribe para buscar…",
+      empty: "No hay coincidencias. Revisa lo que escribiste.",
+    },
+    datePicker: {
+      placeholder: "Elige una fecha",
+      openCalendar: "Abrir el calendario",
+      today: "Hoy",
+    },
+    timeInput: {
+      placeholder: "HH:MM",
+      openList: "Elegir de la lista",
+      listLabel: "Horas disponibles",
+      snapped: (step: number) => `Se ajustó al intervalo de ${step} minutos más cercano.`,
+      hint: "Formato de 24 horas. Usa las flechas ↑ ↓ para cambiar la hora.",
+    },
+    timeRange: {
+      start: "Hora de entrada",
+      end: "Hora de salida",
+      duration: (text: string) => `Duración: ${text}`,
+      durationParts: (hours: number, minutes: number) =>
+        hours > 0 ? `${hours} h ${String(minutes).padStart(2, "0")} min` : `${minutes} min`,
+    },
+    table: {
+      sortAscending: "Ordenar de menor a mayor",
+      sortDescending: "Ordenar de mayor a menor",
+      loading: "Cargando los registros…",
+    },
+    pagination: {
+      label: "Paginación",
+      previous: "Anterior",
+      next: "Siguiente",
+      page: (page: number) => `Página ${page}`,
+      current: (page: number, total: number) => `Página ${page} de ${total}`,
+      summary: (from: number, to: number, total: number) =>
+        total === 0 ? "Sin registros" : `Mostrando ${from}–${to} de ${total}`,
+    },
+    confirm: {
+      lossTitle: "Se perderá:",
+      irreversible: "Esta acción no se puede deshacer.",
+    },
   },
   auth: {
     login: {
@@ -39,6 +136,8 @@ export const TEXTS = {
     },
     passwordRequirements: {
       title: "Tu contraseña debe:",
+      met: "cumplido",
+      notMet: "pendiente",
       loading: "Cargando los requisitos de la contraseña…",
       rules: {
         min_length: (min: number) => `Tener al menos ${min} caracteres.`,
@@ -59,8 +158,6 @@ export const TEXTS = {
       employeeNumber: "Número de empleado",
       notCaptured: "Sin capturar",
       loading: "Cargando tu información…",
-      logout: "Cerrar sesión",
-      loggingOut: "Cerrando sesión…",
     },
   },
   systemStatus: {

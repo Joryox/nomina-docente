@@ -11,7 +11,7 @@ Sistema web para que el personal docente del **Tecnológico de Estudios Superior
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-06B6D4?logo=tailwindcss&logoColor=white)
 ![Licencia MIT](https://img.shields.io/badge/Licencia-MIT-informational)
 
-> **Estado:** en desarrollo. Etapa 4 concluida (lógica de negocio: materias, asignaciones, horarios, bitácora y cálculo y emisión del recibo, con su API y la capa de datos del frontend). Las pantallas llegan en las etapas 6 a 8. Consulta la [hoja de ruta](#hoja-de-ruta).
+> **Estado:** en desarrollo. Etapa 5 concluida (sistema de diseño: tokens con modo claro y oscuro, componentes accesibles, estructura del panel y guía viva). Las pantallas llegan en las etapas 6 a 8. Consulta la [hoja de ruta](#hoja-de-ruta).
 
 ---
 
@@ -30,6 +30,7 @@ El diseño parte de un principio: **el sistema debe impedir errores**. Por eso u
 - **Bitácora de sesiones** precargada con el horario del día, ajustable por el docente.
 - **Recibo de nómina quincenal** calculado automáticamente, con vista previa en vivo, advertencias (clases sin registrar, sesiones fuera de horario), desglose por materia y carrera, folio consecutivo y exportación a PDF (etapa 8).
 - **Historial que no cambia en silencio:** cada sesión guarda la tarifa con la que se registró y el recibo emitido es una copia fija que bloquea la bitácora de su quincena.
+- **Interfaz institucional y accesible:** sistema de diseño propio con modo claro y oscuro, contraste WCAG AA verificado por pruebas automáticas, navegación completa con teclado y controles que previenen errores (horas de 24 h con máscara, fechas futuras deshabilitadas, búsqueda sin acentos).
 - **Precisión monetaria:** todos los cálculos con aritmética decimal exacta, en pesos mexicanos (MXN).
 - **Interfaz en español de México**, accesible (WCAG 2.2 AA) y responsiva.
 
@@ -64,6 +65,7 @@ nomina-docente/
 | [`docs/api.md`](docs/api.md) | Convenciones, tabla de endpoints y catálogo de códigos de error |
 | [`docs/base-de-datos.md`](docs/base-de-datos.md) | Diagrama entidad-relación, diccionario de datos y decisiones de diseño |
 | [`docs/seguridad.md`](docs/seguridad.md) | Flujos de autenticación, amenazas y mitigaciones |
+| [`docs/sistema-de-diseno.md`](docs/sistema-de-diseno.md) | Dirección visual, paleta y tipografía, tokens, guía de uso de cada componente, accesibilidad, redacción y cómo reemplazar la marca |
 
 ## Requisitos
 
@@ -167,12 +169,21 @@ La página inicial muestra el estado de la API y de la base de datos. `Ctrl+C` d
 
 1. Con `bash scripts/dev.sh` en marcha, abre http://localhost:3000/panel: como no hay sesión, te lleva a **Iniciar sesión**.
 2. Entra a **Regístrate** (http://localhost:3000/registro), captura tus datos y una contraseña que cumpla los requisitos que se muestran (al menos 12 caracteres, una letra y un número, sin tu nombre ni tu correo). Al crear la cuenta llegas al **panel**, que muestra tu nombre.
-3. Pulsa **Cerrar sesión**: vuelves a Iniciar sesión y `/panel` deja de estar disponible.
+3. Abre el menú de tu cuenta (arriba a la derecha) y elige **Cerrar sesión**: vuelves a Iniciar sesión y `/panel` deja de estar disponible.
 4. Inicia sesión con tu correo y contraseña. Con una contraseña incorrecta verás «Correo o contraseña incorrectos»; tras 5 intentos fallidos seguidos la cuenta se bloquea 15 minutos.
 
 En las herramientas del navegador (Aplicación → Cookies) verás `nomina_access`, `nomina_refresh` (ruta `/api/v1/auth`) y `nomina_session` como `HttpOnly`, y `nomina_csrf` legible. La API documentada está en http://127.0.0.1:8000/docs (sección *autenticación*).
 
 Para levantar cada app por separado: `uv run python -m app` dentro de `backend/` y `npm run dev` dentro de `frontend/`.
+
+### Sistema de diseño y guía viva
+
+Con `bash scripts/dev.sh` en marcha, la **guía viva** está en http://localhost:3000/sistema-diseno: muestra todos los tokens (con el contraste de cada par calculado en vivo), la tipografía y cada componente con sus variantes y estados, en modo claro y oscuro. Solo existe en desarrollo (`DESIGN_GUIDE_ENABLED` en `frontend/.env.local`; en un build de producción responde 404). El tema se elige con el selector de la esquina superior y se recuerda. Reglas y guía de uso: [`docs/sistema-de-diseno.md`](docs/sistema-de-diseno.md).
+
+| Modo claro | Modo oscuro |
+| --- | --- |
+| ![Iniciar sesión en modo claro](docs/img/iniciar-sesion-claro.png) | ![Iniciar sesión en modo oscuro](docs/img/iniciar-sesion-oscuro.png) |
+| ![Guía viva en modo claro](docs/img/guia-viva-claro.png) | ![Guía viva en modo oscuro](docs/img/guia-viva-oscuro.png) |
 
 ### Datos de demostración
 
@@ -239,7 +250,7 @@ Más detalles en [`scripts/README.md`](scripts/README.md).
 - [x] 2. Base de datos: modelos, migraciones y catálogo de carreras
 - [x] 3. Autenticación: registro, inicio de sesión, sesión y seguridad
 - [x] 4. Lógica de negocio: materias, asignaciones, horarios, bitácora y cálculo de nómina
-- [ ] 5. Sistema de diseño
+- [x] 5. Sistema de diseño
 - [ ] 6. Pantallas: inicio de sesión, registro y panel principal
 - [ ] 7. Pantallas: asignaciones, horarios y bitácora
 - [ ] 8. Recibo de nómina y exportación a PDF

@@ -1,33 +1,41 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
-import { AppHeader } from "@/components/layout/app-header";
 import { AppProviders } from "@/components/layout/app-providers";
-import { env } from "@/config/env";
+import { SkipLink } from "@/components/layout/skip-link";
+import { BRAND } from "@/config/brand";
+import { displayFont, uiFont } from "@/config/fonts";
 import { LOCALE } from "@/constants/locale";
 import { TEXTS } from "@/constants/texts";
+import { PREFERENCES_SCRIPT } from "@/lib/theme/preferences-script";
+import { cn } from "@/lib/utils";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
-  title: `${env.appName} · ${env.institutionShortName}`,
+  title: {
+    default: `${BRAND.appName} · ${BRAND.institutionShortName}`,
+    template: `%s · ${BRAND.appName} · ${BRAND.institutionShortName}`,
+  },
   description: TEXTS.metadata.description,
+};
+
+export const viewport: Viewport = {
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang={LOCALE} className="h-full">
-      <body className="flex min-h-full flex-col">
-        <a
-          href="#contenido"
-          className="sr-only rounded-md bg-primary px-4 py-2 text-primary-foreground focus:not-sr-only focus:absolute focus:top-4 focus:left-4"
-        >
-          {TEXTS.layout.skipToContent}
-        </a>
-        <AppProviders>
-          <AppHeader />
-          <main id="contenido" className="flex-1">
-            {children}
-          </main>
-        </AppProviders>
+    // El script de preferencias cambia data-theme antes de hidratar: la diferencia es esperada.
+    <html
+      lang={LOCALE}
+      suppressHydrationWarning
+      className={cn(uiFont.variable, displayFont.variable)}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: PREFERENCES_SCRIPT }} />
+      </head>
+      <body className="min-h-dvh">
+        <SkipLink />
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

@@ -10,7 +10,7 @@ interface AuthCardProps {
   children: ReactNode;
 }
 
-/** Marco provisional de las páginas de acceso (el diseño final es de las etapas 5 y 6). */
+/** Contenido de las páginas de acceso dentro del AuthLayout: título, formulario y enlace. */
 export function AuthCard({
   title,
   description,
@@ -20,25 +20,23 @@ export function AuthCard({
   children,
 }: AuthCardProps) {
   return (
-    <div className="mx-auto w-full max-w-md px-6 py-10">
-      <section aria-labelledby="auth-title" className="rounded-lg border bg-card">
-        <div className="border-b px-6 py-5">
-          <h1 id="auth-title" className="text-xl font-semibold text-foreground">
-            {title}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        </div>
-        <div className="px-6 py-5">{children}</div>
-        <p className="border-t px-6 py-4 text-sm text-muted-foreground">
-          {footerText}{" "}
-          <Link
-            href={footerHref}
-            className="font-medium text-primary underline-offset-4 hover:underline"
-          >
-            {footerLinkLabel}
-          </Link>
-        </p>
-      </section>
-    </div>
+    <section aria-labelledby="auth-title" className="grid gap-6">
+      <div className="grid gap-1.5">
+        <h1 id="auth-title" className="font-serif text-title text-fg">
+          {title}
+        </h1>
+        <p className="text-body text-fg-muted">{description}</p>
+      </div>
+      <div className="rounded-lg border border-line bg-surface px-5 py-5 sm:px-6">{children}</div>
+      <p className="text-body text-fg-muted">
+        {footerText}{" "}
+        <Link
+          href={footerHref}
+          className="rounded-xs font-medium text-primary-ink underline decoration-1 underline-offset-4 hover:decoration-2"
+        >
+          {footerLinkLabel}
+        </Link>
+      </p>
+    </section>
   );
 }

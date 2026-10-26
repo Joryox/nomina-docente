@@ -1,70 +1,172 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./brand.css";
 @import "./tokens.css";
 
-/* Los componentes de shadcn usan la variante `dark:`; queda ligada a una clase explícita
-   para que el sistema operativo no active estilos oscuros sin tokens oscuros. */
-@custom-variant dark (&:is(.dark *));
+/* La variante `dark:` sigue al tema resuelto (data-theme en <html>). Los componentes casi
+   nunca la necesitan: los tokens semánticos ya cambian solos entre modos. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/* Barra lateral colapsada (preferencia guardada; la aplica el script de tema antes de pintar). */
+@custom-variant sidebar-collapsed (&:where([data-sidebar="collapsed"] *));
+
+/*
+ * Puntos de quiebre. Viven aquí y no en tokens.css porque las media queries no aceptan
+ * variables CSS. Escritorio primero en el diseño, pero las clases van de menor a mayor.
+ */
+@theme {
+  --breakpoint-*: initial;
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+}
+
+/*
+ * Mapeo de los tokens a Tailwind. Se borran las escalas por defecto (colores, tamaños de
+ * texto, sombras, radios y desenfoques): sus utilidades dejan de existir y solo quedan las
+ * semánticas. La prueba no-literal-values.test.ts avisa si alguien intenta usarlas.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
+  --color-*: initial;
+  --text-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+  --radius-*: initial;
+  --blur-*: initial;
+  --container-*: initial;
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-hover: var(--surface-hover);
+  --color-overlay: var(--overlay);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-disabled: var(--fg-disabled);
   --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-pressed: var(--primary-pressed);
+  --color-on-primary: var(--on-primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-hover: var(--primary-soft-hover);
+  --color-primary-ink: var(--primary-ink);
+  --color-focus: var(--focus);
   --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
+  --color-on-success: var(--on-success);
+  --color-success-soft: var(--success-soft);
+  --color-success-ink: var(--success-ink);
+  --color-success-line: var(--success-line);
   --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  --color-on-warning: var(--on-warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-ink: var(--warning-ink);
+  --color-warning-line: var(--warning-line);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-on-danger: var(--on-danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-ink: var(--danger-ink);
+  --color-danger-line: var(--danger-line);
+  --color-info: var(--info);
+  --color-on-info: var(--on-info);
+  --color-info-soft: var(--info-soft);
+  --color-info-ink: var(--info-ink);
+  --color-info-line: var(--info-line);
 
   --font-sans: var(--typeface-sans);
+  --font-serif: var(--typeface-serif);
   --font-mono: var(--typeface-mono);
-  --font-heading: var(--typeface-sans);
 
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --text-display: var(--type-display-size);
+  --text-display--line-height: var(--type-display-leading);
+  --text-display--font-weight: var(--type-display-weight);
+  --text-display--letter-spacing: var(--type-display-tracking);
+  --text-title: var(--type-title-size);
+  --text-title--line-height: var(--type-title-leading);
+  --text-title--font-weight: var(--type-title-weight);
+  --text-title--letter-spacing: var(--type-title-tracking);
+  --text-subtitle: var(--type-subtitle-size);
+  --text-subtitle--line-height: var(--type-subtitle-leading);
+  --text-subtitle--font-weight: var(--type-subtitle-weight);
+  --text-body: var(--type-body-size);
+  --text-body--line-height: var(--type-body-leading);
+  --text-body--font-weight: var(--type-body-weight);
+  --text-small: var(--type-small-size);
+  --text-small--line-height: var(--type-small-leading);
+  --text-small--font-weight: var(--type-small-weight);
+  --text-label: var(--type-label-size);
+  --text-label--line-height: var(--type-label-leading);
+  --text-label--font-weight: var(--type-label-weight);
+  --text-overline: var(--type-overline-size);
+  --text-overline--line-height: var(--type-overline-leading);
+  --text-overline--font-weight: var(--type-overline-weight);
+  --text-overline--letter-spacing: var(--type-overline-tracking);
+  --text-figure: var(--type-figure-size);
+  --text-figure--line-height: var(--type-figure-leading);
+  --text-figure--font-weight: var(--type-figure-weight);
+  --text-figure--letter-spacing: var(--type-figure-tracking);
+  --text-unit: var(--type-unit-size);
+  --text-control: var(--type-control-size);
+  --text-control--line-height: var(--type-body-leading);
+
+  --radius-xs: var(--corner-xs);
+  --radius-sm: var(--corner-sm);
+  --radius-md: var(--corner-md);
+  --radius-lg: var(--corner-lg);
+
+  --shadow-xs: var(--elevation-xs);
+  --shadow-sm: var(--elevation-sm);
+  --shadow-md: var(--elevation-md);
+
+  --container-content: var(--width-content);
+  --container-form: var(--width-form);
+  --container-auth: var(--width-auth);
+  --container-dialog: var(--width-dialog);
+  --container-prose: var(--width-prose);
 
   --ease-standard: var(--easing-standard);
+  --ease-enter: var(--easing-enter);
+  --ease-exit: var(--easing-exit);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-line;
   }
   html {
-    @apply font-sans;
+    @apply bg-canvas font-sans text-fg;
+    font-optical-sizing: auto;
+    text-rendering: optimizeLegibility;
+    -webkit-text-size-adjust: 100%;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply text-body antialiased;
   }
+  /* Foco visible único en todo el sistema: contorno (sobrevive al modo de alto contraste). */
+  :focus-visible {
+    outline: var(--focus-width) solid var(--focus);
+    outline-offset: var(--focus-offset);
+  }
+  /* Iconos de lucide con el mismo grosor en todo el sistema. */
+  svg.lucide {
+    stroke-width: var(--icon-stroke);
+  }
+  ::selection {
+    background-color: var(--primary-soft-hover);
+    color: var(--fg);
+  }
+}
+
+/* Cifras de dinero, horas y folios: anchos iguales para que las columnas se alineen. */
+@utility figures {
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 @media (prefers-reduced-motion: reduce) {

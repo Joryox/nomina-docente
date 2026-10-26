@@ -1,3 +1,5 @@
+import { Check, Circle, X } from "lucide-react";
+
 import { TEXTS } from "@/constants/texts";
 import { DIGIT_PATTERN, LETTER_PATTERN } from "@/constants/validation";
 import { cn } from "@/lib/utils";
@@ -44,25 +46,46 @@ export function PasswordRequirements({
   password: string;
 }) {
   return (
-    <div id={id} className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
-      <p className="font-medium text-foreground">{texts.title}</p>
-      <ul className="mt-1 grid gap-0.5">
+    <div
+      id={id}
+      className="-mt-2 rounded-md border border-line bg-surface-sunken px-3 py-2.5 text-small"
+    >
+      <p className="font-medium text-fg">{texts.title}</p>
+      <ul className="mt-1 grid gap-1">
         {policy.rules.map((rule) => {
           const met = password ? isMet(rule, policy, password) : null;
           return (
             <li
               key={rule}
               className={cn(
-                met === true && "text-success",
-                met === false && "text-destructive",
-                met === null && "text-muted-foreground",
+                "flex items-start gap-1.5",
+                met === true && "text-success-ink",
+                met === false && "text-danger-ink",
+                met === null && "text-fg-muted",
               )}
             >
-              {describeRule(rule, policy)}
+              <RuleIcon met={met} />
+              <span>
+                {describeRule(rule, policy)}
+                {met !== null ? (
+                  <span className="sr-only"> ({met ? texts.met : texts.notMet})</span>
+                ) : null}
+              </span>
             </li>
           );
         })}
       </ul>
     </div>
+  );
+}
+
+/** El estado de cada requisito se distingue por el icono, no solo por el color. */
+function RuleIcon({ met }: { met: boolean | null }) {
+  const Icon = met === true ? Check : met === false ? X : Circle;
+  return (
+    <Icon
+      aria-hidden="true"
+      className={cn("mt-0.5 shrink-0", met === null ? "size-3" : "size-4")}
+    />
   );
 }

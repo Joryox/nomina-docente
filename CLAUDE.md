@@ -146,13 +146,14 @@ Stack definitivo. Cambiar una pieza requiere registrar la decisión en la secci�
 | Lenguaje | TypeScript con `strict: true`; prohibido `any` |
 | Estilos | Tailwind CSS con tokens en variables CSS |
 | Estilos (versión) | Tailwind CSS 4, configuración en CSS (`@theme inline` en `src/styles/globals.css`), sin `tailwind.config` |
-| Componentes | shadcn/ui, estilo `radix-nova` sobre Radix (adaptado a las reglas de diseño de la sección 7) |
+| Componentes | Propios en `components/ui/` sobre Radix (`radix-ui`), con la base de shadcn/ui reescrita para los tokens (sección 7.7); `cmdk` (combobox), `react-day-picker` (calendario), `sonner` (notificaciones) |
+| Tipografía | Public Sans (interfaz) y Source Serif 4 (títulos), autohospedadas con `next/font/local` desde `@fontsource-variable/*` |
 | Animación | Framer Motion (respetando `prefers-reduced-motion`) |
 | Formularios | React Hook Form + Zod |
 | Datos del servidor | TanStack Query |
 | Contratos de la API | Tipos generados desde el OpenAPI con openapi-typescript (`src/lib/api-types.gen.ts`, `npm run api:types`) |
 | Paquetes | npm (`package-lock.json` versionado) |
-| Calidad | ESLint + Prettier |
+| Calidad | ESLint + Prettier + Vitest (`npm test`: contraste WCAG, valores literales, lógica pura) |
 
 ### 3.3 Base de datos
 
@@ -250,16 +251,19 @@ frontend/
 ├── src/
 │   ├── app/                 → solo rutas y layouts de Next.js
 │   ├── features/            → auth/, catalogs/, subjects/, assignments/, schedules/, logbook/, payroll/, dashboard/
-│   │   │                      (+ system-status/, temporal de la etapa 1)
+│   │   │                      (+ design-system/ —guía viva— y system-status/, temporal de la etapa 1)
 │   │   └── <feature>/       → components/, hooks/, api/, schemas/, types/
-│   ├── components/ui/       → componentes base (shadcn)
-│   ├── components/layout/   → encabezado, barra lateral, providers globales (TanStack Query)
+│   ├── components/ui/       → componentes base sobre Radix (Button, Field, Combobox, DatePicker, TimeInput, DataTable…)
+│   ├── components/domain/   → Money, Hours, PeriodLabel, Folio, StatusBadge
+│   ├── components/layout/   → AppShell, AuthLayout, SiteHeader, PageHeader, Logo, tema, providers globales
 │   ├── lib/                 → api-client.ts, api-error.ts, api-types.gen.ts (generado), api-schemas.ts,
-│   │                          query-keys.ts, query-invalidation.ts, formateadores, calendario, utils (cn)
-│   ├── config/              → env.ts (públicas), server-env.ts (solo servidor), validadas con Zod
-│   ├── constants/           → textos, mensajes de error, rutas, HTTP, localización
-│   └── styles/              → tokens.css (variables CSS) y globals.css (mapeo a Tailwind)
-├── public/brand/            → logos oficiales
+│   │                          query-keys.ts, query-invalidation.ts, formateadores, calendario, utils (cn),
+│   │                          theme/ (script de preferencias y store), color-contrast.ts, search.ts, time-input.ts
+│   ├── config/              → env.ts (públicas), server-env.ts (solo servidor), validadas con Zod; brand.ts, fonts.ts
+│   ├── constants/           → textos, mensajes de error, rutas, navegación, preferencias, HTTP, localización
+│   └── styles/              → brand.css (color de marca), tokens.css (valores), globals.css (mapeo a Tailwind),
+│                              token-catalog.ts, motion.ts y sus pruebas
+├── public/brand/            → logos oficiales (pendientes; ver docs/sistema-de-diseno.md §10)
 ├── src/proxy.ts             → redirecciones según la cookie indicadora de sesión (Next.js 16: antes middleware)
 ├── next.config.ts           → rewrites del proxy hacia el backend y cabeceras de seguridad de las páginas
 ├── components.json          → configuración de shadcn/ui
@@ -285,7 +289,7 @@ Reglas:
 - **Límites institucionales** (duración mínima y máxima de una clase, antigüedad máxima de la bitácora, si se exige que la quincena haya terminado para emitir): variables de entorno obligatorias, publicadas al frontend en `GET /catalogs/business-rules` para que no las duplique.
 - **Reglas de periodo, formatos y zona horaria:** constantes con nombre en un solo módulo por app (`backend/src/app/core/constants.py`; `frontend/src/constants/`). Ejemplos: `FIRST_FORTNIGHT_LAST_DAY = 15`, `TIMEZONE = "America/Mexico_City"`, `MONEY_DECIMAL_PLACES = 2`. Nada de números mágicos repartidos por el código.
 - **Textos de la interfaz y mensajes de error:** centralizados en `frontend/src/constants/`, no regados en los componentes.
-- **Colores, espaciados y tipografía:** tokens de diseño en variables CSS expuestas a Tailwind. Prohibido escribir colores sueltos (`#1a2b3c`, `rgb(...)`, `bg-[#...]`) dentro de componentes.
+- **Colores, espaciados y tipografía:** tokens de diseño en variables CSS expuestas a Tailwind (`frontend/src/styles/`). Prohibido escribir colores sueltos (`#1a2b3c`, `rgb(...)`, `bg-[#...]`) o medidas arbitrarias (`w-[37px]`) dentro de componentes: la prueba `no-literal-values.test.ts` lo impide. Una medida nueva es un token nuevo, usado como `w-(--token)`.
 - **Datos semilla** (carreras, tipos de carrera, tarifas, roles): en `backend/src/app/seeds/data/*.json`, separados de la lógica, cargados por un comando idempotente (`scripts/seed.sh`) que inserta lo nuevo, actualiza lo que cambió y nunca borra.
 
 ### 4.5 Principios de código
@@ -433,8 +437,8 @@ Objetivo: que el sistema se vea como un sistema universitario serio, no como una
 
 ### 7.2 Color y tokens
 
-- Paleta basada en los colores institucionales del TESH, que se definirá en la etapa 5 cuando lleguen los logos.
-- Mientras tanto: neutros sobrios y **un color primario provisional configurable desde un solo lugar** (variables CSS en `frontend/src/styles/`).
+- Paleta basada en los colores institucionales del TESH cuando lleguen los logos (etapa 11).
+- Mientras tanto (etapa 5): neutros fríos y **azul marino provisional**, cuya escala vive solo en `frontend/src/styles/brand.css`. Cambiarla es reemplazar esos 11 pasos y correr `npm test`.
 - Ningún componente define colores, espaciados ni tipografías propios: todo sale de los tokens.
 
 ### 7.3 Textos
@@ -467,6 +471,18 @@ Los formateadores están en `frontend/src/lib/` y el backend usa las mismas regl
 - Navegación completa con teclado y foco visible.
 - `label` asociado a todos los campos; errores de formulario anunciados (`aria-describedby`, `aria-invalid`).
 - Escritorio primero, funcional en celular.
+
+### 7.7 Sistema de diseño (etapa 5) — reglas para las etapas siguientes
+
+Referencia completa: [`docs/sistema-de-diseno.md`](docs/sistema-de-diseno.md). Guía viva: <http://localhost:3000/sistema-diseno> (solo desarrollo).
+
+- **Solo tokens semánticos** en componentes: `canvas`, `surface`, `surface-raised`, `surface-sunken`, `line`, `line-strong`, `fg`, `fg-muted`, `primary`, `on-primary`, `primary-soft`, `primary-ink`, `focus` y, por estado, `success|warning|danger|info` con `-soft`, `-ink`, `-line` y `on-*`. Los primitivos (`--brand-*`, `--neutral-*`…) no se usan fuera de `tokens.css`. Las escalas por defecto de Tailwind (colores, `text-sm`, `shadow-xl`, `rounded-2xl`, desenfoques) están eliminadas.
+- **Escala tipográfica semántica:** `text-display`, `text-title` (con `font-serif`, solo el `h1`), `text-subtitle`, `text-body`, `text-label`, `text-small`, `text-overline` (con `uppercase`), `text-figure`. Toda cifra comparable lleva `figures`; montos con `Money`, horas con `Hours`, quincenas con `PeriodLabel`, estados con `StatusBadge`.
+- **Iconos y bordes de estado** usan `*-ink`; los sólidos (`danger`…) solo son fondo de botón.
+- **Formularios:** cada campo dentro de `Field` (o `FormField` con React Hook Form); datos existentes con `Select` o `Combobox`; fechas con `DatePicker` (`disableFuture` donde aplique); horas con `TimeInput`/`TimeRangeInput`; obligatorios con `*` y `FormRequiredNote`; error general en `Alert tone="danger" announce`; envío con `Button loading`.
+- **Páginas del panel:** dentro del `AppShell` (lo pone `app/panel/layout.tsx`), con un `PageHeader`. Una sección nueva cambia `ready: true` en `constants/navigation.ts`. Listados con `DataTable` (cifras `align: "end"`, `EmptyState` útil). Toda acción destructiva o irreversible pasa por `ConfirmDialog` con `consequences`.
+- **Movimiento (etapa 9):** usar `DURATIONS` y `EASINGS` de `styles/motion.ts` o `duration-(--duration-*)`, siempre respetando `prefers-reduced-motion`.
+- **Verificación:** `npm run check` incluye `npm test`; un par de colores que no cumpla AA o un valor literal hace fallar la verificación.
 
 ---
 
@@ -528,6 +544,8 @@ Documentadas en [`backend/.env.example`](backend/.env.example) y [`frontend/.env
 
 Etapa 4: `PAYROLL_ISSUE_REQUIRES_CLOSED_PERIOD`, `CLASS_MIN_DURATION_MINUTES`, `CLASS_MAX_DURATION_MINUTES` y `LOGBOOK_MAX_AGE_DAYS` (backend).
 
+Etapa 5: `DESIGN_GUIDE_ENABLED` (frontend, solo servidor): publica la guía viva; en un build de producción responde 404 aunque valga `true`.
+
 Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_PUBLIC_CSRF_COOKIE_NAME` (frontend); `SESSION_HINT_COOKIE_NAME` (backend) = `SESSION_HINT_COOKIE_NAME` (frontend, solo servidor); `API_HOST`/`API_PORT` (backend) ↔ `API_PROXY_TARGET` (frontend); `DEV_SERVER_PORT` (frontend) debe estar en `CORS_ORIGINS` (backend).
 
 ### 9.5 Comandos habituales
@@ -542,7 +560,8 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 | Regenerar los tipos de la API del frontend | `bash scripts/generate-api-types.sh` (o `npm run api:types`; `--check` / `npm run api:check` para verificar) |
 | Levantar todo | `bash scripts/dev.sh` |
 | Verificar backend | `cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest` |
-| Verificar frontend | `cd frontend && npm run check && npm run api:check && npm run build` |
+| Verificar frontend | `cd frontend && npm run check && npm run api:check && npm run build` (`check` = lint + tipos + formato + `npm test`) |
+| Guía viva del sistema de diseño | `bash scripts/dev.sh` → http://localhost:3000/sistema-diseno |
 
 ---
 
@@ -553,7 +572,7 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 - [x] **2. Base de datos:** modelos, migraciones y catálogo de carreras
 - [x] **3. Autenticación:** registro, login, sesión y seguridad
 - [x] **4. Lógica de negocio:** materias, asignaciones, horarios, bitácora y cálculo de nómina
-- [ ] **5. Sistema de diseño** (colores, tipografía, componentes)
+- [x] **5. Sistema de diseño** (colores, tipografía, componentes)
 - [ ] **6. Pantallas:** login, registro y panel principal
 - [ ] **7. Pantallas:** asignaciones, horarios y bitácora
 - [ ] **8. Recibo de nómina y exportación a PDF**
@@ -579,7 +598,8 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 | Tema | Etapa | Opciones / criterio |
 | --- | --- | --- |
 | Generación del PDF del recibo | 8 | Generarlo en el backend (una sola fuente de cálculo y formato). Elegir la biblioteca en la etapa 8 considerando que funcione sin dependencias de sistema complicadas en Linux y Windows |
-| Paleta institucional y tipografía | 5 / 11 | Depende de los logos oficiales del TESH |
+| Paleta institucional | 11 | La paleta provisional (azul marino) y la tipografía quedaron en la etapa 5. Al llegar los logos: reemplazar la escala de `styles/brand.css`, declarar los archivos en `config/brand.ts` y correr `npm test` (docs/sistema-de-diseno.md §10) |
+| CSP de las páginas y script de tema | 10 | El script de preferencias es un `<script>` en línea en `<head>`; la CSP con *nonces* de la etapa 10 debe incluirlo (o pasar a un *hash* fijo) |
 | Usuario de base de datos de la app | 2 | Hoy se usa `postgres` en desarrollo local. Evaluar un rol propio con privilegios mínimos (dueño de las bases) antes de la revisión de seguridad de la etapa 10 |
 | Huecos en el consecutivo del folio | 10 | Una emisión revertida después de `nextval` deja un hueco. Si la institución exige numeración sin huecos, usar una tabla contador bloqueada dentro de la misma transacción |
 | Migrar el `TestClient` a `httpx2` | 3 o posterior | Starlette 1.x anuncia el cambio; se adopta cuando FastAPI lo incluya en sus dependencias de pruebas. Mientras, el aviso se filtra en `pyproject.toml` |
@@ -762,3 +782,40 @@ Formato: fecha, etapa, qué se hizo y decisiones importantes. Lo más reciente v
 **Pendiente**
 
 - Nada bloqueante. Abiertas: decisiones de la sección 11 (incluida la de huecos en el folio, nueva) y las pantallas (etapas 6 a 8). Swagger (`/docs`) no envía el encabezado CSRF por su cuenta: para probar escrituras se usa `curl` o el frontend (README, «Probar la API en `/docs`»).
+
+### 2026-10-25 — Etapa 5: Sistema de diseño
+
+**Qué se hizo**
+
+- **Dirección visual** escrita primero en `docs/sistema-de-diseno.md`: documento oficial llevado a software moderno, jerarquía por tipografía y espacio, números protagonistas, color con intención y densidad media.
+- **Tokens** (`frontend/src/styles/`): primitivos OKLCH en escalas completas (neutros fríos, verde, ámbar, rojo, azul verdoso y la marca en `brand.css`) y semánticos para modo claro y oscuro; escala tipográfica semántica; espaciado de composición; alturas de control; radios de 2 a 6 px; tres sombras; capas (`--layer-*`); movimiento con anulación por `prefers-reduced-motion`; puntos de quiebre. `globals.css` elimina las escalas por defecto de Tailwind (colores, tamaños de texto, sombras, radios, desenfoques, contenedores).
+- **Tema claro y oscuro:** script en `<head>` que aplica la preferencia guardada antes de pintar (con almacenamiento protegido por `try/catch`), store con `useSyncExternalStore` que sigue al sistema y a otras pestañas, selector segmentado y opciones en el menú de la cuenta. La preferencia de la barra lateral se aplica igual, sin salto al hidratar.
+- **Tipografías autohospedadas:** Public Sans y Source Serif 4 con `next/font/local` desde `@fontsource-variable/*`, sin descargas al compilar.
+- **Componentes base** (`components/ui/`, 32 componentes): Button (6 variantes, 5 tamaños, carga sin cambio de ancho), Field/Fieldset/FormField (React Hook Form), Input, Textarea con contador, Select, Combobox con búsqueda sin acentos, Checkbox, RadioGroup, Switch, Calendar y DatePicker (es-MX, lunes, límites, `disableFuture`), TimeInput y TimeRangeInput (24 h, máscara, intervalos, lista, duración en vivo), Table, DataTable (orden, skeleton, vacío, totales, paginación del backend, tarjetas en celular), Pagination, Card, Badge, Alert, toast, Dialog, ConfirmDialog, Sheet, Popover, Tooltip, DropdownMenu, Tabs, Skeleton, Spinner, Breadcrumbs, EmptyState y StatCard.
+- **Componentes del dominio** (`components/domain/`): Money, Hours, PeriodLabel, Folio y StatusBadge (estados de sesión, quincena y registro).
+- **Layout** (`components/layout/`): AppShell (barra lateral contraíble y panel deslizable en celular, migas, menú de la cuenta), AuthLayout (franja institucional), SiteHeader, PageHeader, Logo (logotipo tipográfico provisional), SkipLink y selector de tema. Navegación en `constants/navigation.ts`. Las páginas existentes (iniciar sesión, registro, panel provisional y estado del sistema) migraron sin cambiar su lógica; se retiraron `app-header`, `form-field`, `form-alert` y `logout-button` de auth.
+- **Guía viva** `/sistema-diseno` (feature `design-system`): principios, colores en ambos modos con contraste calculado en vivo, tipografía, fundamentos, movimiento y todos los componentes con variantes y estados, más un formulario real con React Hook Form y Zod. Solo en desarrollo (`DESIGN_GUIDE_ENABLED`; en producción, 404 verificado con `next start`).
+- **Pruebas:** Vitest en el frontend (433 pruebas en 8 archivos): contraste WCAG AA de 48 pares en cada modo, gamut sRGB de cada primitivo, mapeo de tokens, sincronía de `motion.ts`, ausencia de valores literales en todo `src/`, máscara y lectura de horas, búsqueda sin acentos, orden en español, paginación, fechas en la zona de la institución y resolución de clases (`cn`). Backend sin regresiones (530).
+- **Verificación en navegador** (Edge sin interfaz con `playwright-core` fuera del repositorio): sin desbordamiento horizontal a 390 px en guía, acceso y panel; el primer elemento enfocable es «Saltar al contenido»; combobox, hora, calendario, diálogo de confirmación (foco inicial en «Cancelar», Escape devuelve el foco), panel deslizable y menú de la cuenta operados solo con teclado. Capturas en ambos modos en `docs/img/`.
+- **Documentación:** `docs/sistema-de-diseno.md` (dirección, paleta y tipografía justificadas, tablas de tokens, guía de uso de cada componente, accesibilidad, redacción, verificaciones y cómo reemplazar la marca); actualizados `docs/arquitectura.md`, los README y este archivo (sección 7.7).
+
+**Decisiones**
+
+1. **OKLCH para todos los colores**: espacio perceptual, escalas parejas y contraste predecible; cada primitivo dentro de sRGB (lo verifica una prueba) para que el navegador no lo ajuste.
+2. **Azul marino provisional (tono 259)** y estados en tonos separados del primario; información en azul verdoso (232) para no confundirse con una acción.
+3. **Iconos y bordes de estado con `*-ink`**: el rojo sólido en modo oscuro no alcanza 3:1 sobre superficies elevadas; los sólidos quedan solo como fondo de botón.
+4. **Public Sans + Source Serif 4** en lugar de Inter/Roboto: sans de servicio público con cifras tabulares y serif de tamaño óptico solo en títulos, para el tono de documento oficial. Autohospedadas (revierte la decisión 9 de la etapa 1 sin depender de internet al compilar).
+5. **Escalas por defecto de Tailwind eliminadas** y prueba de valores literales en `npm test` (no una regla de ESLint): cubre también CSS y detecta utilidades que Tailwind ignoraría en silencio.
+6. **Tema con `data-theme` y script en `<head>`** en lugar de `light-dark()`: compatible con los navegadores de destino, sin parpadeo y con subárboles forzables (la guía compara modos lado a lado). La preferencia «como el sistema» es la predeterminada.
+7. **Marca en un módulo TS (`config/brand.ts`) más una hoja de color (`styles/brand.css`)**: el color debe vivir en CSS para que la prueba de contraste lo lea; nombres y logos en TS. Logo declarado explícitamente (con medidas) en lugar de detectar archivos.
+8. **Componentes propios sobre Radix** en lugar de los de shadcn tal cual: se reescribieron para los tokens (alturas comunes, foco con `outline`, sin `dark:` sueltos); `cmdk`, `react-day-picker` 10 y `sonner` para combobox, calendario y notificaciones.
+9. **Selector de hora propio con máscara** en lugar de `<input type="time">`: el nativo cambia a 12 h según el sistema y permite valores fuera de intervalo; el propio garantiza 24 h, intervalos y nunca entrega una hora inválida. Los límites solo acotan lista y flechas; una hora escrita fuera de rango se conserva para que el formulario explique el error.
+10. **Fechas por selección, sin escritura**, con `disableFuture` calculado al abrir el calendario (hoy en la Ciudad de México), para no prerenderizar con la fecha del servidor.
+11. **Navegación definitiva desde ahora** con secciones `ready: false` («Pronto») hasta las etapas 6 a 8; los componentes de `components/` no importan features (`AuthenticatedShell` conecta la sesión).
+12. **Obligatorios marcados con `*`** y nota al inicio del formulario; en iniciar sesión no se marcan.
+13. **Guía viva solo en desarrollo** por variable de servidor y, además, nunca en un build de producción; ejemplos verosímiles en `constants/design-guide.ts`, nunca mostrados fuera de la guía.
+14. **Ícono provisional** (`app/icon.svg`) con la «T» en serif; se reemplaza con el favicon oficial.
+
+**Pendiente**
+
+- Nada bloqueante. Logos oficiales y paleta definitiva (sección 11, etapa 11); incluir el script de tema en la CSP de la etapa 10.

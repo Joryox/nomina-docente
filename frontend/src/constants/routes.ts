@@ -56,6 +56,14 @@ export const APP_ROUTES = {
   login: "/iniciar-sesion",
   register: "/registro",
   panel: "/panel",
+  subjects: "/panel/materias",
+  assignments: "/panel/asignaciones",
+  schedule: "/panel/horario",
+  logbook: "/panel/bitacora",
+  receipts: "/panel/recibos",
+  profile: "/panel/perfil",
+  changePassword: "/panel/perfil/contrasena",
+  designSystem: "/sistema-diseno",
 } as const;
 
 /** Páginas que requieren sesión: el proxy redirige a iniciar sesión si no la hay. */
