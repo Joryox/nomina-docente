@@ -399,6 +399,15 @@ export const TEXTS = {
       6: "sábado",
       7: "domingo",
     },
+    weekdaysShort: {
+      1: "lun",
+      2: "mar",
+      3: "mié",
+      4: "jue",
+      5: "vie",
+      6: "sáb",
+      7: "dom",
+    },
     fortnights: {
       1: "1.ª quincena",
       2: "2.ª quincena",

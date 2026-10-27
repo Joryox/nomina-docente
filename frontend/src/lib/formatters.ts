@@ -103,6 +103,10 @@ export function formatWeekday(weekday: Weekday): string {
   return TEXTS.calendar.weekdays[weekday];
 }
 
+export function formatWeekdayShort(weekday: Weekday): string {
+  return TEXTS.calendar.weekdaysShort[weekday];
+}
+
 /** `07:00–09:00`. */
 export function formatTimeRange(start: string, end: string): string {
   return `${start}–${end}`;

@@ -43,6 +43,7 @@ export const API_ROUTES = {
     preview: "/payroll/preview",
     receipts: "/payroll/receipts",
     receipt: (id: string) => `/payroll/receipts/${id}`,
+    receiptPdf: (id: string) => `/payroll/receipts/${id}/pdf`,
   },
   dashboard: {
     summary: "/dashboard/summary",
@@ -56,10 +57,11 @@ export const APP_ROUTES = {
   register: "/registro",
   panel: "/panel",
   subjects: "/panel/materias",
-  assignments: "/panel/asignaciones",
+  assignments: "/panel/clases",
   schedule: "/panel/horario",
   logbook: "/panel/bitacora",
   receipts: "/panel/recibos",
+  receipt: (id: string) => `/panel/recibos/${id}`,
   profile: "/panel/perfil",
 } as const;
 

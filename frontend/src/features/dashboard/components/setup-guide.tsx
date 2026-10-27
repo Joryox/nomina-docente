@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TEXTS } from "@/constants/texts";
-import { CreateAssignmentDialog } from "@/features/assignments/components/create-assignment-dialog";
-import { CreateScheduleDialog } from "@/features/schedules/components/create-schedule-dialog";
-import { CreateSubjectDialog } from "@/features/subjects/components/create-subject-dialog";
+import { CreateAssignmentDialog } from "@/features/assignments/components/assignment-form-dialog";
+import { CreateScheduleDialog } from "@/features/schedules/components/schedule-form-dialog";
+import { CreateSubjectDialog } from "@/features/subjects/components/subject-form-dialog";
 import { cn } from "@/lib/utils";
 
 import type { SetupProgress } from "../types/dashboard";

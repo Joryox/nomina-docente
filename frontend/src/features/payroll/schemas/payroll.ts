@@ -72,6 +72,7 @@ export const receiptDetailSchema = z.object({
   total_minutes: z.number().int(),
   total_hours: decimalStringSchema,
   total_amount: decimalStringSchema,
+  total_amount_words: z.string(),
 }) satisfies z.ZodType<ApiSchemas["ReceiptDetailResponse"]>;
 
 export const receiptPageSchema = pageSchema(receiptSummarySchema) satisfies z.ZodType<
