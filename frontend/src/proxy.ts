@@ -23,6 +23,11 @@ export function proxy(request: NextRequest) {
   const hasSession = request.cookies.has(sessionHintCookieName);
   const { pathname, search } = request.nextUrl;
 
+  if (pathname === APP_ROUTES.home) {
+    const destination = hasSession ? APP_ROUTES.panel : APP_ROUTES.login;
+    return NextResponse.redirect(new URL(destination, request.url));
+  }
+
   if (!hasSession && matchesPrefix(pathname, PROTECTED_ROUTE_PREFIXES)) {
     const loginUrl = new URL(APP_ROUTES.login, request.url);
     loginUrl.searchParams.set(NEXT_PATH_PARAM, `${pathname}${search}`);
@@ -35,7 +40,7 @@ export function proxy(request: NextRequest) {
 }
 
 // Next.js exige valores literales en `matcher` (los analiza al compilar); deben coincidir con
-// PROTECTED_ROUTE_PREFIXES y GUEST_ONLY_ROUTES de constants/routes.ts.
+// APP_ROUTES.home, PROTECTED_ROUTE_PREFIXES y GUEST_ONLY_ROUTES de constants/routes.ts.
 export const config = {
-  matcher: ["/panel/:path*", "/iniciar-sesion", "/registro"],
+  matcher: ["/", "/panel/:path*", "/iniciar-sesion", "/registro"],
 };

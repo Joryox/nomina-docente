@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import {
+  assignmentSummarySchema,
+  clockTimeSchema,
   decimalStringSchema,
   isoDateSchema,
   periodSchema,
@@ -25,6 +27,25 @@ export const dashboardSummarySchema = z.object({
     registered_count: z.number().int(),
     pending_count: z.number().int(),
   }),
-  pending_sessions: z.object({ count: z.number().int(), total_minutes: z.number().int() }),
+  pending_sessions: z.object({
+    count: z.number().int(),
+    total_minutes: z.number().int(),
+    items: z.array(
+      z.object({
+        date: isoDateSchema,
+        schedule_id: z.uuid(),
+        assignment: assignmentSummarySchema,
+        start_time: clockTimeSchema,
+        end_time: clockTimeSchema,
+      }),
+    ),
+  }),
   latest_receipts: z.array(receiptSummarySchema),
+  unissued_periods: z.array(periodSchema),
+  setup: z.object({
+    subject_count: z.number().int(),
+    active_assignment_count: z.number().int(),
+    schedule_count: z.number().int(),
+    session_count: z.number().int(),
+  }),
 }) satisfies z.ZodType<ApiSchemas["DashboardSummaryResponse"]>;

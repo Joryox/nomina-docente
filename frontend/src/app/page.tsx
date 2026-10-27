@@ -1,18 +1,11 @@
-import { SiteHeader } from "@/components/layout/site-header";
-import { MAIN_CONTENT_ID } from "@/components/layout/skip-link";
-import { SystemStatusPanel } from "@/features/system-status/components/system-status-panel";
+import { redirect } from "next/navigation";
 
+import { APP_ROUTES } from "@/constants/routes";
+
+/**
+ * La raíz no tiene contenido propio: el proxy la envía al panel o a iniciar sesión según haya
+ * sesión. Si el proxy no corriera, el panel hace la misma comprobación.
+ */
 export default function HomePage() {
-  return (
-    <>
-      <SiteHeader />
-      <main
-        id={MAIN_CONTENT_ID}
-        tabIndex={-1}
-        className="mx-auto w-full max-w-form px-(--page-gutter) py-(--page-block) outline-none"
-      >
-        <SystemStatusPanel />
-      </main>
-    </>
-  );
+  redirect(APP_ROUTES.panel);
 }

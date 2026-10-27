@@ -1,7 +1,12 @@
 import { Check, Circle, X } from "lucide-react";
 
 import { TEXTS } from "@/constants/texts";
-import { DIGIT_PATTERN, LETTER_PATTERN } from "@/constants/validation";
+import {
+  DIGIT_PATTERN,
+  LETTER_PATTERN,
+  PASSWORD_PERSONAL_DATA_MIN_LENGTH,
+  PASSWORD_PERSONAL_DATA_SEPARATORS,
+} from "@/constants/validation";
 import { cn } from "@/lib/utils";
 
 import type { PasswordPolicy, PasswordRule } from "../types/auth";
@@ -20,8 +25,34 @@ export function describeRule(rule: PasswordRule, policy: PasswordPolicy): string
   }
 }
 
-/** `true`/`false` si el requisito se puede revisar en el navegador; `null` si lo revisa el servidor. */
-function isMet(rule: PasswordRule, policy: PasswordPolicy, password: string): boolean | null {
+/** Minúsculas y sin acentos, como compara el servidor. */
+function fold(value: string): string {
+  return value.normalize("NFKD").toLocaleLowerCase("es-MX").replace(/\p{M}/gu, "");
+}
+
+/** Partes del nombre y del correo (solo la parte local) que la contraseña no puede contener. */
+function personalParts(personalData: readonly string[]): string[] {
+  return personalData.flatMap((value) => {
+    const folded = fold(value).split("@")[0] ?? "";
+    return [folded, ...folded.split(PASSWORD_PERSONAL_DATA_SEPARATORS)].filter(
+      (part) => part.length >= PASSWORD_PERSONAL_DATA_MIN_LENGTH,
+    );
+  });
+}
+
+interface RuleContext {
+  policy: PasswordPolicy;
+  password: string;
+  personalData: readonly string[];
+  currentPassword: string | undefined;
+}
+
+/**
+ * `true`/`false` si el requisito se puede revisar en el navegador; `null` si solo lo puede
+ * revisar el servidor (contraseñas comunes) o aún faltan datos para revisarlo.
+ */
+function isMet(rule: PasswordRule, context: RuleContext): boolean | null {
+  const { policy, password } = context;
   switch (rule) {
     case "min_length":
       return password.length >= policy.min_length;
@@ -31,6 +62,16 @@ function isMet(rule: PasswordRule, policy: PasswordPolicy, password: string): bo
       return LETTER_PATTERN.test(password);
     case "digit_required":
       return DIGIT_PATTERN.test(password);
+    case "no_personal_data": {
+      const parts = personalParts(context.personalData);
+      if (parts.length === 0) {
+        return null;
+      }
+      const folded = fold(password);
+      return !parts.some((part) => folded.includes(part));
+    }
+    case "not_current":
+      return context.currentPassword ? password !== context.currentPassword : null;
     default:
       return null;
   }
@@ -40,20 +81,28 @@ export function PasswordRequirements({
   id,
   policy,
   password,
+  personalData = [],
+  currentPassword,
+  showNotCurrent = false,
 }: {
   id: string;
   policy: PasswordPolicy;
   password: string;
+  /** Nombre, apellidos y correo de la persona, para revisar ese requisito en vivo. */
+  personalData?: readonly string[];
+  currentPassword?: string;
+  /** «Distinta de la actual» solo aplica al cambiar la contraseña. */
+  showNotCurrent?: boolean;
 }) {
+  const rules = policy.rules.filter((rule) => showNotCurrent || rule !== "not_current");
   return (
-    <div
-      id={id}
-      className="-mt-2 rounded-md border border-line bg-surface-sunken px-3 py-2.5 text-small"
-    >
+    <div id={id} className="rounded-md border border-line bg-surface-sunken px-3 py-2.5 text-small">
       <p className="font-medium text-fg">{texts.title}</p>
       <ul className="mt-1 grid gap-1">
-        {policy.rules.map((rule) => {
-          const met = password ? isMet(rule, policy, password) : null;
+        {rules.map((rule) => {
+          const met = password
+            ? isMet(rule, { policy, password, personalData, currentPassword })
+            : null;
           return (
             <li
               key={rule}

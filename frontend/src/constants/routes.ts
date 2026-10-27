@@ -1,6 +1,5 @@
 /** Rutas de la API relativas a NEXT_PUBLIC_API_BASE_PATH. */
 export const API_ROUTES = {
-  health: "/health",
   auth: {
     csrf: "/auth/csrf",
     passwordPolicy: "/auth/password-policy",
@@ -62,9 +61,10 @@ export const APP_ROUTES = {
   logbook: "/panel/bitacora",
   receipts: "/panel/recibos",
   profile: "/panel/perfil",
-  changePassword: "/panel/perfil/contrasena",
-  designSystem: "/sistema-diseno",
 } as const;
+
+/** Ancla de la sección «Cambiar contraseña» dentro de Mi perfil. */
+export const PROFILE_PASSWORD_SECTION_ID = "contrasena";
 
 /** Páginas que requieren sesión: el proxy redirige a iniciar sesión si no la hay. */
 export const PROTECTED_ROUTE_PREFIXES: readonly string[] = [APP_ROUTES.panel];

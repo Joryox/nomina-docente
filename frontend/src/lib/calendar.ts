@@ -54,3 +54,14 @@ const isoDateFormatter = new Intl.DateTimeFormat("en-CA", {
 export function todayIso(now: Date = new Date()): string {
   return isoDateFormatter.format(now);
 }
+
+const hourFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: TIMEZONE,
+  hour: "numeric",
+  hourCycle: "h23",
+});
+
+/** Hora del día (0 a 23) en la zona horaria de la institución. */
+export function currentHour(now: Date = new Date()): number {
+  return Number(hourFormatter.format(now));
+}

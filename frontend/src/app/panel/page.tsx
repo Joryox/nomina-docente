@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 
 import { TEXTS } from "@/constants/texts";
-import { PanelOverview } from "@/features/auth/components/panel-overview";
+import { DashboardHome } from "@/features/dashboard/components/dashboard-home";
 
-export const metadata: Metadata = { title: TEXTS.auth.panel.title };
+export const metadata: Metadata = { title: TEXTS.dashboard.title };
 
 export default function PanelPage() {
-  return <PanelOverview />;
+  return <DashboardHome />;
 }

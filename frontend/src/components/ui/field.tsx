@@ -58,6 +58,8 @@ export interface FieldProps {
   /** Mensaje de error: qué pasó y cómo corregirlo. */
   error?: string;
   required?: boolean;
+  /** Marca el campo como opcional junto a la etiqueta, en formularios con obligatorios. */
+  optional?: boolean;
   /** Id del control; si no se da, se genera. */
   id?: string;
   /** Oculta la etiqueta visualmente (sigue disponible para lectores de pantalla). */
@@ -72,6 +74,7 @@ export function Field({
   hint,
   error,
   required = false,
+  optional = false,
   id,
   labelHidden = false,
   className,
@@ -92,6 +95,7 @@ export function Field({
       <Label htmlFor={controlId} className={cn(labelHidden && "sr-only")}>
         {label}
         {required ? <RequiredMark /> : null}
+        {optional ? <span className="font-normal text-fg-muted">{TEXTS.ui.optional}</span> : null}
       </Label>
       {hint ? (
         <p id={hintId} className="text-small text-fg-muted">

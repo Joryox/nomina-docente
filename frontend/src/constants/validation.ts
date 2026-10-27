@@ -23,3 +23,7 @@ export const PERSON_NAME_PATTERN = /^\p{L}+(?:[ '.-]\p{L}+)*\.?$/u;
 export const EMPLOYEE_NUMBER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
 export const LETTER_PATTERN = /\p{L}/u;
 export const DIGIT_PATTERN = /\d/;
+
+/** Partes de un nombre o del correo que la contraseña no puede contener (igual que el backend). */
+export const PASSWORD_PERSONAL_DATA_MIN_LENGTH = 3;
+export const PASSWORD_PERSONAL_DATA_SEPARATORS = /[\s@._+\-']+/;
