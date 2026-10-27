@@ -93,6 +93,13 @@ export function formatFullDate(isoDate: string): string {
   return `${formatWeekday(weekday)} ${longDateFormatter.format(date)}`;
 }
 
+/** `vie 23 de octubre` a partir de `"2026-10-23"`: para listas dentro de una quincena. */
+export function formatDayOfPeriod(isoDate: string): string {
+  const date = calendarDate(isoDate);
+  const weekday = (date.getUTCDay() || ISO_SUNDAY) as Weekday;
+  return `${formatWeekdayShort(weekday)} ${date.getUTCDate()} de ${monthFormatter.format(date)}`;
+}
+
 /** `26 de octubre de 2026, 10:32` a partir de una marca de tiempo ISO, en la zona del sistema. */
 export function formatDateTime(timestamp: string): string {
   const date = new Date(timestamp);

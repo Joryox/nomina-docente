@@ -47,7 +47,12 @@ import { useBusinessRules } from "@/features/catalogs/hooks/use-catalogs";
 import { toUserMessage } from "@/lib/api-error";
 import type { ApiSchemas } from "@/lib/api-types";
 import { addDays } from "@/lib/calendar";
-import { formatFullDate, formatPeriodName, formatTimeRange } from "@/lib/formatters";
+import {
+  formatDayOfPeriod,
+  formatFullDate,
+  formatPeriodName,
+  formatTimeRange,
+} from "@/lib/formatters";
 import { toPaginationState } from "@/lib/pagination";
 import { parsePeriodKey, periodKey, periodOf, recentPeriods } from "@/lib/periods";
 
@@ -276,7 +281,11 @@ function SessionsOfPeriod({
       id: "date",
       header: texts.sessions.columns.date,
       sortValue: (entry) => `${entry.session_date} ${entry.start_time}`,
-      cell: (entry) => <span className="capitalize">{formatFullDate(entry.session_date)}</span>,
+      cell: (entry) => (
+        <time dateTime={entry.session_date} className="whitespace-nowrap">
+          {formatDayOfPeriod(entry.session_date)}
+        </time>
+      ),
     },
     {
       id: "class",
@@ -294,7 +303,9 @@ function SessionsOfPeriod({
       id: "time",
       header: texts.sessions.columns.time,
       cell: (entry) => (
-        <span className="figures">{formatTimeRange(entry.start_time, entry.end_time)}</span>
+        <span className="whitespace-nowrap figures">
+          {formatTimeRange(entry.start_time, entry.end_time)}
+        </span>
       ),
     },
     {

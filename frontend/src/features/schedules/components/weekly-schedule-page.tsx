@@ -219,7 +219,7 @@ function WeekGrid({ days, onSelect }: ViewProps) {
                     type="button"
                     aria-label={blockLabel(day.weekday, item)}
                     onClick={() => onSelect(day.weekday, item)}
-                    className="absolute inset-x-1 grid content-start gap-0.5 overflow-hidden rounded-md border border-l-4 border-primary-ink border-y-line border-r-line bg-primary-soft px-2 py-1 text-left transition-colors duration-(--duration-fast) hover:bg-primary-soft-hover"
+                    className="absolute inset-x-1 grid content-start overflow-hidden rounded-md border border-l-4 border-primary-ink border-y-line border-r-line bg-primary-soft px-2 py-0.5 text-left transition-colors duration-(--duration-fast) hover:bg-primary-soft-hover"
                     style={{
                       top: `calc(var(--schedule-hour-height) * ${hourOffset(item.start_time)})`,
                       height: `calc(var(--schedule-hour-height) * ${
@@ -233,9 +233,11 @@ function WeekGrid({ days, onSelect }: ViewProps) {
                     <span className="truncate text-small text-fg figures">
                       {formatTimeRange(item.start_time, item.end_time)}
                     </span>
-                    <span className="truncate text-small text-fg-muted">
-                      {item.assignment.career_code}
-                    </span>
+                    {item.duration_minutes >= MINUTES_PER_HOUR ? (
+                      <span className="truncate text-small text-fg-muted">
+                        {item.assignment.career_code}
+                      </span>
+                    ) : null}
                   </button>
                 ))}
               </td>

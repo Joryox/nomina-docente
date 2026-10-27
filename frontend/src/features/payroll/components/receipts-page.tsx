@@ -39,6 +39,7 @@ import { APP_ROUTES, PERIOD_PARAM } from "@/constants/routes";
 import { SCREENS } from "@/constants/screens";
 import { TEXTS } from "@/constants/texts";
 import { useBusinessRules } from "@/features/catalogs/hooks/use-catalogs";
+import { useDashboardSummary } from "@/features/dashboard/hooks/use-dashboard";
 import { getErrorMessage, toUserMessage, toWarningMessage } from "@/lib/api-error";
 import type { ApiSchemas } from "@/lib/api-types";
 import { formatDateTime, formatPeriodName } from "@/lib/formatters";
@@ -95,7 +96,12 @@ function PreviewSection({ rules }: { rules: BusinessRules }) {
   const [period, setPeriod] = useState(periodKey(requested ?? periodOf(rules.today)));
   const selected = parsePeriodKey(period);
   const preview = usePayrollPreview(selected);
+  const summary = useDashboardSummary();
   const options = periods.includes(period) ? periods : [period, ...periods];
+  // Quincenas terminadas con sesiones y sin recibo: se proponen para emitir.
+  const unissued = (summary.data?.unissued_periods ?? []).filter(
+    (item) => periodKey(item) !== period,
+  );
 
   return (
     <Card aria-labelledby="recibos-vista-previa">
@@ -126,6 +132,23 @@ function PreviewSection({ rules }: { rules: BusinessRules }) {
           </Select>
         </Field>
       </CardHeader>
+      {unissued.length > 0 ? (
+        <CardContent className="grid gap-3 border-b border-line">
+          {unissued.map((item) => (
+            <Alert
+              key={periodKey(item)}
+              tone="info"
+              action={
+                <Button variant="outline" size="sm" onClick={() => setPeriod(periodKey(item))}>
+                  {texts.preview.showUnissued}
+                </Button>
+              }
+            >
+              {texts.preview.unissued(formatPeriodName(item))}
+            </Alert>
+          ))}
+        </CardContent>
+      ) : null}
       {preview.isError ? (
         <CardContent>
           <Alert
@@ -326,7 +349,7 @@ function IssuedReceipts({ today }: { today: string }) {
       header: SCREENS.common.actions,
       align: "end",
       cell: (receipt) => (
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex justify-end gap-2">
           <Button variant="outline" size="sm" asChild>
             <Link
               href={APP_ROUTES.receipt(receipt.id)}

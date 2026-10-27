@@ -1,11 +1,21 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDateTime, formatFullDate, formatMoney, formatPeriod } from "./formatters";
+import {
+  formatDateTime,
+  formatDayOfPeriod,
+  formatFullDate,
+  formatMoney,
+  formatPeriod,
+} from "./formatters";
 
 describe("formatos del sistema", () => {
   it("fecha completa con el día de la semana", () => {
     expect(formatFullDate("2026-10-26")).toBe("lunes 26 de octubre de 2026");
     expect(formatFullDate("2026-11-01")).toBe("domingo 1 de noviembre de 2026");
+  });
+
+  it("día dentro de una quincena, sin año", () => {
+    expect(formatDayOfPeriod("2026-10-23")).toBe("vie 23 de octubre");
   });
 
   it("marca de tiempo en la zona de la institución y en 24 horas", () => {

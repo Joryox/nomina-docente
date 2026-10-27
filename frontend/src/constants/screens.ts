@@ -277,6 +277,8 @@ export const SCREENS = {
       viewReceipt: "Ver recibo",
       issue: "Emitir recibo",
       blockersTitle: "Todavía no se puede emitir",
+      unissued: (period: string) => `La ${period} terminó y no tiene recibo emitido.`,
+      showUnissued: "Revisar esa quincena",
       warningsTitle: "Revisa antes de emitir",
       pendingList: (count: number) =>
         count === 1 ? "1 clase sin registrar:" : `${count} clases sin registrar:`,
