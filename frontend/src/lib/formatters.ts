@@ -4,7 +4,7 @@ import { TEXTS } from "@/constants/texts";
 import type { Fortnight, Weekday } from "./api-types";
 
 /**
- * Formatos del sistema (CLAUDE.md §7.4). Dinero y horas llegan de la API como cadenas
+ * Formatos del sistema (docs/sistema-de-diseno.md §8). Dinero y horas llegan de la API como cadenas
  * decimales ("1250.00") y se formatean **sin convertirlas a número**: `Intl.NumberFormat`
  * acepta la cadena y la trata como decimal exacto, así que nunca se pierde un centavo.
  */

@@ -30,7 +30,7 @@ class TimeRange:
         return self.start < other.end and other.start < self.end
 
     def label(self) -> str:
-        """«10:00–12:00» (24 horas, CLAUDE.md §7.4)."""
+        """«10:00–12:00» (24 horas, docs/sistema-de-diseno.md §8)."""
         return f"{self.start.strftime(CLOCK_TIME_FORMAT)}–{self.end.strftime(CLOCK_TIME_FORMAT)}"
 
 

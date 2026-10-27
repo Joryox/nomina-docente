@@ -1,13 +1,13 @@
 # Base de datos del Sistema de Nómina Docente
 
-Este documento describe el esquema de PostgreSQL del sistema: el modelo entidad-relación, el diccionario de datos, las decisiones de diseño y la forma de operar migraciones y datos semilla. Las reglas de negocio citadas (`RN-XX`) están en [`CLAUDE.md`](../CLAUDE.md#2-reglas-de-negocio) y la arquitectura general en [`arquitectura.md`](arquitectura.md).
+Este documento describe el esquema de PostgreSQL del sistema: el modelo entidad-relación, el diccionario de datos, las decisiones de diseño y la forma de operar migraciones y datos semilla. Las reglas de negocio citadas (`RN-XX`) están en [`reglas-de-negocio.md`](reglas-de-negocio.md) y la arquitectura general en [`arquitectura.md`](arquitectura.md).
 
 | Concepto | Valor |
 | --- | --- |
 | Motor | PostgreSQL 16 o superior (desarrollo con 18.3) |
 | Bases | `nomina_docente` (desarrollo) y `nomina_docente_test` (pruebas automatizadas) |
 | Codificación | UTF-8 (`TEMPLATE template0`) |
-| Fuente de verdad del esquema | Migraciones de Alembic en [`backend/alembic/versions/`](../backend/alembic/versions/): esquema inicial (`3295e857da8d`, etapa 2), sesiones y bloqueo de acceso (`067cd1ed562c`, etapa 3) y lógica de negocio (`8c41d2f7a9b3`, etapa 4) |
+| Fuente de verdad del esquema | Migraciones de Alembic en [`backend/alembic/versions/`](../backend/alembic/versions/): esquema inicial (`3295e857da8d`), sesiones y bloqueo de acceso (`067cd1ed562c`) y lógica de negocio (`8c41d2f7a9b3`) |
 | Modelos ORM | [`backend/src/app/models/`](../backend/src/app/models/), un archivo por tabla |
 | Datos semilla | [`backend/src/app/seeds/data/`](../backend/src/app/seeds/data/) |
 
@@ -558,7 +558,7 @@ Principio: **nunca se borra en cascada información con valor histórico**. Toda
 | `users → user_roles` | `CASCADE` | El otorgamiento de un rol no tiene valor propio sin el usuario |
 | `users → auth_sessions → refresh_tokens` | `CASCADE` | Las sesiones y sus tokens son datos técnicos sin valor histórico propio |
 | `assignments → logbook_entries` | `RESTRICT` | Con bitácora, la asignación solo se desactiva (RN-15) |
-| `payroll_receipts → payroll_receipt_lines` | `RESTRICT` (+ trigger) | Un recibo emitido nunca se borra. Se cambió el `CASCADE` previsto en la etapa 0: con recibos inmutables no hay borrado que propagar |
+| `payroll_receipts → payroll_receipt_lines` | `RESTRICT` (+ trigger) | Un recibo emitido nunca se borra. Con recibos inmutables no hay borrado que propagar |
 | Todas las demás | `RESTRICT` | Catálogos, docentes, materias y recibos se dan de baja con `is_active` o se conservan |
 
 Las bajas lógicas (`is_active = false`) están en `users`, `roles`, `careers`, `hourly_rates`, `subjects` y `assignments`. Desactivar una asignación guarda `active_until` y borra sus horarios (no tienen valor histórico: la historia está en la bitácora y en los recibos).
@@ -576,7 +576,7 @@ La base garantiza todo lo que puede expresarse como invariante de los datos. Lo 
 | Sesión dentro de la vigencia de la asignación (RN-38) | Servicio, comparando con `active_until` (que sí está en la base) |
 | Dos emisiones simultáneas del mismo periodo | Servicio: bloqueo `FOR NO KEY UPDATE` de la fila del docente; la base lo respalda con el `UNIQUE` del periodo |
 
-### 3.9 Tarifa congelada en cada sesión (etapa 4)
+### 3.9 Tarifa congelada en cada sesión
 
 **Problema.** Si la tarifa se leyera de la asignación al calcular, cambiarla alteraría en silencio la vista previa de quincenas ya trabajadas. RN-12 protege el importe de cada tarifa del catálogo, pero no qué tarifa usa una asignación.
 
@@ -584,7 +584,7 @@ La base garantiza todo lo que puede expresarse como invariante de los datos. Lo 
 
 | Opción | Ventajas | Desventajas |
 | --- | --- | --- |
-| A. Solo desactivar y crear otra asignación (diseño de la etapa 0) | Sin cambios de esquema | Obliga a duplicar horarios; la misma materia y carrera aparece como dos asignaciones; no impide que un cambio de `hourly_rate_id` por SQL altere el historial |
+| A. Solo desactivar y crear otra asignación | Sin cambios de esquema | Obliga a duplicar horarios; la misma materia y carrera aparece como dos asignaciones; no impide que un cambio de `hourly_rate_id` por SQL altere el historial |
 | B. Versionar la asignación (tabla de tarifas con vigencia desde/hasta) | Modela la tarifa vigente por fecha | Más tablas y consultas por rango; hay que resolver traslapes de vigencias y sesiones capturadas tarde |
 | **C. Guardar la tarifa en cada sesión al registrarla** (elegida) | Una sola columna; la vista previa y la emisión leen exactamente lo registrado; un cambio de tarifa nunca toca filas existentes; la FK obliga a que sea una tarifa del catálogo | La tarifa de una sesión es la vigente al **registrarla**, no la de su fecha |
 
@@ -612,11 +612,11 @@ Los nombres estables permiten que el backend traduzca una violación a un códig
 
 ## 4. Migraciones
 
-| Revisión | Etapa | Contenido |
-| --- | --- | --- |
-| `3295e857da8d` | 2 | Esquema inicial: extensiones, tipos, funciones, triggers y las 13 tablas del sistema |
-| `067cd1ed562c` | 3 | Sesiones y bloqueo de acceso: `auth_sessions`, `refresh_tokens` y columnas de bloqueo en `users` |
-| `8c41d2f7a9b3` | 4 | Lógica de negocio: `subjects.is_active`, `assignments.active_until`, `logbook_entries.hourly_rate_id` (tarifa congelada) y renglones del recibo únicos por asignación y tarifa |
+| Revisión | Contenido |
+| --- | --- |
+| `3295e857da8d` | Esquema inicial: extensiones, tipos, funciones, triggers y las 13 tablas del sistema |
+| `067cd1ed562c` | Sesiones y bloqueo de acceso: `auth_sessions`, `refresh_tokens` y columnas de bloqueo en `users` |
+| `8c41d2f7a9b3` | Lógica de negocio: `subjects.is_active`, `assignments.active_until`, `logbook_entries.hourly_rate_id` (tarifa congelada) y renglones del recibo únicos por asignación y tarifa |
 
 Las migraciones se escriben y revisan a mano: *autogenerate* no detecta extensiones, tipos, funciones, secuencias ni triggers, y no compara bien las restricciones de exclusión. Usa SQL literal a propósito: una migración es una fotografía del esquema y no debe cambiar si cambian las constantes de la aplicación. Una prueba verifica que *autogenerate* no encuentre diferencias entre los modelos y la base migrada.
 
@@ -637,7 +637,7 @@ Para una migración nueva: modificar los modelos, ejecutar `uv run alembic revis
 
 | Archivo | Contenido | Fuente |
 | --- | --- | --- |
-| `roles.json` | `teacher` (Docente, activo) y `admin` (Administrador, inactivo, reservado) | Modelo de roles, CLAUDE.md §5.2 |
+| `roles.json` | `teacher` (Docente, activo) y `admin` (Administrador, inactivo, reservado) | Modelo de roles (§2) |
 | `career_types.json` | `engineering` (Ingeniería) y `bachelor` (Licenciatura) | Volante oficial de admisión 2024 del TESH |
 | `careers.json` | Las 7 carreras del TESH (tabla siguiente) | Volante oficial de admisión 2024 del TESH |
 | `hourly_rates.json` | $125.00, $135.00 y $145.00 MXN | Tabulador definido por el responsable (RN-10) |

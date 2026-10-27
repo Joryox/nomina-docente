@@ -1,6 +1,6 @@
 # Logos institucionales
 
-En esta carpeta van los **logos oficiales del TESH** que se usan en la interfaz y en el recibo de nómina. Se incorporan en la etapa 11; mientras tanto, el componente `Logo` muestra un logotipo tipográfico provisional y la paleta es un azul marino provisional (etapa 5).
+En esta carpeta van los **logos oficiales del TESH** que se usan en la interfaz y en el recibo de nómina. Mientras no estén, el componente `Logo` y el recibo en PDF muestran un logotipo tipográfico (las siglas en un marco) y la paleta usa un azul marino institucional.
 
 ## Archivos esperados
 
@@ -20,4 +20,10 @@ En esta carpeta van los **logos oficiales del TESH** que se usan en la interfaz 
 
 ## Cómo activarlos
 
-Copiar los archivos, declararlos en `logo` y `logoOnDark` de `src/config/brand.ts`, reemplazar `src/app/icon.svg` por el favicon y la escala de `src/styles/brand.css` por la del color institucional, y correr `npm test`. Paso a paso en [`docs/sistema-de-diseno.md`](../../../docs/sistema-de-diseno.md#10-cómo-reemplazar-la-marca).
+Un solo paso, desde la raíz del repositorio:
+
+```bash
+bash scripts/apply-brand.sh <carpeta-con-los-archivos> "<color-hex>"
+```
+
+Copia los archivos aquí y al recibo en PDF, declara los logos, genera la escala de color y verifica el contraste. Detalle en [`docs/sistema-de-diseno.md`](../../../docs/sistema-de-diseno.md#10-cómo-reemplazar-la-marca).

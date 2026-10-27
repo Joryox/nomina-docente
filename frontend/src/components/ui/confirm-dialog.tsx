@@ -32,7 +32,7 @@ export interface ConfirmDialogProps {
 }
 
 /**
- * Confirmación explícita antes de una acción destructiva o irreversible (CLAUDE.md, principio
+ * Confirmación explícita antes de una acción destructiva o irreversible (principio
  * rector). Explica qué se va a perder. El foco inicial va a «Cancelar», no a la acción.
  */
 export function ConfirmDialog({

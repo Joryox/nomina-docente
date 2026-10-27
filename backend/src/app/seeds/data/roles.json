@@ -1,5 +1,5 @@
 {
-  "source": "Modelo de roles del sistema (CLAUDE.md, sección 5.2)",
+  "source": "Modelo de roles del sistema (docs/base-de-datos.md)",
   "records": [
     {
       "code": "teacher",

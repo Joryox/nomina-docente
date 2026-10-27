@@ -1,6 +1,6 @@
 # Seguridad del Sistema de Nómina Docente
 
-Este documento describe cómo el sistema protege las cuentas y los datos de nómina: autenticación, sesiones, protección contra CSRF, endurecimiento HTTP y registro de eventos. Incluye los diagramas de cada flujo, la relación de amenazas y mitigaciones (OWASP Top 10) y las limitaciones conocidas. Las reglas de negocio están en [`CLAUDE.md`](../CLAUDE.md), la arquitectura en [`arquitectura.md`](arquitectura.md) y el esquema en [`base-de-datos.md`](base-de-datos.md).
+Este documento describe cómo el sistema protege las cuentas y los datos de nómina: autenticación, sesiones, protección contra CSRF, endurecimiento HTTP y registro de eventos. Incluye los diagramas de cada flujo, la relación de amenazas y mitigaciones (OWASP Top 10) y las limitaciones conocidas. Las reglas de negocio están en [`reglas-de-negocio.md`](reglas-de-negocio.md), la arquitectura en [`arquitectura.md`](arquitectura.md) y el esquema en [`base-de-datos.md`](base-de-datos.md).
 
 ## 1. Resumen
 
@@ -242,6 +242,36 @@ Todas las variables son obligatorias (sin valores por defecto en el código). Lo
 
 En el frontend: `NEXT_PUBLIC_CSRF_COOKIE_NAME` (= `CSRF_COOKIE_NAME`) y `SESSION_HINT_COOKIE_NAME` (solo servidor, = la del backend).
 
+### 7.1 Política de seguridad de contenidos (páginas)
+
+`frontend/src/config/security-headers.ts` envía en todas las páginas:
+
+| Directiva | Valor | Motivo |
+| --- | --- | --- |
+| `default-src`, `font-src`, `connect-src` | `'self'` | Todo (fuentes autohospedadas, API vía proxy) es del mismo origen |
+| `script-src` | `'self' 'unsafe-inline'` (+ `'unsafe-eval'` solo en desarrollo) | Datos de renderizado de Next.js y script del tema en línea |
+| `style-src` | `'self' 'unsafe-inline'` | Radix y Framer Motion posicionan y animan con estilos en línea |
+| `img-src` | `'self' data: blob:` | Íconos y el PDF descargado como `blob:` |
+| `object-src` | `'none'` | Sin complementos |
+| `base-uri`, `form-action` | `'self'` | Sin `<base>` ni formularios hacia otros sitios |
+| `frame-ancestors` | `'none'` | Sin incrustación (también `X-Frame-Options: DENY`) |
+| `upgrade-insecure-requests`, HSTS | solo en producción | Todo por HTTPS |
+
+Riesgo aceptado de `'unsafe-inline'` en scripts y cómo se mitiga: React escapa todo el texto; el único `dangerouslySetInnerHTML` es el script del tema, una constante sin datos del usuario (`lib/theme/preferences-script.ts`); no se cargan scripts de terceros; la API responde JSON con `Content-Security-Policy: default-src 'none'`, y las cookies de sesión son `HttpOnly`, así que un script inyectado no podría leerlas.
+
+### 7.2 Lista para producción
+
+| Revisión | Dónde |
+| --- | --- |
+| `APP_ENV=production`: desactiva `/docs` y el OpenAPI; `Settings` rechaza cookies sin `Secure`, `SameSite=none` y algoritmos que no sean HMAC | `backend/.env` |
+| `JWT_SECRET` aleatorio de al menos 32 caracteres (`scripts/setup.sh` lo genera) y distinto por instalación | `backend/.env` |
+| `AUTH_COOKIE_SECURE=true` y, de preferencia, nombres de cookie con prefijo `__Host-` (hay que igualar `CSRF_COOKIE_NAME`/`NEXT_PUBLIC_CSRF_COOKIE_NAME` y `SESSION_HINT_COOKIE_NAME`) | `backend/.env`, `frontend/.env.local` |
+| `CORS_ORIGINS` solo con el dominio público | `backend/.env` |
+| `DESIGN_GUIDE_ENABLED=false` (en un build de producción la guía responde 404 de todos modos) | `frontend/.env.local` |
+| Servir detrás de HTTPS (proxy inverso) con límite de peticiones por IP | Infraestructura |
+| Usuario de base de datos propio con privilegios mínimos, en lugar de `postgres` | PostgreSQL |
+| Revisar dependencias: `uvx pip-audit` (backend) y `npm audit` (frontend) | Antes de cada versión; en la 1.0.0 ambos sin vulnerabilidades conocidas |
+
 ## 8. Limitaciones conocidas y mejoras futuras
 
 | Limitación | Por qué | Mejora prevista |
@@ -250,14 +280,14 @@ En el frontend: `NEXT_PUBLIC_CSRF_COOKIE_NAME` (= `CSRF_COOKIE_NAME`) y `SESSION
 | El registro revela si un correo ya tiene cuenta | Es necesario para dar un error claro (requisito de RN-02) | Con correo disponible: responder siempre «revisa tu correo» y confirmar la cuenta por enlace |
 | El bloqueo es por cuenta, no por IP | No hay límite de peticiones por origen | Limitador por IP y por ruta (p. ej. en un proxy inverso) antes del despliegue |
 | No hay segundo factor (MFA) | Fuera del alcance | TOTP opcional para docentes y obligatorio para administradores |
-| La CSP de las páginas de Next.js es básica | La CSP estricta con *nonces* requiere ajustar el render | Etapa 10 |
+| La CSP de las páginas permite scripts en línea | Las páginas se prerenderizan como HTML estático: Next.js inserta en línea los datos del renderizado y el script del tema evita el parpadeo; un *nonce* por petición obligaría a renderizar cada página en el servidor | CSP con *nonces* si las páginas pasan a renderizarse por petición (ver §7.1) |
 | Cookies sin prefijo `__Host-` en desarrollo | El prefijo exige `Secure` (HTTPS) | En producción, nombres `__Host-nomina_access`, etc. (son configurables) |
 | CSRF *double-submit* no firmado | Suficiente con un solo origen y `SameSite`; un subdominio comprometido podría sembrar la cookie | Token CSRF firmado con HMAC y ligado a la sesión |
 | La lista de contraseñas comunes es corta | Se versiona en el repositorio | Consulta con *k-anonymity* a una base de contraseñas filtradas |
 | Las sesiones y tokens vencidos no se depuran | No afectan la seguridad (se rechazan), solo ocupan espacio | Tarea periódica que borre sesiones vencidas o revocadas hace más de N días |
-| No hay pantalla de sesiones activas | Fuera del alcance de la etapa 3 | Lista de dispositivos con opción de cerrar cada uno (los datos ya existen en `auth_sessions`) |
+| No hay pantalla de sesiones activas | Fuera del alcance de la versión 1.0 | Lista de dispositivos con opción de cerrar cada uno (los datos ya existen en `auth_sessions`) |
 | El secreto del JWT no rota | Una sola clave | Identificador de clave (`kid`) y rotación programada |
-| La aplicación usa el usuario `postgres` en desarrollo | Simplicidad local | Rol propio con privilegios mínimos (decisión pendiente, CLAUDE.md §11) |
+| La aplicación usa el usuario `postgres` en desarrollo | Simplicidad local | Rol propio con privilegios mínimos (recomendado antes de un despliegue) |
 
 ## 9. Pruebas
 

@@ -72,6 +72,6 @@ El esquema de base de datos está documentado en [`docs/base-de-datos.md`](../do
 
 | `GET /docs` | Documentación interactiva (OpenAPI en `/api/v1/openapi.json`) |
 
-Lógica de negocio (etapa 4), todas con sesión de docente: catálogos (`/catalogs/*`), materias (`/subjects`), asignaciones y sus horarios (`/assignments`), horario semanal (`/schedules`), bitácora (`/logbook`, `/logbook/scheduled`, `/logbook/quick`), nómina (`/payroll/periods`, `/payroll/preview`, `/payroll/receipts`) y panel (`/dashboard/summary`). La tabla completa, las convenciones (dinero como cadena, paginación, filtros) y el catálogo de códigos de error están en [`docs/api.md`](../docs/api.md).
+Rutas de negocio, todas con sesión de docente: catálogos (`/catalogs/*`), materias (`/subjects`), asignaciones y sus horarios (`/assignments`), horario semanal (`/schedules`), bitácora (`/logbook`, `/logbook/scheduled`, `/logbook/quick`), nómina (`/payroll/periods`, `/payroll/preview`, `/payroll/receipts`) y panel (`/dashboard/summary`). La tabla completa, las convenciones (dinero como cadena, paginación, filtros) y el catálogo de códigos de error están en [`docs/api.md`](../docs/api.md).
 
 Toda petición que modifica datos requiere el encabezado `X-CSRF-Token`. Detalle en [`docs/seguridad.md`](../docs/seguridad.md).

@@ -157,7 +157,7 @@ QUICK_LOGBOOK_MAX_ENTRIES: Final = 20
 WARNING_DETAIL_MAX_ITEMS: Final = 50
 DASHBOARD_LATEST_RECEIPTS: Final = 3
 
-# Formato de horas en la API: 24 horas con dos dígitos, sin segundos (CLAUDE.md §7.4).
+# Formato de horas en la API: 24 horas con dos dígitos, sin segundos (docs/sistema-de-diseno.md §8).
 CLOCK_TIME_PATTERN: Final = r"^([01]\d|2[0-3]):[0-5]\d$"
 CLOCK_TIME_FORMAT: Final = "%H:%M"
 # Montos que recibe la API: cadena decimal con hasta dos decimales, nunca un número JSON.
@@ -172,7 +172,7 @@ class RoleCode(StrEnum):
     ADMIN = "admin"
 
 
-# --- Autenticación y sesión (sección 6 de CLAUDE.md) -------------------------------------
+# --- Autenticación y sesión (docs/seguridad.md) ----------------------------------------
 AUTH_ROUTE_PREFIX: Final = "/auth"
 # La cookie de refresh solo viaja a las rutas de autenticación (path restringido).
 REFRESH_COOKIE_PATH: Final = f"{API_V1_PREFIX}{AUTH_ROUTE_PREFIX}"
