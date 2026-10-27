@@ -309,6 +309,8 @@ Para un periodo quincenal (1 al 15, o 16 al último día del mes):
 3. `importe = minutos × tarifa / 60`, redondeado a 2 decimales con `ROUND_HALF_UP`.
 4. `total bruto = suma de importes`.
 
+El recibo en PDF lo genera `backend/src/app/documents/receipt_pdf.py` con fpdf2 (Python puro: sin bibliotecas del sistema en Windows ni en Linux) y las fuentes del sistema de diseño incluidas en `documents/fonts/` (SIL OFL). Solo presenta el recibo emitido (`ReceiptDetailResponse`): no calcula nada; el total con letra lo da `domain/amount_words.py`.
+
 Todo el cálculo usa `Decimal` en Python y `NUMERIC` en PostgreSQL, y vive en `backend/src/app/domain/` (`money.py` es el único módulo que redondea). No se calculan deducciones (ISR, IMSS) en esta versión. Fórmula con un ejemplo numérico completo y diagramas de la emisión en [`reglas-de-negocio.md`](reglas-de-negocio.md).
 
 ## 7. Datos de demostración

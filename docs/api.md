@@ -158,7 +158,8 @@ Algunas operaciones se permiten pero conviene revisar algo. La respuesta incluye
 | `GET` | `/payroll/preview` | Vista previa del recibo | Docente | — |
 | `GET` | `/payroll/receipts` | Listar mis recibos | Docente | — |
 | `POST` | `/payroll/receipts` | Emitir el recibo de una quincena | Docente | Sí |
-| `GET` | `/payroll/receipts/{receipt_id}` | Consultar un recibo | Docente | — |
+| `GET` | `/payroll/receipts/{receipt_id}` | Consultar un recibo (incluye `total_amount_words`: el total con letra) | Docente | — |
+| `GET` | `/payroll/receipts/{receipt_id}/pdf` | Descargar el recibo en PDF (carta; `Content-Disposition` con folio y periodo: `recibo-NOM-202610-Q1-000042-2026-10-q1.pdf`) | Docente | — |
 
 ### Panel
 
