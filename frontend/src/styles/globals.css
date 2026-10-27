@@ -180,6 +180,17 @@
   }
 }
 
+/* Cambio de tema: solo mientras dura (atributo que pone preferences-store). */
+:root[data-theme-changing] *,
+:root[data-theme-changing] *::before,
+:root[data-theme-changing] *::after {
+  transition:
+    background-color var(--duration-slow) var(--easing-standard),
+    border-color var(--duration-slow) var(--easing-standard),
+    color var(--duration-slow) var(--easing-standard),
+    fill var(--duration-slow) var(--easing-standard) !important;
+}
+
 /* Impresión (recibo de nómina): página carta limpia, sin la estructura del panel. */
 @media print {
   @page {

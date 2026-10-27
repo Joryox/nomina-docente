@@ -2,6 +2,7 @@ import { CalendarX2, Clock } from "lucide-react";
 import Link from "next/link";
 
 import { StatusBadge } from "@/components/domain/status-badge";
+import { Appear, Stagger, StaggerItem } from "@/components/ui/motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,9 +44,10 @@ export function TodayClasses({ today }: { today: DashboardSummary["today"] }) {
       {today.classes.length === 0 ? (
         <EmptyState icon={CalendarX2} title={texts.empty} description={texts.emptyHint} />
       ) : (
-        <ul className="divide-y divide-line">
+        <Stagger as="ul" className="divide-y divide-line">
           {today.classes.map((item) => (
-            <li
+            <StaggerItem
+              as="li"
               key={item.schedule_id}
               className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-3"
             >
@@ -58,9 +60,9 @@ export function TodayClasses({ today }: { today: DashboardSummary["today"] }) {
                 </p>
               </div>
               <ClassAction date={today.date} item={item} />
-            </li>
+            </StaggerItem>
           ))}
-        </ul>
+        </Stagger>
       )}
       {today.classes.length > 0 && due.length === 0 && today.registered_count > 0 ? (
         <CardContent className="border-t border-line text-small text-fg-muted">
@@ -73,7 +75,11 @@ export function TodayClasses({ today }: { today: DashboardSummary["today"] }) {
 
 function ClassAction({ date, item }: { date: string; item: TodayClass }) {
   if (item.registered) {
-    return <StatusBadge status="session-registered" label={texts.registered} />;
+    return (
+      <Appear>
+        <StatusBadge status="session-registered" label={texts.registered} />
+      </Appear>
+    );
   }
   if (!item.is_due) {
     return (

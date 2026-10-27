@@ -5,6 +5,7 @@ import { Folio } from "@/components/domain/folio";
 import { Hours } from "@/components/domain/hours";
 import { Money } from "@/components/domain/money";
 import { PeriodLabel } from "@/components/domain/period-label";
+import { Stagger, StaggerItem } from "@/components/ui/motion";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -30,9 +31,9 @@ export function LatestReceipts({ receipts }: { receipts: DashboardSummary["lates
       {receipts.length === 0 ? (
         <EmptyState icon={FileText} title={texts.empty} description={texts.emptyHint} />
       ) : (
-        <ul className="divide-y divide-line">
+        <Stagger as="ul" className="divide-y divide-line">
           {receipts.map((receipt) => (
-            <li key={receipt.id}>
+            <StaggerItem as="li" key={receipt.id}>
               <Link
                 href={APP_ROUTES.receipt(receipt.id)}
                 aria-label={texts.viewLabel(formatPeriodName(receipt.period))}
@@ -59,9 +60,9 @@ export function LatestReceipts({ receipts }: { receipts: DashboardSummary["lates
                   </span>
                 </div>
               </Link>
-            </li>
+            </StaggerItem>
           ))}
-        </ul>
+        </Stagger>
       )}
     </Card>
   );

@@ -13,6 +13,9 @@ import {
   type ThemePreference,
 } from "@/constants/preferences";
 import { safeStorage } from "@/lib/safe-storage";
+import { DURATIONS } from "@/styles/motion";
+
+const MS_PER_SECOND = 1000;
 
 /*
  * Preferencias de interfaz como estado externo de React: la verdad está en los atributos de
@@ -38,9 +41,28 @@ function systemTheme(): ResolvedTheme {
   return window.matchMedia(DARK_SCHEME_QUERY).matches ? "dark" : "light";
 }
 
+let themeTransitionTimer: number | undefined;
+
+/**
+ * Cambio de tema con transición de colores breve. El atributo solo existe durante el cambio,
+ * así que ni la carga de la página ni el resto de la interfaz heredan esa transición; con
+ * `prefers-reduced-motion` las duraciones valen 0 y el cambio es instantáneo.
+ */
+function withThemeTransition(change: () => void) {
+  root().setAttribute(ROOT_ATTRIBUTES.themeChanging, "");
+  change();
+  window.clearTimeout(themeTransitionTimer);
+  themeTransitionTimer = window.setTimeout(
+    () => root().removeAttribute(ROOT_ATTRIBUTES.themeChanging),
+    DURATIONS.slow * MS_PER_SECOND,
+  );
+}
+
 function applyTheme(preference: ThemePreference) {
   const resolved = preference === "system" ? systemTheme() : preference;
-  root().setAttribute(ROOT_ATTRIBUTES.theme, resolved);
+  if (root().getAttribute(ROOT_ATTRIBUTES.theme) !== resolved) {
+    withThemeTransition(() => root().setAttribute(ROOT_ATTRIBUTES.theme, resolved));
+  }
   root().setAttribute(ROOT_ATTRIBUTES.themePreference, preference);
 }
 

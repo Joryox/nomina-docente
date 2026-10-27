@@ -52,7 +52,17 @@ export function Alert({ tone = "info", title, children, action, announce, classN
   const role = announce ? (resolvedTone === "danger" ? "alert" : "status") : undefined;
 
   return (
-    <div data-slot="alert" role={role} className={cn(alertVariants({ tone }), className)}>
+    <div
+      data-slot="alert"
+      role={role}
+      className={cn(
+        alertVariants({ tone }),
+        // Un aviso que responde a una acción aparece con suavidad para que se note.
+        announce &&
+          "animate-in duration-(--duration-base) ease-enter fade-in-0 slide-in-from-top-1",
+        className,
+      )}
+    >
       <Icon aria-hidden="true" className={cn("mt-0.5 size-5 shrink-0", TONE_INK[resolvedTone])} />
       <div className="grid flex-1 gap-1">
         {title ? <p className="font-semibold text-fg">{title}</p> : null}

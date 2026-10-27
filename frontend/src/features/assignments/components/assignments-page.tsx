@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Hours } from "@/components/domain/hours";
 import { Money } from "@/components/domain/money";
 import { StatusBadge } from "@/components/domain/status-badge";
+import { Stagger, StaggerItem } from "@/components/ui/motion";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -191,21 +192,23 @@ export function AssignmentsPage() {
           )}
         </Card>
       ) : (
-        <div className="grid gap-(--section-gap)">
+        <Stagger className="grid gap-(--section-gap)">
           {groups.map((group) => (
-            <Card key={group.code} aria-labelledby={`carrera-${group.code}`}>
-              <CardHeader className="items-center">
-                <CardTitle id={`carrera-${group.code}`}>{group.name}</CardTitle>
-                <Badge tone="neutral">{group.code}</Badge>
-              </CardHeader>
-              <ul className="divide-y divide-line">
-                {group.items.map((assignment) => (
-                  <AssignmentRow key={assignment.id} assignment={assignment} />
-                ))}
-              </ul>
-            </Card>
+            <StaggerItem key={group.code}>
+              <Card aria-labelledby={`carrera-${group.code}`}>
+                <CardHeader className="items-center">
+                  <CardTitle id={`carrera-${group.code}`}>{group.name}</CardTitle>
+                  <Badge tone="neutral">{group.code}</Badge>
+                </CardHeader>
+                <ul className="divide-y divide-line">
+                  {group.items.map((assignment) => (
+                    <AssignmentRow key={assignment.id} assignment={assignment} />
+                  ))}
+                </ul>
+              </Card>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       )}
     </>
   );
