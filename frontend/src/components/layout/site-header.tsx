@@ -6,7 +6,7 @@ import { APP_ROUTES } from "@/constants/routes";
 import { Logo } from "./logo";
 import { ThemeSwitcher } from "./theme-switcher";
 
-/** Encabezado de las páginas públicas (estado del sistema, guía viva): marca y tema. */
+/** Encabezado de las páginas públicas (errores, guía viva): marca y tema. */
 export function SiteHeader({ children }: { children?: ReactNode }) {
   return (
     <header className="border-t-4 border-b border-t-primary border-b-line bg-surface">

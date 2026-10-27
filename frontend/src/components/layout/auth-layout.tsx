@@ -25,7 +25,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
             <p className="font-serif text-display">{BRAND.institutionName}</p>
             <p className="text-subtitle font-normal">{BRAND.appName}</p>
           </div>
-          <p className="text-body">{texts.authAside}</p>
+          <p className="text-body">{texts.authTagline}</p>
           <ul className="grid gap-2 text-body">
             {texts.authAsideFacts.map((fact) => (
               <li key={fact} className="flex items-start gap-2">
@@ -48,7 +48,12 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           tabIndex={-1}
           className="flex flex-1 justify-center px-(--page-gutter) py-8 outline-none lg:items-center lg:py-12"
         >
-          <div className="w-full max-w-auth">{children}</div>
+          <div className="grid w-full max-w-auth gap-6">
+            <p className="border-l-2 border-primary pl-3 text-body text-fg-muted lg:hidden">
+              {texts.authTagline}
+            </p>
+            {children}
+          </div>
         </main>
       </div>
     </div>

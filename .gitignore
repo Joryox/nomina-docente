@@ -51,6 +51,8 @@ next-env.d.ts
 *.tsbuildinfo
 .eslintcache
 coverage/
+test-results/
+playwright-report/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

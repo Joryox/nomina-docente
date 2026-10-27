@@ -3,7 +3,6 @@
 import { ChevronDown, LogOut } from "lucide-react";
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,20 +73,12 @@ export function UserMenu({ user, onLogout, loggingOut = false }: UserMenuProps) 
         <DropdownMenuSeparator />
         {ACCOUNT_MENU.map((item) => {
           const Icon = item.icon;
-          return item.ready ? (
+          return (
             <DropdownMenuItem key={item.id} asChild>
               <Link href={item.href}>
                 <Icon aria-hidden="true" />
                 {item.label}
               </Link>
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem key={item.id} disabled>
-              <Icon aria-hidden="true" />
-              {item.label}
-              <Badge tone="neutral" className="ml-auto shrink-0">
-                {texts.comingSoonShort}
-              </Badge>
             </DropdownMenuItem>
           );
         })}

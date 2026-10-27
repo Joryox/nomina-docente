@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import { activeNavigationItem, NAVIGATION, type NavigationItem } from "@/constants/navigation";
 import { TEXTS } from "@/constants/texts";
@@ -69,7 +68,7 @@ function NavEntry({
   const Icon = item.icon;
   const label = <span className={cn("truncate", collapsed && "sr-only")}>{item.label}</span>;
 
-  const entry = item.ready ? (
+  const entry = (
     <Link
       href={item.href}
       onClick={onNavigate}
@@ -84,28 +83,13 @@ function NavEntry({
       <Icon aria-hidden="true" />
       {label}
     </Link>
-  ) : (
-    <span aria-disabled="true" className={cn(itemClasses, "cursor-not-allowed text-fg-disabled")}>
-      <Icon aria-hidden="true" />
-      {label}
-      {collapsed ? (
-        <span className="sr-only">({TEXTS.layout.comingSoon})</span>
-      ) : (
-        <Badge tone="neutral" className="ml-auto shrink-0" title={TEXTS.layout.comingSoon}>
-          {TEXTS.layout.comingSoonShort}
-        </Badge>
-      )}
-    </span>
   );
 
   if (!collapsed) {
     return entry;
   }
-  const hint = item.ready
-    ? item.label
-    : `${item.label}. ${item.stage ? TEXTS.layout.comingSoonHint(item.stage) : TEXTS.layout.comingSoon}`;
   return (
-    <Tooltip content={hint} side="right">
+    <Tooltip content={item.label} side="right">
       {entry}
     </Tooltip>
   );

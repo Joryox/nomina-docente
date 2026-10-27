@@ -48,3 +48,15 @@ export function scheduleFormSchema(rules: ClassDurationRules) {
     ApiSchemas["ScheduleCreate"]
   >;
 }
+
+/** Horario nuevo con la asignación elegida de un selector (el diálogo de alta). */
+export function newScheduleFormSchema(rules: ClassDurationRules) {
+  return z
+    .object({
+      assignment_id: z.uuid(VALIDATION_MESSAGES.selectOption),
+      weekday: z.coerce.number(VALIDATION_MESSAGES.selectOption).pipe(weekdaySchema),
+      start_time: clockTime,
+      end_time: clockTime,
+    })
+    .superRefine((value, ctx) => checkClassTimes(value, rules, ctx));
+}

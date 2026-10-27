@@ -80,7 +80,7 @@ sequenceDiagram
     alt el correo no existe
         S->>S: Argon2 contra un hash ficticio (mismo tiempo)
     else cuenta bloqueada (locked_until > ahora)
-        S->>S: Argon2 contra un hash ficticio
+        S->>S: Argon2 real (no cuenta como intento)
     else contraseña incorrecta
         S->>S: Argon2 real
         S->>DB: failed_login_attempts + 1 (al llegar a N: locked_until = ahora + bloqueo)
@@ -91,12 +91,16 @@ sequenceDiagram
     S->>S: evento de seguridad (sin contraseña ni correo en claro)
     alt credenciales válidas
         A-->>N: 200 + cookies de sesión + CSRF nuevo
-    else cualquier fallo
+    else bloqueada y contraseña correcta
+        A-->>N: 401 ACCOUNT_LOCKED + details.retry_after_seconds
+    else cualquier otro fallo
         A-->>N: 401 INVALID_CREDENTIALS «Correo o contraseña incorrectos.»
     end
 ```
 
-Correo inexistente, contraseña incorrecta, cuenta bloqueada y cuenta desactivada responden **igual**, y siempre se calcula un hash Argon2, así que ni el mensaje ni el tiempo revelan qué cuentas existen. El bloqueo vive en la base: sobrevive a reinicios y aplica aunque haya varias instancias. El texto del frontend avisa que tras varios intentos el acceso se bloquea unos minutos.
+Correo inexistente, contraseña incorrecta y cuenta desactivada responden **igual**, y siempre se calcula un hash Argon2, así que ni el mensaje ni el tiempo revelan qué cuentas existen. El bloqueo vive en la base: sobrevive a reinicios y aplica aunque haya varias instancias.
+
+**Aviso de cuenta bloqueada.** Durante el bloqueo, una contraseña incorrecta recibe el mismo error genérico (y no cuenta como intento). Solo quien escribe la contraseña **correcta** recibe `ACCOUNT_LOCKED` con los segundos que faltan (`details.retry_after_seconds`), y la pantalla de inicio de sesión muestra la cuenta regresiva. Saber la contraseña ya prueba que la cuenta existe, así que el aviso no permite enumerar cuentas, y la persona legítima sabe cuánto esperar en lugar de seguir intentando.
 
 ### 3.3 Petición autenticada con renovación automática
 

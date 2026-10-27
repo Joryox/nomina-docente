@@ -44,6 +44,16 @@ const longDateFormatter = new Intl.DateTimeFormat(LOCALE, {
   timeZone: "UTC",
 });
 
+const ISO_SUNDAY = 7;
+
+// Fecha de calendario de una marca de tiempo en la zona del sistema ("en-CA" da AAAA-MM-DD).
+const isoDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TIMEZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 const monthFormatter = new Intl.DateTimeFormat(LOCALE, { month: "long", timeZone: "UTC" });
 
 function calendarDate(iso: string): Date {
@@ -73,6 +83,20 @@ export function formatHours(hours: string): string {
 /** `15 de octubre de 2026` a partir de `"2026-10-15"`. */
 export function formatLongDate(isoDate: string): string {
   return longDateFormatter.format(calendarDate(isoDate));
+}
+
+/** `lunes 26 de octubre de 2026` a partir de `"2026-10-26"`. */
+export function formatFullDate(isoDate: string): string {
+  const date = calendarDate(isoDate);
+  // getUTCDay: 0 = domingo; ISO 8601: 7 = domingo.
+  const weekday = (date.getUTCDay() || ISO_SUNDAY) as Weekday;
+  return `${formatWeekday(weekday)} ${longDateFormatter.format(date)}`;
+}
+
+/** `26 de octubre de 2026, 10:32` a partir de una marca de tiempo ISO, en la zona del sistema. */
+export function formatDateTime(timestamp: string): string {
+  const date = new Date(timestamp);
+  return `${longDateFormatter.format(calendarDate(isoDateFormatter.format(date)))}, ${formatTime(date)}`;
 }
 
 export function formatWeekday(weekday: Weekday): string {

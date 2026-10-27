@@ -81,18 +81,54 @@ export const loginFormSchema = z.object({
   password: z.string().min(1, VALIDATION_MESSAGES.required),
 });
 
+/** Exige que la confirmación sea igual a la contraseña; el error va en la confirmación. */
+function confirmationMatches(password: string, confirmation: string) {
+  return (values: Readonly<Record<string, unknown>>, ctx: z.RefinementCtx) => {
+    if (values[confirmation] && values[password] !== values[confirmation]) {
+      ctx.addIssue({
+        code: "custom",
+        path: [confirmation],
+        message: VALIDATION_MESSAGES.passwordMismatch,
+      });
+    }
+  };
+}
+
+const profileFields = {
+  first_names: personName,
+  paternal_surname: personName,
+  maternal_surname: optionalPersonName,
+  employee_number: optionalEmployeeNumber,
+};
+
 export function registerFormSchema(policy: PasswordPolicy) {
-  return z.object({
-    email,
-    password: passwordSchema(policy),
-    first_names: personName,
-    paternal_surname: personName,
-    maternal_surname: optionalPersonName,
-    employee_number: optionalEmployeeNumber,
-  });
+  return z
+    .object({
+      ...profileFields,
+      email,
+      password: passwordSchema(policy),
+      password_confirmation: z.string().min(1, VALIDATION_MESSAGES.required),
+    })
+    .superRefine(confirmationMatches("password", "password_confirmation"));
+}
+
+export const profileFormSchema = z.object(profileFields);
+
+export function changePasswordFormSchema(policy: PasswordPolicy) {
+  return z
+    .object({
+      current_password: z.string().min(1, VALIDATION_MESSAGES.required),
+      new_password: passwordSchema(policy),
+      new_password_confirmation: z.string().min(1, VALIDATION_MESSAGES.required),
+    })
+    .superRefine(confirmationMatches("new_password", "new_password_confirmation"));
 }
 
 export type LoginFormValues = z.input<typeof loginFormSchema>;
 export type LoginPayload = z.output<typeof loginFormSchema>;
 export type RegisterFormValues = z.input<ReturnType<typeof registerFormSchema>>;
 export type RegisterFormOutput = z.output<ReturnType<typeof registerFormSchema>>;
+export type ProfileFormValues = z.input<typeof profileFormSchema>;
+export type ProfileFormOutput = z.output<typeof profileFormSchema>;
+export type ChangePasswordFormValues = z.input<ReturnType<typeof changePasswordFormSchema>>;
+export type ChangePasswordFormOutput = z.output<ReturnType<typeof changePasswordFormSchema>>;

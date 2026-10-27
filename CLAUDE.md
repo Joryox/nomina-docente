@@ -251,11 +251,11 @@ frontend/
 ├── src/
 │   ├── app/                 → solo rutas y layouts de Next.js
 │   ├── features/            → auth/, catalogs/, subjects/, assignments/, schedules/, logbook/, payroll/, dashboard/
-│   │   │                      (+ design-system/ —guía viva— y system-status/, temporal de la etapa 1)
+│   │   │                      (+ design-system/: guía viva, solo en desarrollo)
 │   │   └── <feature>/       → components/, hooks/, api/, schemas/, types/
 │   ├── components/ui/       → componentes base sobre Radix (Button, Field, Combobox, DatePicker, TimeInput, DataTable…)
 │   ├── components/domain/   → Money, Hours, PeriodLabel, Folio, StatusBadge
-│   ├── components/layout/   → AppShell, AuthLayout, SiteHeader, PageHeader, Logo, tema, providers globales
+│   ├── components/layout/   → AppShell, AuthLayout, SiteHeader, PageHeader, StatusScreen, Logo, tema, providers
 │   ├── lib/                 → api-client.ts, api-error.ts, api-types.gen.ts (generado), api-schemas.ts,
 │   │                          query-keys.ts, query-invalidation.ts, formateadores, calendario, utils (cn),
 │   │                          theme/ (script de preferencias y store), color-contrast.ts, search.ts, time-input.ts
@@ -264,8 +264,10 @@ frontend/
 │   └── styles/              → brand.css (color de marca), tokens.css (valores), globals.css (mapeo a Tailwind),
 │                              token-catalog.ts, motion.ts y sus pruebas
 ├── public/brand/            → logos oficiales (pendientes; ver docs/sistema-de-diseno.md §10)
+├── e2e/                     → pruebas de punta a punta con Playwright (`npm run test:e2e`)
 ├── src/proxy.ts             → redirecciones según la cookie indicadora de sesión (Next.js 16: antes middleware)
 ├── next.config.ts           → rewrites del proxy hacia el backend y cabeceras de seguridad de las páginas
+├── playwright.config.ts     → Playwright con el Edge instalado, en escritorio y a 390 px
 ├── components.json          → configuración de shadcn/ui
 ├── eslint.config.mjs  .prettierrc.json  tsconfig.json  .nvmrc
 ├── AGENTS.md                → reglas para agentes que `next dev` regenera; se versiona
@@ -275,7 +277,8 @@ frontend/
 Reglas:
 
 - `app/` no contiene lógica: compone componentes de `features/` y `components/`.
-- Una feature no importa archivos internos de otra feature; lo compartido sube a `components/`, `lib/` o `constants/`.
+- La superficie pública de una feature son sus `components/` y `hooks/`: otra feature puede usarlos (el inicio usa el botón de registro rápido de `logbook`). Nunca importa su `api/`, `schemas/` ni `types/`; lo compartido sube a `components/`, `lib/` o `constants/`.
+- La raíz `/` no tiene contenido: el proxy la manda al panel o a iniciar sesión. No hay páginas técnicas ni de prueba en la interfaz; `/sistema-diseno` existe solo en desarrollo y no se enlaza.
 - Todo acceso a la API pasa por el cliente HTTP de `lib/` y por los módulos `features/<feature>/api/`. Los componentes nunca llaman a `fetch` directamente (ESLint lo prohíbe fuera de `lib/api-client.ts`). Cada respuesta se valida con un schema de Zod.
 - Los tipos de la API **no se escriben a mano**: se generan del OpenAPI (`npm run api:types`) y cada schema de Zod se declara con `satisfies z.ZodType<…>` contra el tipo generado. Los mensajes por código de error y de advertencia son `Record` sobre los códigos generados.
 - Las claves de TanStack Query están centralizadas en `lib/query-keys.ts`; `lib/query-invalidation.ts` define qué se invalida con cada tipo de cambio.
@@ -370,7 +373,7 @@ Implementada en la etapa 3. Diagramas de cada flujo, amenazas y mitigaciones (OW
 ### 6.1 Flujo de autenticación
 
 1. **Registro** (`POST /api/v1/auth/register`): en **una** transacción crea `users` (correo normalizado, hash Argon2id), el rol `teacher` (buscado por su clave `RoleCode.TEACHER`, nunca por id), `teachers` y la primera sesión. Correo o número de empleado repetidos responden 409 con mensaje claro (también si la carrera la gana otro registro: la base decide con su `UNIQUE`).
-2. **Inicio de sesión** (`POST /auth/login`): mismo error genérico `INVALID_CREDENTIALS` ("Correo o contraseña incorrectos.") para correo inexistente, contraseña incorrecta, cuenta bloqueada o desactivada; siempre se calcula un Argon2 (hash ficticio si no hay cuenta) para que el tiempo no revele nada. Tras `LOGIN_MAX_FAILED_ATTEMPTS` fallos seguidos, `users.locked_until = ahora + LOGIN_LOCKOUT_MINUTES`. Rehash transparente si el hash tiene parámetros antiguos. Actualiza `last_login_at`.
+2. **Inicio de sesión** (`POST /auth/login`): mismo error genérico `INVALID_CREDENTIALS` ("Correo o contraseña incorrectos.") para correo inexistente, contraseña incorrecta, cuenta bloqueada o desactivada; siempre se calcula un Argon2 (hash ficticio si no hay cuenta) para que el tiempo no revele nada. Tras `LOGIN_MAX_FAILED_ATTEMPTS` fallos seguidos, `users.locked_until = ahora + LOGIN_LOCKOUT_MINUTES`. Durante el bloqueo, solo quien escribe la contraseña **correcta** recibe `ACCOUNT_LOCKED` con `details.retry_after_seconds` (saberla ya prueba que la cuenta existe; no permite enumerar) y la pantalla muestra el tiempo restante; una contraseña incorrecta recibe el error genérico y no cuenta. Rehash transparente si el hash tiene parámetros antiguos. Actualiza `last_login_at`.
 3. **Sesión:** JWT de acceso (`ACCESS_TOKEN_EXPIRE_MINUTES`, 15) con `sub` = `users.public_id` y `sid` = `auth_sessions.public_id`, más `iss`, `aud`, `typ` y `exp` obligatorios; solo algoritmos HMAC. **Cada petición comprueba en la base que la sesión `sid` siga vigente**: revocar una sesión corta el acceso de inmediato.
 4. **Refresh token** opaco (256 bits) de `REFRESH_TOKEN_EXPIRE_DAYS` (7), guardado solo como SHA-256 en `refresh_tokens`; se **rota** en cada uso (`POST /auth/refresh`). Si se presenta uno ya rotado fuera de `REFRESH_TOKEN_REUSE_GRACE_SECONDS`, se **revocan todas las sesiones del usuario** (detección de reuso). Dentro de la tolerancia responde 409 `SESSION_REFRESH_CONFLICT` sin revocar (carrera entre pestañas).
 5. **Cierre:** `POST /auth/logout` (sesión actual, idempotente), `POST /auth/logout-all` (todas). `POST /auth/change-password` exige la actual (un error cuenta para el bloqueo), aplica la política y revoca las **demás** sesiones.
@@ -480,9 +483,11 @@ Referencia completa: [`docs/sistema-de-diseno.md`](docs/sistema-de-diseno.md). G
 - **Escala tipográfica semántica:** `text-display`, `text-title` (con `font-serif`, solo el `h1`), `text-subtitle`, `text-body`, `text-label`, `text-small`, `text-overline` (con `uppercase`), `text-figure`. Toda cifra comparable lleva `figures`; montos con `Money`, horas con `Hours`, quincenas con `PeriodLabel`, estados con `StatusBadge`.
 - **Iconos y bordes de estado** usan `*-ink`; los sólidos (`danger`…) solo son fondo de botón.
 - **Formularios:** cada campo dentro de `Field` (o `FormField` con React Hook Form); datos existentes con `Select` o `Combobox`; fechas con `DatePicker` (`disableFuture` donde aplique); horas con `TimeInput`/`TimeRangeInput`; obligatorios con `*` y `FormRequiredNote`; error general en `Alert tone="danger" announce`; envío con `Button loading`.
-- **Páginas del panel:** dentro del `AppShell` (lo pone `app/panel/layout.tsx`), con un `PageHeader`. Una sección nueva cambia `ready: true` en `constants/navigation.ts`. Listados con `DataTable` (cifras `align: "end"`, `EmptyState` útil). Toda acción destructiva o irreversible pasa por `ConfirmDialog` con `consequences`.
+- **Páginas del panel:** dentro del `AppShell` (lo pone `app/panel/layout.tsx`), con un `PageHeader`. Una sección nueva se agrega a `constants/navigation.ts` al construirse (la navegación solo lista lo que existe; `isAvailableRoute()` para enlazarla desde otras pantallas). Listados con `DataTable` (cifras `align: "end"`, `EmptyState` útil). Toda acción destructiva o irreversible pasa por `ConfirmDialog` con `consequences`.
 - **Movimiento (etapa 9):** usar `DURATIONS` y `EASINGS` de `styles/motion.ts` o `duration-(--duration-*)`, siempre respetando `prefers-reduced-motion`.
 - **Verificación:** `npm run check` incluye `npm test`; un par de colores que no cumpla AA o un valor literal hace fallar la verificación.
+- **Estados de cada pantalla (etapa 6):** *skeleton* con la forma del contenido, error con «Intentar de nuevo», vacío que explica y propone, `metadata.title` propio y, si muestra datos en caché del navegador, `useHydrated()` (`lib/use-hydrated.ts`) para que el HTML del servidor y el primer render coincidan. Contraseñas con `PasswordInput`; campos opcionales con `Field optional`.
+- **Cerrar sesión** navega con `window.location` (no con el router): Next.js conserva ocultas las páginas visitadas y no debe quedar nada del docente en memoria.
 
 ---
 
@@ -562,6 +567,7 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 | Verificar backend | `cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest` |
 | Verificar frontend | `cd frontend && npm run check && npm run api:check && npm run build` (`check` = lint + tipos + formato + `npm test`) |
 | Guía viva del sistema de diseño | `bash scripts/dev.sh` → http://localhost:3000/sistema-diseno |
+| Pruebas de punta a punta | con `dev.sh` en marcha: `cd frontend && npm run test:e2e` (Edge instalado; cuentas `@e2e.example.com`) |
 
 ---
 
@@ -573,7 +579,7 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 - [x] **3. Autenticación:** registro, login, sesión y seguridad
 - [x] **4. Lógica de negocio:** materias, asignaciones, horarios, bitácora y cálculo de nómina
 - [x] **5. Sistema de diseño** (colores, tipografía, componentes)
-- [ ] **6. Pantallas:** login, registro y panel principal
+- [x] **6. Pantallas:** login, registro, panel principal y perfil
 - [ ] **7. Pantallas:** asignaciones, horarios y bitácora
 - [ ] **8. Recibo de nómina y exportación a PDF**
 - [ ] **9. Animaciones y microinteracciones**
@@ -600,6 +606,7 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 | Generación del PDF del recibo | 8 | Generarlo en el backend (una sola fuente de cálculo y formato). Elegir la biblioteca en la etapa 8 considerando que funcione sin dependencias de sistema complicadas en Linux y Windows |
 | Paleta institucional | 11 | La paleta provisional (azul marino) y la tipografía quedaron en la etapa 5. Al llegar los logos: reemplazar la escala de `styles/brand.css`, declarar los archivos en `config/brand.ts` y correr `npm test` (docs/sistema-de-diseno.md §10) |
 | CSP de las páginas y script de tema | 10 | El script de preferencias es un `<script>` en línea en `<head>`; la CSP con *nonces* de la etapa 10 debe incluirlo (o pasar a un *hash* fijo) |
+| Cuentas de las pruebas e2e | 10 | `npm run test:e2e` deja cuentas `@e2e.example.com` en la base de desarrollo. Evaluar un comando de limpieza o una base dedicada para e2e |
 | Usuario de base de datos de la app | 2 | Hoy se usa `postgres` en desarrollo local. Evaluar un rol propio con privilegios mínimos (dueño de las bases) antes de la revisión de seguridad de la etapa 10 |
 | Huecos en el consecutivo del folio | 10 | Una emisión revertida después de `nextval` deja un hueco. Si la institución exige numeración sin huecos, usar una tabla contador bloqueada dentro de la misma transacción |
 | Migrar el `TestClient` a `httpx2` | 3 o posterior | Starlette 1.x anuncia el cambio; se adopta cuando FastAPI lo incluya en sus dependencias de pruebas. Mientras, el aviso se filtra en `pyproject.toml` |
@@ -819,3 +826,29 @@ Formato: fecha, etapa, qué se hizo y decisiones importantes. Lo más reciente v
 **Pendiente**
 
 - Nada bloqueante. Logos oficiales y paleta definitiva (sección 11, etapa 11); incluir el script de tema en la CSP de la etapa 10.
+
+### 2026-10-26 — Etapa 6: Acceso, inicio y perfil (rama `producto-01-acceso-inicio-perfil`)
+
+**Qué se hizo**
+
+- **Limpieza:** la raíz redirige al panel o a iniciar sesión; se retiró la página de estado del sistema (`features/system-status`) y la navegación solo muestra secciones que existen (sin «Pronto» ni textos de etapas). `.vscode/settings.json` (local, ignorado por git) oculta las carpetas generadas, y la configuración de Claude Code del responsable ya no agrega `Co-Authored-By`.
+- **Iniciar sesión:** una línea que dice qué es el sistema y para quién (también en celular), autocompletado correcto, `PasswordInput` (mostrar u ocultar y aviso de Bloq Mayús), mensaje genérico, aviso de cuenta bloqueada con el tiempo restante, sin doble envío y regreso seguro a la página solicitada.
+- **Registro:** campos agrupados (datos personales y de acceso), número de empleado opcional explicado, confirmación de contraseña, validación al salir de cada campo y requisitos de la política marcándose en vivo (incluido «sin datos personales», con la misma regla del backend).
+- **Inicio:** saludo según la hora, fecha y quincena actual; monto estimado (indicador principal, aclarado como estimado), horas y sesiones pendientes; clases de hoy registrables en un clic (o todas a la vez); avisos con acción (emitir el recibo de una quincena terminada, con confirmación y total; registrar clases pendientes desde un diálogo); últimos recibos. Un docente sin materias, asignaciones u horarios ve una **guía de configuración** de tres pasos que se marcan con sus datos y se completan en diálogos, sin salir del inicio.
+- **Mi perfil:** nombres y número de empleado editables, correo de solo lectura, último inicio de sesión, cambio de contraseña con requisitos en vivo (avisa que se cerraron las demás sesiones) y cierre de sesión en todos los dispositivos con confirmación.
+- **Calidad:** *skeleton*, error con reintentar y vacíos útiles en cada pantalla; 404 y error inesperado con diseño propio (`StatusScreen`); título de pestaña por página.
+- **Backend:** código `ACCOUNT_LOCKED` (con `retry_after_seconds`) y resumen del panel con `pending_sessions.items`, `unissued_periods` y `setup`.
+- **Pruebas:** backend 534 en verde (Ruff, formato y mypy también); frontend 468 (Vitest, con requisitos de contraseña, guía, bloqueo y formatos nuevos); Playwright 14 de 14 (7 flujos en escritorio y a 390 px). `npm run build` en verde.
+
+**Decisiones**
+
+1. **El bloqueo solo se revela con la contraseña correcta.** Cumple «aviso claro con tiempo restante» sin permitir enumerar cuentas; durante el bloqueo, un error no cuenta como intento.
+2. **La guía de configuración trabaja en diálogos dentro del inicio.** Las pantallas de materias, asignaciones y horarios llegan en la etapa 7; mientras, el docente nuevo puede dejar su cuenta lista sin enlaces a páginas inexistentes. Los diálogos viven en su feature y se reutilizarán.
+3. **Las features exponen `components/` y `hooks/`** a otras (sección 4.3): evita duplicar el registro rápido o la emisión en el inicio.
+4. **Navegación completa al cerrar sesión** (y al vencer la sesión): con `cacheComponents`, Next.js conservaba oculta la página anterior con los datos del docente; las pruebas e2e lo detectaron.
+5. **Playwright como dependencia del frontend** (`@playwright/test` 1.64.1) con el Edge instalado, en lugar de un `playwright-core` fuera del repositorio: las pruebas se versionan y cualquiera las repite.
+6. **Monto estimado como indicador principal** del inicio: es lo que el docente quiere saber; las horas y las pendientes lo explican.
+
+**Pendiente**
+
+- Etapa 7: pantallas de materias, asignaciones, horario y bitácora (se agregan a `constants/navigation.ts`). Etapa 8: recibos y PDF.

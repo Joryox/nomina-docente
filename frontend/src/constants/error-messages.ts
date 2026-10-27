@@ -39,7 +39,9 @@ export const API_ERROR_MESSAGES = {
   SESSION_INVALID: "Tu sesión terminó. Inicia sesión de nuevo.",
   SESSION_REFRESH_CONFLICT: "Tu sesión se renovó en otra pestaña. Intenta de nuevo.",
   INVALID_CREDENTIALS:
-    "Correo o contraseña incorrectos. Después de varios intentos fallidos, el acceso se bloquea temporalmente: espera unos minutos antes de volver a intentar.",
+    "Correo o contraseña incorrectos. Revísalos e intenta de nuevo; después de varios intentos fallidos el acceso se bloquea unos minutos.",
+  ACCOUNT_LOCKED:
+    "Tu cuenta está bloqueada temporalmente por varios intentos fallidos. Espera unos minutos e intenta de nuevo.",
   CURRENT_PASSWORD_INCORRECT: "La contraseña actual no es correcta. Revísala e intenta de nuevo.",
   PERMISSION_DENIED: "Tu cuenta no tiene permiso para realizar esta acción.",
   TEACHER_PROFILE_REQUIRED: "Esta cuenta no tiene un perfil de docente.",
@@ -125,6 +127,7 @@ export const VALIDATION_MESSAGES = {
   email: "Escribe un correo electrónico válido, por ejemplo nombre@tesh.edu.mx.",
   personName: "Usa solo letras, espacios, apóstrofos, guiones o puntos.",
   employeeNumber: "Usa solo letras, números y guiones, sin espacios.",
+  passwordMismatch: "Las contraseñas no coinciden. Escríbela igual en ambos campos.",
   maxLength: (max: number) => `Escribe como máximo ${max} caracteres.`,
   subjectCode: "Usa solo letras, números y guiones, sin espacios, por ejemplo SCD-1004.",
   selectOption: "Elige una opción de la lista.",

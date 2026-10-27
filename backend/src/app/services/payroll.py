@@ -47,7 +47,8 @@ from app.repositories.payroll_receipt import PayrollReceiptRepository
 from app.repositories.schedule import ScheduleRepository
 from app.repositories.teacher import TeacherRepository
 from app.repositories.unit_of_work import UnitOfWork
-from app.schemas.common import PageParams, WarningItem
+from app.schemas.common import PageParams, PeriodResponse, WarningItem
+from app.schemas.dashboard import PendingClass, PendingSessionsSummary
 from app.schemas.payroll import (
     InstitutionResponse,
     PayrollLineResponse,
@@ -65,7 +66,12 @@ from app.services.account import full_name
 from app.services.constraints import translate_constraint
 from app.services.logbook import entry_range, recorded, slots_of
 from app.services.policy import BusinessPolicy
-from app.services.presenters import period_response, receipt_period, receipt_summary
+from app.services.presenters import (
+    assignment_summary,
+    period_response,
+    receipt_period,
+    receipt_summary,
+)
 from app.utils.folio import build_folio
 
 
@@ -135,6 +141,19 @@ class PayrollService:
             ],
         )
 
+    def unissued_periods(self, teacher: Teacher) -> list[PeriodResponse]:
+        """Quincenas ya terminadas que tienen sesiones y no tienen recibo emitido."""
+        today = self._calendar.today()
+        dates = self._logbook.session_dates_before(teacher.id, Period.containing(today).start)
+        if not dates:
+            return []
+        issued = {
+            receipt_period(receipt)
+            for receipt in self._receipts.issued_between(teacher.id, dates[-1], dates[0])
+        }
+        periods = list(dict.fromkeys(Period.containing(day) for day in dates))
+        return [period_response(period, today) for period in periods if period not in issued]
+
     def preview(self, teacher: Teacher, period: Period) -> PayrollPreviewResponse:
         today = self._calendar.today()
         receipt = self._find_receipt(teacher, period)
@@ -168,11 +187,28 @@ class PayrollService:
             warnings=self._warnings(teacher, period, receipt, entries, calculation),
         )
 
-    def pending_classes(self, teacher: Teacher, period: Period) -> list[ClassOccurrence]:
+    def pending_classes(self, teacher: Teacher, period: Period) -> PendingSessionsSummary:
         """Clases programadas del periodo que ya terminaron y no tienen sesión registrada."""
-        return self._pending(
+        schedules, pending = self._pending(
             teacher, period, self._logbook.in_range(teacher.id, period.start, period.end)
-        )[1]
+        )
+        latest_first = sorted(
+            pending, key=lambda item: (item.day, item.slot.time_range.start), reverse=True
+        )
+        return PendingSessionsSummary(
+            count=len(pending),
+            total_minutes=sum(item.slot.time_range.minutes for item in pending),
+            items=[
+                PendingClass(
+                    date=item.day,
+                    schedule_id=schedules[item.slot.slot_key].public_id,
+                    assignment=assignment_summary(schedules[item.slot.slot_key].assignment),
+                    start_time=item.slot.time_range.start,
+                    end_time=item.slot.time_range.end,
+                )
+                for item in latest_first[:WARNING_DETAIL_MAX_ITEMS]
+            ],
+        )
 
     # --- Emisión --------------------------------------------------------------------------
     def issue(self, teacher: Teacher, period: Period) -> ReceiptDetailResponse:

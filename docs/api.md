@@ -164,7 +164,7 @@ Algunas operaciones se permiten pero conviene revisar algo. La respuesta incluye
 
 | Método | Ruta | Descripción | Sesión | CSRF |
 | --- | --- | --- | --- | --- |
-| `GET` | `/dashboard/summary` | Resumen del panel principal | Docente | — |
+| `GET` | `/dashboard/summary` | Resumen del panel principal (quincena actual, clases de hoy, clases pendientes, últimos recibos, quincenas sin recibo y avance de la configuración) | Docente | — |
 
 ### Salud
 
@@ -192,6 +192,7 @@ Cada código tiene un estado HTTP fijo y un mensaje por defecto; el servicio pue
 | `SESSION_INVALID` | 401 | Tu sesión ya no es válida. Vuelve a iniciar sesión. |
 | `SESSION_REFRESH_CONFLICT` | 409 | La sesión se acaba de renovar en otra pestaña. |
 | `INVALID_CREDENTIALS` | 401 | Correo o contraseña incorrectos. |
+| `ACCOUNT_LOCKED` | 401 | Tu cuenta está bloqueada temporalmente por varios intentos fallidos. |
 | `CURRENT_PASSWORD_INCORRECT` | 400 | La contraseña actual no es correcta. |
 | `PERMISSION_DENIED` | 403 | No tienes permiso para realizar esta acción. |
 | `TEACHER_PROFILE_REQUIRED` | 403 | Esta cuenta no tiene un perfil de docente. |
