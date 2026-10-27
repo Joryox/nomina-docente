@@ -66,10 +66,27 @@ class TestLogin:
 
         locked = login(browser, settings)
         assert locked.status_code == HTTPStatus.UNAUTHORIZED
-        assert error_code(locked) == "INVALID_CREDENTIALS"
+        assert error_code(locked) == "ACCOUNT_LOCKED"
+        assert locked.json()["error"]["details"] == {
+            "retry_after_seconds": settings.login_lockout_minutes * 60
+        }
 
         clock.advance(timedelta(minutes=settings.login_lockout_minutes, seconds=1))
         assert login(browser, settings).status_code == HTTPStatus.OK
+
+    def test_locked_account_with_wrong_password_gets_the_generic_error(
+        self, browser: TestClient, settings: Settings, clock: FakeClock
+    ) -> None:
+        """El bloqueo solo se revela a quien conoce la contraseña: no permite enumerar."""
+        for _ in range(settings.login_max_failed_attempts):
+            login(browser, settings, password="Contraseña-Equivocada-1")
+        clock.advance(timedelta(minutes=1))
+
+        response = login(browser, settings, password="Contraseña-Equivocada-1")
+
+        assert error_code(response) == "INVALID_CREDENTIALS"
+        remaining = login(browser, settings).json()["error"]["details"]["retry_after_seconds"]
+        assert remaining == (settings.login_lockout_minutes - 1) * 60
 
     def test_successful_login_resets_the_failed_attempts(
         self, browser: TestClient, settings: Settings, db_session: Session

@@ -24,6 +24,12 @@ class SubjectRepository(BaseRepository[Subject]):
             & (Subject.name_normalized == func.normalize_name(name))
         )
 
+    def count_active(self, teacher_id: int) -> int:
+        statement = select(func.count()).where(
+            Subject.teacher_id == teacher_id, Subject.is_active.is_(True)
+        )
+        return int(self._session.scalar(statement) or 0)
+
     def search(
         self,
         teacher_id: int,

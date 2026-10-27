@@ -46,7 +46,7 @@ from app.services.account import AccountService
 from app.services.assignments import AssignmentService
 from app.services.auth import AuthService
 from app.services.catalogs import CatalogService
-from app.services.dashboard import DashboardService
+from app.services.dashboard import DashboardService, SetupRepositories
 from app.services.health import HealthService
 from app.services.logbook import LogbookService
 from app.services.login_throttle import LoginThrottle
@@ -301,9 +301,18 @@ PayrollServiceDep = Annotated[PayrollService, Depends(get_payroll_service)]
 
 
 def get_dashboard_service(
-    payroll: PayrollServiceDep, logbook: LogbookServiceDep, calendar: Calendar
+    payroll: PayrollServiceDep,
+    logbook: LogbookServiceDep,
+    session: DbSession,
+    calendar: Calendar,
 ) -> DashboardService:
-    return DashboardService(payroll, logbook, calendar)
+    setup = SetupRepositories(
+        subjects=SubjectRepository(session),
+        assignments=AssignmentRepository(session),
+        schedules=ScheduleRepository(session),
+        logbook=LogbookRepository(session),
+    )
+    return DashboardService(payroll, logbook, setup, calendar)
 
 
 DashboardServiceDep = Annotated[DashboardService, Depends(get_dashboard_service)]

@@ -171,7 +171,7 @@ export interface paths {
     put?: never;
     /**
      * Iniciar sesión
-     * @description Valida correo y contraseña. Ante cualquier fallo (correo inexistente, contraseña incorrecta, cuenta bloqueada o desactivada) responde el mismo error genérico `INVALID_CREDENTIALS` en un tiempo similar. Tras `LOGIN_MAX_FAILED_ATTEMPTS` intentos fallidos seguidos, la cuenta se bloquea `LOGIN_LOCKOUT_MINUTES` minutos. Requiere el encabezado `X-CSRF-Token` con el valor de la cookie CSRF (obtenla con `GET /auth/csrf`).
+     * @description Valida correo y contraseña. Ante cualquier fallo (correo inexistente, contraseña incorrecta o cuenta desactivada) responde el mismo error genérico `INVALID_CREDENTIALS` en un tiempo similar. Tras `LOGIN_MAX_FAILED_ATTEMPTS` intentos fallidos seguidos, la cuenta se bloquea `LOGIN_LOCKOUT_MINUTES` minutos; si durante el bloqueo llega la contraseña correcta, responde `ACCOUNT_LOCKED` con `details.retry_after_seconds` (saberla ya prueba que la cuenta existe). Requiere el encabezado `X-CSRF-Token` con el valor de la cookie CSRF (obtenla con `GET /auth/csrf`).
      */
     post: operations["login_api_v1_auth_login_post"];
     delete?: never;
@@ -974,7 +974,13 @@ export interface components {
       /** Latest Receipts */
       latest_receipts: components["schemas"]["ReceiptSummary"][];
       pending_sessions: components["schemas"]["PendingSessionsSummary"];
+      setup: components["schemas"]["SetupProgress"];
       today: components["schemas"]["TodaySummary"];
+      /**
+       * Unissued Periods
+       * @description Quincenas terminadas con sesiones y sin recibo, de la más reciente a la más antigua
+       */
+      unissued_periods: components["schemas"]["PeriodResponse"][];
     };
     /**
      * DatabaseStatus
@@ -1010,6 +1016,7 @@ export interface components {
       | "SESSION_INVALID"
       | "SESSION_REFRESH_CONFLICT"
       | "INVALID_CREDENTIALS"
+      | "ACCOUNT_LOCKED"
       | "CURRENT_PASSWORD_INCORRECT"
       | "PERMISSION_DENIED"
       | "TEACHER_PROFILE_REQUIRED"
@@ -1397,6 +1404,34 @@ export interface components {
       /** Warnings */
       warnings: components["schemas"]["WarningItem"][];
     };
+    /**
+     * PendingClass
+     * @description Clase del horario que ya terminó y no está en la bitácora: se registra con
+     *     ``POST /logbook/quick`` usando ``date`` y ``schedule_id``.
+     */
+    PendingClass: {
+      assignment: components["schemas"]["AssignmentSummary"];
+      /**
+       * Date
+       * Format: date
+       */
+      date: string;
+      /**
+       * End Time
+       * @example 07:00
+       */
+      end_time: string;
+      /**
+       * Schedule Id
+       * Format: uuid
+       */
+      schedule_id: string;
+      /**
+       * Start Time
+       * @example 07:00
+       */
+      start_time: string;
+    };
     /** PendingSessionsSummary */
     PendingSessionsSummary: {
       /**
@@ -1404,6 +1439,11 @@ export interface components {
        * @description Clases ya concluidas de la quincena sin registrar
        */
       count: number;
+      /**
+       * Items
+       * @description Las clases pendientes, de la más reciente a la más antigua (hasta WARNING_DETAIL_MAX_ITEMS)
+       */
+      items: components["schemas"]["PendingClass"][];
       /** Total Minutes */
       total_minutes: number;
     };
@@ -1796,6 +1836,29 @@ export interface components {
      * @enum {string}
      */
     ServiceStatus: "ok" | "degraded";
+    /**
+     * SetupProgress
+     * @description Lo que el docente ya configuró: el panel guía a quien aún no tiene lo necesario.
+     */
+    SetupProgress: {
+      /** Active Assignment Count */
+      active_assignment_count: number;
+      /**
+       * Schedule Count
+       * @description Horarios de asignaciones activas
+       */
+      schedule_count: number;
+      /**
+       * Session Count
+       * @description Sesiones registradas en toda la bitácora
+       */
+      session_count: number;
+      /**
+       * Subject Count
+       * @description Materias activas
+       */
+      subject_count: number;
+    };
     /**
      * StatusFilter
      * @description Filtro de baja lógica de los listados (materias y asignaciones).

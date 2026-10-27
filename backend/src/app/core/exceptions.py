@@ -124,6 +124,10 @@ ERROR_CATALOG: Mapping[ErrorCode, ErrorSpec] = {
     ErrorCode.INVALID_CREDENTIALS: ErrorSpec(
         HTTPStatus.UNAUTHORIZED, "Correo o contraseña incorrectos."
     ),
+    ErrorCode.ACCOUNT_LOCKED: ErrorSpec(
+        HTTPStatus.UNAUTHORIZED,
+        "Tu cuenta está bloqueada temporalmente por varios intentos fallidos.",
+    ),
     ErrorCode.CURRENT_PASSWORD_INCORRECT: ErrorSpec(
         HTTPStatus.BAD_REQUEST, "La contraseña actual no es correcta."
     ),

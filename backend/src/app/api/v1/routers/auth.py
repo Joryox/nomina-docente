@@ -92,9 +92,11 @@ def register(
     summary="Iniciar sesión",
     description=(
         "Valida correo y contraseña. Ante cualquier fallo (correo inexistente, contraseña "
-        "incorrecta, cuenta bloqueada o desactivada) responde el mismo error genérico "
+        "incorrecta o cuenta desactivada) responde el mismo error genérico "
         "`INVALID_CREDENTIALS` en un tiempo similar. Tras `LOGIN_MAX_FAILED_ATTEMPTS` intentos "
-        f"fallidos seguidos, la cuenta se bloquea `LOGIN_LOCKOUT_MINUTES` minutos. {CSRF_NOTE}"
+        "fallidos seguidos, la cuenta se bloquea `LOGIN_LOCKOUT_MINUTES` minutos; si durante "
+        "el bloqueo llega la contraseña correcta, responde `ACCOUNT_LOCKED` con "
+        f"`details.retry_after_seconds` (saberla ya prueba que la cuenta existe). {CSRF_NOTE}"
     ),
     responses=error_responses(
         HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN, HTTPStatus.UNPROCESSABLE_ENTITY

@@ -30,9 +30,14 @@ from app.services.sessions import (
     SessionManager,
 )
 
-# Mismo mensaje para correo inexistente, contraseña incorrecta, cuenta bloqueada o
-# desactivada: la respuesta no revela qué cuentas existen ni su estado.
+# Mismo mensaje para correo inexistente, contraseña incorrecta o cuenta desactivada: la
+# respuesta no revela qué cuentas existen ni su estado.
 INVALID_CREDENTIALS_MESSAGE = "Correo o contraseña incorrectos."
+ACCOUNT_LOCKED_MESSAGE = (
+    "Tu cuenta está bloqueada temporalmente por varios intentos fallidos. "
+    "Espera a que termine el bloqueo e intenta de nuevo."
+)
+ACCOUNT_LOCKED_REASON = "account_locked"
 EMAIL_TAKEN_MESSAGE = "Ya existe una cuenta con este correo. Inicia sesión o usa otro correo."
 PERMISSION_DENIED_MESSAGE = "Tu cuenta no tiene permiso para realizar esta acción."
 EMAIL_CONSTRAINT = "uq_users_email"
@@ -141,6 +146,12 @@ class AuthService:
                 client_ip=client.ip_address,
                 reason=failure,
             )
+            if failure == ACCOUNT_LOCKED_REASON and user is not None:
+                raise AuthenticationError(
+                    ACCOUNT_LOCKED_MESSAGE,
+                    code=ErrorCode.ACCOUNT_LOCKED,
+                    details={"retry_after_seconds": self._throttle.seconds_remaining(user)},
+                )
             raise AuthenticationError(
                 INVALID_CREDENTIALS_MESSAGE, code=ErrorCode.INVALID_CREDENTIALS
             )
@@ -211,15 +222,17 @@ class AuthService:
         """Devuelve el motivo del rechazo (solo para el registro de seguridad) o ``None``.
 
         Siempre se calcula un hash Argon2, exista o no la cuenta y esté o no bloqueada: el
-        tiempo de respuesta no delata nada.
+        tiempo de respuesta no delata nada. El bloqueo solo se revela a quien escribe la
+        contraseña correcta: saberla ya prueba que la cuenta existe, así que avisarle del
+        bloqueo (y de cuánto falta) no permite enumerar cuentas. Durante el bloqueo, una
+        contraseña incorrecta recibe el error genérico y no cuenta como intento.
         """
         if user is None:
             self._hasher.verify_dummy(password)
             return "unknown_email"
-        if self._throttle.is_locked(user):
-            self._hasher.verify_dummy(password)
-            return "account_locked"
         valid, updated_hash = self._hasher.verify_and_update(password, user.password_hash)
+        if self._throttle.is_locked(user):
+            return ACCOUNT_LOCKED_REASON if valid else "wrong_password_while_locked"
         if not valid:
             if self._throttle.register_failure(user):
                 log_security_event(SecurityEvent.ACCOUNT_LOCKED, user_id=str(user.public_id))

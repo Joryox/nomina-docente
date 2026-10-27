@@ -81,6 +81,17 @@ class LogbookRepository(BaseRepository[LogbookEntry]):
         ).one()
         return int(count), int(minutes)
 
+    def session_dates_before(self, teacher_id: int, before: date) -> list[date]:
+        """Fechas distintas con sesiones anteriores a ``before``, de la más reciente a la
+        más antigua."""
+        statement = (
+            select(LogbookEntry.session_date)
+            .where(LogbookEntry.teacher_id == teacher_id, LogbookEntry.session_date < before)
+            .distinct()
+            .order_by(LogbookEntry.session_date.desc())
+        )
+        return list(self._session.scalars(statement))
+
     def in_range(self, teacher_id: int, start: date, end: date) -> list[LogbookEntry]:
         statement = _with_details(
             select(LogbookEntry)

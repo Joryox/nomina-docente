@@ -4,6 +4,7 @@ El estado vive en ``users`` (``failed_login_attempts``, ``locked_until``), así 
 bloqueo se mantiene aunque el servidor se reinicie y aplica a cualquier instancia.
 """
 
+import math
 from datetime import timedelta
 
 from app.core.clock import Clock
@@ -18,6 +19,14 @@ class LoginThrottle:
 
     def is_locked(self, user: User) -> bool:
         return user.locked_until is not None and user.locked_until > self._clock()
+
+    def seconds_remaining(self, user: User) -> int:
+        """Segundos que faltan para el desbloqueo, redondeados hacia arriba (0 si no está
+        bloqueada)."""
+        if user.locked_until is None:
+            return 0
+        remaining = (user.locked_until - self._clock()).total_seconds()
+        return max(0, math.ceil(remaining))
 
     def register_failure(self, user: User) -> bool:
         """Cuenta un intento fallido; al llegar al máximo bloquea la cuenta y reinicia la
