@@ -76,3 +76,6 @@ export const GUEST_ONLY_ROUTES: readonly string[] = [APP_ROUTES.login, APP_ROUTE
 
 /** Parámetro con la página a la que se vuelve después de iniciar sesión. */
 export const NEXT_PATH_PARAM = "siguiente";
+
+/** Parámetro con la quincena de la vista previa de Recibos ("2026-10-1"). */
+export const PERIOD_PARAM = "quincena";

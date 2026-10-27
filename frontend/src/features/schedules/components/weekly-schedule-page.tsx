@@ -80,8 +80,7 @@ export function WeeklySchedulePage() {
         meta={
           schedule.data && hasClasses ? (
             <span className="text-label text-fg-muted">
-              <Hours value={schedule.data.total_hours} className="text-fg" />{" "}
-              {texts.weeklyTotal}
+              <Hours value={schedule.data.total_hours} className="text-fg" /> {texts.weeklyTotal}
             </span>
           ) : undefined
         }

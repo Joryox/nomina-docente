@@ -179,3 +179,19 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Impresión (recibo de nómina): página carta limpia, sin la estructura del panel. */
+@media print {
+  @page {
+    size: letter;
+    margin: 18mm;
+  }
+
+  body {
+    background: var(--surface);
+  }
+
+  [data-sonner-toaster] {
+    display: none;
+  }
+}

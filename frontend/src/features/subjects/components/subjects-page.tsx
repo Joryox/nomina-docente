@@ -246,7 +246,11 @@ function SubjectActions({ subject }: { subject: Subject }) {
         </DropdownMenuContent>
       </DropdownMenu>
       {action === "edit" ? (
-        <SubjectFormDialog subject={subject} open onOpenChange={(open) => !open && setAction(null)} />
+        <SubjectFormDialog
+          subject={subject}
+          open
+          onOpenChange={(open) => !open && setAction(null)}
+        />
       ) : null}
       {action === "remove" ? (
         <RemoveSubjectDialog subject={subject} onClose={() => setAction(null)} />
@@ -305,7 +309,9 @@ function RemoveSubjectDialog({ subject, onClose }: { subject: Subject; onClose: 
       open
       onOpenChange={changeOpen}
       title={
-        hasHistory ? texts.remove.deactivateTitle(subject.name) : texts.remove.deleteTitle(subject.name)
+        hasHistory
+          ? texts.remove.deactivateTitle(subject.name)
+          : texts.remove.deleteTitle(subject.name)
       }
       description={hasHistory ? texts.remove.deactivateBody : texts.remove.deleteBody}
       consequences={hasHistory ? texts.remove.deactivateConsequences : []}

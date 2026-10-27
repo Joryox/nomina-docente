@@ -1,9 +1,12 @@
 import { CalendarX2, Clock } from "lucide-react";
+import Link from "next/link";
 
 import { StatusBadge } from "@/components/domain/status-badge";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { APP_ROUTES } from "@/constants/routes";
 import { TEXTS } from "@/constants/texts";
 import { RegisterClassesButton } from "@/features/logbook/components/register-classes-button";
 import { formatTimeRange } from "@/lib/formatters";
@@ -24,13 +27,18 @@ export function TodayClasses({ today }: { today: DashboardSummary["today"] }) {
     <Card aria-labelledby="inicio-hoy">
       <CardHeader className="items-center">
         <CardTitle id="inicio-hoy">{texts.title}</CardTitle>
-        {due.length > 1 ? (
-          <RegisterClassesButton
-            date={today.date}
-            classes={due.map(toRegister)}
-            label={texts.registerAll(due.length)}
-          />
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="link" size="sm" asChild>
+            <Link href={APP_ROUTES.logbook}>{texts.openLogbook}</Link>
+          </Button>
+          {due.length > 1 ? (
+            <RegisterClassesButton
+              date={today.date}
+              classes={due.map(toRegister)}
+              label={texts.registerAll(due.length)}
+            />
+          ) : null}
+        </div>
       </CardHeader>
       {today.classes.length === 0 ? (
         <EmptyState icon={CalendarX2} title={texts.empty} description={texts.emptyHint} />

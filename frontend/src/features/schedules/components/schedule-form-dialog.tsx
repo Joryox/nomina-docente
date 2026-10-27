@@ -244,7 +244,9 @@ function ScheduleForm({
           required
           value={{ start: start || null, end: end || null }}
           onChange={(range) => {
-            form.setValue("start_time", range.start ?? "", { shouldValidate: Boolean(range.start) });
+            form.setValue("start_time", range.start ?? "", {
+              shouldValidate: Boolean(range.start),
+            });
             form.setValue("end_time", range.end ?? "", { shouldValidate: Boolean(range.end) });
           }}
           minDurationMinutes={rules.class_min_duration_minutes}

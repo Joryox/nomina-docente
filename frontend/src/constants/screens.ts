@@ -45,7 +45,8 @@ export const SCREENS = {
           ? `${active} activa${active === 1 ? "" : "s"}`
           : `${active} activa${active === 1 ? "" : "s"} de ${total}`,
     empty: "Aún no registras materias",
-    emptyHint: "Agrega las materias que impartes; después las asignarás a una carrera en Mis clases.",
+    emptyHint:
+      "Agrega las materias que impartes; después las asignarás a una carrera en Mis clases.",
     noMatches: (search: string) => `Ninguna materia coincide con «${search}»`,
     noMatchesHint: "Revisa lo que escribiste o cambia el filtro de estado.",
     form: {
@@ -155,7 +156,8 @@ export const SCREENS = {
     form: {
       createTitle: "Agregar horario",
       editTitle: "Editar horario",
-      description: "Una clase semanal: el día y las horas en que la impartes, en formato de 24 horas.",
+      description:
+        "Una clase semanal: el día y las horas en que la impartes, en formato de 24 horas.",
       assignment: "Clase",
       assignmentPlaceholder: "Elige materia y carrera",
       weekday: "Día de la semana",
@@ -191,8 +193,7 @@ export const SCREENS = {
       upcoming: "Aún no termina",
       upcomingHint: (end: string) => `Se puede registrar a partir de las ${end}.`,
       empty: "No tienes clases programadas este día",
-      emptyHint:
-        "Si diste una clase fuera de tu horario, regístrala con «Registrar otra sesión».",
+      emptyHint: "Si diste una clase fuera de tu horario, regístrala con «Registrar otra sesión».",
       locked:
         "Esta quincena ya tiene recibo emitido: su bitácora está cerrada y no admite cambios.",
     },
@@ -253,8 +254,7 @@ export const SCREENS = {
   },
   receipts: {
     title: "Recibos",
-    description:
-      "Revisa el cálculo de cada quincena, emite tu recibo y descárgalo en PDF.",
+    description: "Revisa el cálculo de cada quincena, emite tu recibo y descárgalo en PDF.",
     preview: {
       title: "Vista previa",
       periodLabel: "Quincena",
@@ -273,18 +273,10 @@ export const SCREENS = {
       empty: "Sin sesiones registradas en esta quincena",
       emptyHint: "Registra tus clases en la Bitácora; aquí verás el cálculo al momento.",
       goToLogbook: "Ir a la Bitácora",
-      issued: (folio: string) => `Esta quincena ya tiene recibo emitido (folio ${folio}).`,
+      issued: "Esta quincena ya tiene recibo emitido: su bitácora está cerrada.",
       viewReceipt: "Ver recibo",
       issue: "Emitir recibo",
       blockersTitle: "Todavía no se puede emitir",
-      issueTitle: (period: string) => `¿Emitir el recibo de la ${period}?`,
-      issueBody: (hours: string, amount: string) =>
-        `Se emitirá con ${hours} y un total bruto de ${amount}. Tendrá un folio y ya no cambiará.`,
-      issueConsequences: [
-        "La bitácora de esa quincena quedará cerrada: no podrás agregar, editar ni eliminar sesiones",
-        "El recibo conserva las horas, tarifas e importes de hoy aunque después cambien",
-      ],
-      issued_toast: (folio: string) => `Recibo emitido con folio ${folio}`,
       warningsTitle: "Revisa antes de emitir",
       pendingList: (count: number) =>
         count === 1 ? "1 clase sin registrar:" : `${count} clases sin registrar:`,

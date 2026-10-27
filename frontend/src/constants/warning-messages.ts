@@ -6,7 +6,7 @@ import type { ApiWarningCode } from "@/lib/api-types";
  */
 export const WARNING_MESSAGES = {
   SESSION_NOT_SCHEDULED:
-    "La asignación no tiene clase programada ese día. La sesión se registró; revisa que la fecha sea correcta.",
+    "Esa clase no está en tu horario ese día. La sesión se registró; revisa que la fecha sea correcta.",
   SESSION_TIMES_DIFFER:
     "Las horas de la sesión no coinciden con el horario programado. Se guardaron las horas capturadas.",
   PERIOD_NOT_FINISHED:
@@ -16,5 +16,5 @@ export const WARNING_MESSAGES = {
   SESSIONS_OUTSIDE_SCHEDULE:
     "Algunas sesiones no coinciden con el horario programado. Revisa que las horas sean correctas.",
   ASSIGNMENT_RATE_CHANGED:
-    "La tarifa de una asignación cambió dentro de la quincena: cada sesión se paga con la tarifa vigente cuando se registró.",
+    "La tarifa de una clase cambió dentro de la quincena: cada sesión se paga con la tarifa vigente cuando se registró.",
 } as const satisfies Record<ApiWarningCode, string>;

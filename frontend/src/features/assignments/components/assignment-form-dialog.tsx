@@ -330,7 +330,12 @@ function InlineNewSubject({ onCreated }: { onCreated: (id: string) => void }) {
 
   if (!open) {
     return (
-      <Button variant="link" size="sm" className="-mt-2 justify-self-start" onClick={() => setOpen(true)}>
+      <Button
+        variant="link"
+        size="sm"
+        className="-mt-2 justify-self-start"
+        onClick={() => setOpen(true)}
+      >
         <Plus aria-hidden="true" />
         {inline.toggle}
       </Button>

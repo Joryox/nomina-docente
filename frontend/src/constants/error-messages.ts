@@ -61,13 +61,13 @@ export const API_ERROR_MESSAGES = {
   SUBJECT_ALREADY_EXISTS: "Ya registraste una materia con ese nombre. Usa la que ya existe.",
   SUBJECT_INACTIVE: "La materia está desactivada. Reactívala antes de usarla.",
   SUBJECT_HAS_ACTIVE_ASSIGNMENTS:
-    "La materia tiene asignaciones activas. Desactívalas o elimínalas antes de quitarla.",
-  ASSIGNMENT_NOT_FOUND: "La asignación no existe. Recarga la página y elígela de nuevo.",
+    "La materia tiene clases activas. Desactívalas o elimínalas en Mis clases antes de quitarla.",
+  ASSIGNMENT_NOT_FOUND: "La clase no existe. Recarga la página y elígela de nuevo.",
   ASSIGNMENT_ALREADY_EXISTS:
-    "Ya tienes una asignación activa de esa materia en esa carrera. Cambia su tarifa en lugar de crear otra.",
-  ASSIGNMENT_INACTIVE: "La asignación está desactivada. Reactívala antes de modificarla.",
+    "Ya tienes una clase activa de esa materia en esa carrera. Si cambió la tarifa, edita la clase en lugar de crear otra.",
+  ASSIGNMENT_INACTIVE: "La clase está desactivada. Reactívala en Mis clases antes de modificarla.",
   ASSIGNMENT_HAS_LOGBOOK:
-    "La asignación tiene sesiones en la bitácora: no se puede borrar ni cambiar su materia o carrera. Desactívala y crea una nueva.",
+    "La clase tiene sesiones en la bitácora: no se puede borrar ni cambiar su materia o carrera. Desactívala y crea una nueva.",
   SCHEDULE_NOT_FOUND: "El horario no existe. Recarga la página.",
   SCHEDULE_OVERLAP: "El horario se empalma con otra de tus clases. Elige otra hora.",
   TIME_RANGE_INVALID:
@@ -82,7 +82,7 @@ export const API_ERROR_MESSAGES = {
   SESSION_DATE_TOO_OLD:
     "La sesión es demasiado antigua para registrarla. Si falta, avisa a tu coordinación.",
   ASSIGNMENT_INACTIVE_ON_DATE:
-    "La asignación no estaba activa en esa fecha. Elige una fecha anterior u otra asignación.",
+    "La clase no estaba activa en esa fecha. Elige una fecha anterior u otra clase.",
   SCHEDULE_NOT_ON_DATE: "El horario elegido no corresponde al día de la semana de la fecha.",
   PERIOD_LOCKED: "La quincena ya tiene recibo emitido: su bitácora no se puede modificar.",
   PERIOD_IN_FUTURE: "La quincena todavía no empieza.",

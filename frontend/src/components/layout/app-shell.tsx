@@ -56,7 +56,7 @@ export function AppShell({ user, onLogout, loggingOut, children }: AppShellProps
 
   return (
     <div className="min-h-dvh lg:flex">
-      <aside className="sticky top-0 z-(--layer-sidebar) hidden h-dvh w-(--sidebar-width) shrink-0 flex-col border-t-4 border-r border-t-primary border-r-line bg-surface transition-[width] duration-(--duration-base) ease-standard lg:flex sidebar-collapsed:w-(--sidebar-width-collapsed)">
+      <aside className="sticky top-0 z-(--layer-sidebar) hidden h-dvh w-(--sidebar-width) shrink-0 flex-col border-t-4 border-r border-t-primary border-r-line bg-surface transition-[width] duration-(--duration-base) ease-standard lg:flex print:hidden sidebar-collapsed:w-(--sidebar-width-collapsed)">
         <div className="box-content flex h-(--topbar-height) shrink-0 items-center border-b border-line px-3">
           <Link href={APP_ROUTES.panel} className="min-w-0 rounded-sm">
             <Logo variant="compact" className="sidebar-collapsed:hidden" />
@@ -86,7 +86,7 @@ export function AppShell({ user, onLogout, loggingOut, children }: AppShellProps
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-(--layer-sticky) box-content flex h-(--topbar-height) shrink-0 items-center gap-3 border-t-4 border-b border-t-primary border-b-line bg-surface px-(--page-gutter)">
+        <header className="sticky top-0 z-(--layer-sticky) box-content flex h-(--topbar-height) shrink-0 items-center gap-3 border-t-4 border-b border-t-primary border-b-line bg-surface px-(--page-gutter) print:hidden">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <Button
@@ -116,7 +116,7 @@ export function AppShell({ user, onLogout, loggingOut, children }: AppShellProps
         <main
           id={MAIN_CONTENT_ID}
           tabIndex={-1}
-          className="flex-1 px-(--page-gutter) py-(--page-block) outline-none"
+          className="flex-1 px-(--page-gutter) py-(--page-block) outline-none print:p-0"
         >
           <div className="mx-auto w-full max-w-content">{children}</div>
         </main>
