@@ -110,7 +110,7 @@ class ReceiptSummary(BaseModel):
 
 
 class ReceiptDetailResponse(BaseModel):
-    """Todo lo que necesita el recibo impreso (PDF en la etapa 8). Es una copia fija: no
+    """Todo lo que necesita el recibo impreso y su PDF. Es una copia fija: no
     cambia aunque cambien los catálogos o el perfil del docente (RN-28)."""
 
     id: uuid.UUID
@@ -123,6 +123,10 @@ class ReceiptDetailResponse(BaseModel):
     total_minutes: int
     total_hours: Hours
     total_amount: Money
+    total_amount_words: str = Field(
+        description="Total con letra, como en los documentos mexicanos",
+        examples=["Mil doscientos cincuenta pesos 00/100 M.N."],
+    )
 
 
 class ReceiptPage(Page[ReceiptSummary]):

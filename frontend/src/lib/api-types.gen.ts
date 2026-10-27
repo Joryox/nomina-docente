@@ -577,6 +577,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/payroll/receipts/{receipt_id}/pdf": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Descargar el recibo en PDF
+     * @description El recibo emitido en tamaño carta, con el mismo contenido que su detalle: encabezado institucional, folio, periodo, docente, conceptos, total con letra y espacios de firma. El nombre del archivo lleva el folio y el periodo. De otro docente: 404 (RN-04).
+     */
+    get: operations["download_receipt_pdf_api_v1_payroll_receipts__receipt_id__pdf_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/schedules/weekly": {
     parameters: {
       query?: never;
@@ -1583,7 +1603,7 @@ export interface components {
     };
     /**
      * ReceiptDetailResponse
-     * @description Todo lo que necesita el recibo impreso (PDF en la etapa 8). Es una copia fija: no
+     * @description Todo lo que necesita el recibo impreso y su PDF. Es una copia fija: no
      *     cambia aunque cambien los catálogos o el perfil del docente (RN-28).
      */
     ReceiptDetailResponse: {
@@ -1609,6 +1629,12 @@ export interface components {
        * @example 1250.00
        */
       total_amount: string;
+      /**
+       * Total Amount Words
+       * @description Total con letra, como en los documentos mexicanos
+       * @example Mil doscientos cincuenta pesos 00/100 M.N.
+       */
+      total_amount_words: string;
       /**
        * Total Hours
        * @example 12.50
@@ -5035,6 +5061,100 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ReceiptDetailResponse"];
+        };
+      };
+      /** @description Sin sesión válida. Códigos: `NOT_AUTHENTICATED`. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "NOT_AUTHENTICATED",
+           *         "details": {},
+           *         "message": "Inicia sesión para continuar."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Sin perfil de docente, o falta el token CSRF en una escritura. Códigos: `TEACHER_PROFILE_REQUIRED`. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "TEACHER_PROFILE_REQUIRED",
+           *         "details": {},
+           *         "message": "Esta cuenta no tiene un perfil de docente."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description No existe o pertenece a otro docente (RN-04). Códigos: `RECEIPT_NOT_FOUND`. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "RECEIPT_NOT_FOUND",
+           *         "details": {},
+           *         "message": "El recibo no existe."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Datos inválidos o regla de negocio incumplida. Códigos: `VALIDATION_ERROR`. */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "VALIDATION_ERROR",
+           *         "details": {},
+           *         "message": "Los datos enviados no son válidos."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  download_receipt_pdf_api_v1_payroll_receipts__receipt_id__pdf_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        receipt_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Archivo PDF */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/pdf": string;
         };
       };
       /** @description Sin sesión válida. Códigos: `NOT_AUTHENTICATED`. */

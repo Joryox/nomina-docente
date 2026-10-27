@@ -213,3 +213,17 @@ class SessionRevocationReason(StrEnum):
 # --- Endurecimiento HTTP -----------------------------------------------------------------
 SAFE_HTTP_METHODS: Final = frozenset({"GET", "HEAD", "OPTIONS", "TRACE"})
 DOCS_PATHS: Final = ("/docs", "/redoc", f"{API_V1_PREFIX}/openapi.json")
+
+
+# --- Recibo en PDF (RN-27) ----------------------------------------------------------------
+# Tamaño carta en milímetros y márgenes del documento.
+RECEIPT_PDF_FORMAT: Final = "Letter"
+RECEIPT_PDF_MARGIN_MM: Final = 18
+# Colores en sRGB: el azul marino de la marca provisional (brand-800) y los neutros fríos
+# de la interfaz. Se reemplazan junto con la paleta institucional (etapa 11).
+RECEIPT_PDF_BRAND_RGB: Final = (24, 56, 110)
+RECEIPT_PDF_INK_RGB: Final = (30, 36, 48)
+RECEIPT_PDF_MUTED_RGB: Final = (88, 96, 112)
+RECEIPT_PDF_LINE_RGB: Final = (206, 212, 222)
+RECEIPT_PDF_SUNKEN_RGB: Final = (241, 243, 247)
+RECEIPT_PDF_MEDIA_TYPE: Final = "application/pdf"
