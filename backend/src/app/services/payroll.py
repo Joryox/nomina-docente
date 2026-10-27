@@ -26,6 +26,8 @@ from app.core.clock import BusinessCalendar
 from app.core.codes import ErrorCode, WarningCode
 from app.core.constants import CLOCK_TIME_FORMAT, WARNING_DETAIL_MAX_ITEMS
 from app.core.exceptions import domain_error
+from app.documents.receipt_pdf import ReceiptFile, receipt_filename, render_receipt_pdf
+from app.domain.amount_words import amount_in_words
 from app.domain.attendance import (
     ClassOccurrence,
     ScheduleMatch,
@@ -329,7 +331,13 @@ class PayrollService:
             total_minutes=receipt.total_minutes,
             total_hours=receipt.total_hours,
             total_amount=receipt.total_amount,
+            total_amount_words=amount_in_words(receipt.total_amount),
         )
+
+    def receipt_pdf(self, teacher: Teacher, receipt_id: uuid.UUID) -> ReceiptFile:
+        """PDF del recibo emitido, con el mismo contenido que su detalle (RN-27)."""
+        receipt = self.get_receipt(teacher, receipt_id)
+        return ReceiptFile(filename=receipt_filename(receipt), content=render_receipt_pdf(receipt))
 
     # --- Apoyo ----------------------------------------------------------------------------
     def _find_receipt(self, teacher: Teacher, period: Period) -> PayrollReceipt | None:

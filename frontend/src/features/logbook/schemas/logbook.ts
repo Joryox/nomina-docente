@@ -82,23 +82,27 @@ const notes = z
  * Fecha de sesión: no futura y dentro de la antigüedad máxima (RN-22). Las fechas ISO se
  * comparan como texto porque tienen el mismo formato y la misma longitud.
  */
-function sessionDate(rules: LogbookRules) {
+function sessionDate(rules: LogbookRules, keptDate?: string) {
   const oldest = addDays(rules.today, -rules.logbook_max_age_days);
   return z.iso
     .date(VALIDATION_MESSAGES.date)
     .refine((value) => value <= rules.today, VALIDATION_MESSAGES.futureDate)
-    .refine((value) => value >= oldest, VALIDATION_MESSAGES.dateTooOld(rules.logbook_max_age_days));
+    .refine(
+      // Al editar, la sesión puede conservar su fecha aunque ya sea antigua (RN-37).
+      (value) => value >= oldest || value === keptDate,
+      VALIDATION_MESSAGES.dateTooOld(rules.logbook_max_age_days),
+    );
 }
 
 /**
  * Captura de una sesión: la asignación se elige de un selector y las horas se precargan
  * del horario (RN-20, RN-21). Las horas trabajadas y el importe los calcula el servidor.
  */
-export function logbookEntryFormSchema(rules: LogbookRules) {
+export function logbookEntryFormSchema(rules: LogbookRules, keptDate?: string) {
   return z
     .object({
       assignment_id: z.uuid(VALIDATION_MESSAGES.selectOption),
-      session_date: sessionDate(rules),
+      session_date: sessionDate(rules, keptDate),
       start_time: clockTime,
       end_time: clockTime,
       notes,

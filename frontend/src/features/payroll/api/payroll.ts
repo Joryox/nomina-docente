@@ -1,5 +1,5 @@
 import { API_ROUTES } from "@/constants/routes";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, type DownloadedFile } from "@/lib/api-client";
 import { withQuery } from "@/lib/api-paths";
 
 import {
@@ -43,4 +43,9 @@ export function getReceipt(id: string, signal?: AbortSignal): Promise<ReceiptDet
 /** Emite el recibo (copia fija con folio) y bloquea la bitácora del periodo. */
 export function issueReceipt(period: PeriodSelection): Promise<ReceiptDetail> {
   return apiClient.post(routes.receipts, receiptDetailSchema, { body: period });
+}
+
+/** PDF del recibo emitido (con el nombre de archivo que propone el servidor). */
+export function downloadReceiptPdf(id: string): Promise<DownloadedFile> {
+  return apiClient.download(routes.receiptPdf(id));
 }

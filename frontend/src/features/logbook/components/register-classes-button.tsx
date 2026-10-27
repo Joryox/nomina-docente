@@ -41,12 +41,14 @@ export function RegisterClassesButton({
 }: RegisterClassesButtonProps) {
   const register = useQuickRegister();
 
-  const onClick = () => {
+  // Con la promesa (no con los callbacks de `mutate`): al registrarse, la clase se vuelve
+  // «Registrada» y este botón se desmonta antes de que termine; el aviso debe salir igual.
+  const onClick = async () => {
     if (register.isPending) {
       return;
     }
-    register.mutate(
-      {
+    try {
+      const result = await register.mutateAsync({
         session_date: date,
         entries: classes.map((item) => ({
           schedule_id: item.scheduleId,
@@ -54,12 +56,11 @@ export function RegisterClassesButton({
           end_time: item.endTime,
           notes: null,
         })),
-      },
-      {
-        onSuccess: (result) => toast.success(texts.registered(result.results.length)),
-        onError: (error) => toast.error(toUserMessage(error)),
-      },
-    );
+      });
+      toast.success(texts.registered(result.results.length));
+    } catch (error) {
+      toast.error(toUserMessage(error));
+    }
   };
 
   return (
@@ -70,7 +71,7 @@ export function RegisterClassesButton({
       loading={register.isPending}
       loadingLabel={texts.registering}
       aria-label={accessibleLabel}
-      onClick={onClick}
+      onClick={() => void onClick()}
     >
       <Check aria-hidden="true" />
       {label}

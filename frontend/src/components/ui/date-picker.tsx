@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarDays } from "lucide-react";
-import { useState, type FocusEventHandler } from "react";
+import { useRef, useState, type FocusEventHandler } from "react";
 import type { Matcher } from "react-day-picker";
 
 import { TEXTS } from "@/constants/texts";
@@ -53,11 +53,13 @@ export function DatePicker({
 }: DatePickerProps) {
   const controlProps = useFieldControl(props);
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
+          ref={triggerRef}
           type="button"
           disabled={disabled}
           onBlur={onBlur}
@@ -76,7 +78,16 @@ export function DatePicker({
           <CalendarDays aria-hidden="true" className="size-4 shrink-0 text-fg-muted" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto" aria-label={TEXTS.ui.datePicker.openCalendar}>
+      <PopoverContent
+        className="w-auto"
+        aria-label={TEXTS.ui.datePicker.openCalendar}
+        // El calendario se desmonta al elegir; sin esto, dentro de un diálogo el foco quedaba
+        // en el cuerpo de la página en lugar de volver al campo.
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          triggerRef.current?.focus();
+        }}
+      >
         {open ? (
           <DatePickerCalendar
             value={value}

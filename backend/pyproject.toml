@@ -15,12 +15,14 @@ dependencies = [
     "sqlalchemy>=2.1.6",
     "uvicorn[standard]>=0.54.0",
     "tzdata>=2026.5",
+    "fpdf2>=2.8.9",
 ]
 
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
     "mypy>=2.4.0",
+    "pypdf>=6.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "ruff>=0.17.2",

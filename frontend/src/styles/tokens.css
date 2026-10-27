@@ -291,6 +291,9 @@
   --sidebar-width: 16rem;
   --sidebar-width-collapsed: 3.75rem;
   --topbar-height: 3.5rem;
+  /* Alto de una hora en la vista semanal del horario. */
+  --schedule-hour-height: 4rem;
+  --schedule-axis-width: 3.5rem;
   --dialog-max-height: calc(100dvh - 2rem);
   --dialog-viewport-width: calc(100% - 2rem);
   --sheet-max-width: 85vw;

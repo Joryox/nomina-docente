@@ -1,4 +1,14 @@
-import { House, KeyRound, UserRound, type LucideIcon } from "lucide-react";
+import {
+  BookOpen,
+  CalendarDays,
+  ClipboardList,
+  FileText,
+  House,
+  KeyRound,
+  Layers,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 
 import { APP_ROUTES, PROFILE_PASSWORD_SECTION_ID } from "./routes";
 
@@ -26,6 +36,30 @@ export const NAVIGATION: readonly NavigationGroup[] = [
     id: "inicio",
     items: [{ id: "panel", label: "Inicio", href: APP_ROUTES.panel, icon: House }],
   },
+  {
+    id: "docencia",
+    label: "Docencia",
+    items: [
+      { id: "materias", label: "Mis materias", href: APP_ROUTES.subjects, icon: BookOpen },
+      { id: "clases", label: "Mis clases", href: APP_ROUTES.assignments, icon: Layers },
+      { id: "horario", label: "Horario", href: APP_ROUTES.schedule, icon: CalendarDays },
+    ],
+  },
+  {
+    id: "registro",
+    label: "Registro",
+    items: [{ id: "bitacora", label: "Bitácora", href: APP_ROUTES.logbook, icon: ClipboardList }],
+  },
+  {
+    id: "nomina",
+    label: "Nómina",
+    items: [{ id: "recibos", label: "Recibos", href: APP_ROUTES.receipts, icon: FileText }],
+  },
+  {
+    id: "cuenta",
+    label: "Cuenta",
+    items: [{ id: "perfil", label: "Mi perfil", href: APP_ROUTES.profile, icon: UserRound }],
+  },
 ];
 
 /** Opciones del menú de la cuenta (además de la apariencia y de cerrar sesión). */
@@ -39,9 +73,7 @@ export const ACCOUNT_MENU: readonly NavigationItem[] = [
   },
 ];
 
-const ALL_ITEMS = [...NAVIGATION.flatMap((group) => group.items), ACCOUNT_MENU[0]].filter(
-  (item): item is NavigationItem => item !== undefined,
-);
+const ALL_ITEMS = NAVIGATION.flatMap((group) => group.items);
 
 /** Elemento de navegación activo: el de ruta más larga que contiene a la actual. */
 export function activeNavigationItem(pathname: string): NavigationItem | undefined {

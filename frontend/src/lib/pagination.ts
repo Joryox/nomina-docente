@@ -34,3 +34,18 @@ export function pageBounds(page: number, pageSize: number, total: number) {
   const from = (page - 1) * pageSize + 1;
   return { from, to: Math.min(total, from + pageSize - 1) };
 }
+
+/** Estado de la paginación a partir del sobre de los listados de la API. */
+export function toPaginationState(page: {
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+}) {
+  return {
+    page: page.page,
+    page_size: page.page_size,
+    total: page.total_items,
+    total_pages: page.total_pages,
+  };
+}

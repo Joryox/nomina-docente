@@ -24,6 +24,8 @@ interface RequestOptions {
 
 type SessionExpiredHandler = () => void;
 
+const ATTACHMENT_FILENAME_PATTERN = /filename="([^"]+)"/;
+
 let sessionExpiredHandler: SessionExpiredHandler | null = null;
 let refreshInFlight: Promise<boolean> | null = null;
 // Tras cerrar sesión a propósito, las consultas que aún corren reciben 401: no es una sesión
@@ -139,22 +141,32 @@ async function readJson(response: Response): Promise<unknown> {
   }
 }
 
+/** Envía la petición y, si la sesión venció, la renueva una vez y la repite. */
+async function sendWithSession(
+  method: HttpMethod,
+  path: string,
+  { body, signal, skipSessionRefresh = false }: RequestOptions,
+): Promise<Response> {
+  const response = await send(method, path, body, signal);
+  if (response.status !== HTTP_STATUS.unauthorized || skipSessionRefresh) {
+    return response;
+  }
+  if (await refreshSession()) {
+    return send(method, path, body, signal);
+  }
+  if (!sessionClosedOnPurpose) {
+    sessionExpiredHandler?.();
+  }
+  return response;
+}
+
 async function request<TSchema extends z.ZodType>(
   method: HttpMethod,
   path: string,
   schema: TSchema,
-  { body, signal, skipSessionRefresh = false }: RequestOptions = {},
+  options: RequestOptions = {},
 ): Promise<z.infer<TSchema>> {
-  let response = await send(method, path, body, signal);
-
-  if (response.status === HTTP_STATUS.unauthorized && !skipSessionRefresh) {
-    if (await refreshSession()) {
-      response = await send(method, path, body, signal);
-    } else if (!sessionClosedOnPurpose) {
-      sessionExpiredHandler?.();
-    }
-  }
-
+  const response = await sendWithSession(method, path, options);
   const payload = await readJson(response);
   if (!response.ok) {
     throw ApiError.fromResponse(response.status, payload);
@@ -173,7 +185,28 @@ async function request<TSchema extends z.ZodType>(
  * CSRF a las peticiones que modifican datos y renueva la sesión vencida una sola vez.
  * Se usa desde el navegador: las rutas son relativas y Next.js las reenvía al backend.
  */
+/** Nombre del archivo que propone el servidor (`Content-Disposition: attachment; filename="…"`). */
+function attachmentName(response: Response): string | undefined {
+  const header = response.headers.get("Content-Disposition") ?? "";
+  return ATTACHMENT_FILENAME_PATTERN.exec(header)?.[1];
+}
+
+export interface DownloadedFile {
+  blob: Blob;
+  filename: string | undefined;
+}
+
+/** Descarga un archivo (PDF) con la misma sesión, renovación y errores que el resto. */
+async function download(path: string, options: RequestOptions = {}): Promise<DownloadedFile> {
+  const response = await sendWithSession("GET", path, options);
+  if (!response.ok) {
+    throw ApiError.fromResponse(response.status, await readJson(response));
+  }
+  return { blob: await response.blob(), filename: attachmentName(response) };
+}
+
 export const apiClient = {
+  download,
   get: <TSchema extends z.ZodType>(path: string, schema: TSchema, options?: RequestOptions) =>
     request("GET", path, schema, options),
   post: <TSchema extends z.ZodType>(path: string, schema: TSchema, options?: RequestOptions) =>

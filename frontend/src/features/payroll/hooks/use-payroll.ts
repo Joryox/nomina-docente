@@ -2,8 +2,16 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 
 import { invalidateAfter } from "@/lib/query-invalidation";
 import { queryKeys } from "@/lib/query-keys";
+import { saveFile } from "@/lib/save-file";
 
-import { getPeriods, getPreview, getReceipt, issueReceipt, listReceipts } from "../api/payroll";
+import {
+  downloadReceiptPdf,
+  getPeriods,
+  getPreview,
+  getReceipt,
+  issueReceipt,
+  listReceipts,
+} from "../api/payroll";
 import type { PeriodSelection, ReceiptListParams } from "../types/payroll";
 
 export function usePayrollPeriods(year: number) {
@@ -51,6 +59,16 @@ export function useIssueReceipt() {
     onSuccess: async (receipt) => {
       queryClient.setQueryData(queryKeys.payroll.receipt(receipt.id), receipt);
       await invalidateAfter(queryClient, "receipts");
+    },
+  });
+}
+
+/** Descarga el PDF del recibo y lo entrega al navegador para guardarlo. */
+export function useDownloadReceiptPdf() {
+  return useMutation({
+    mutationFn: async ({ id, fallbackName }: { id: string; fallbackName: string }) => {
+      const file = await downloadReceiptPdf(id);
+      saveFile(file.blob, file.filename ?? fallbackName);
     },
   });
 }

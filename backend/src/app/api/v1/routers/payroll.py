@@ -1,12 +1,13 @@
 import uuid
 from http import HTTPStatus
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 
 from app.api.v1.dependencies import CurrentTeacher, Pagination, PayrollServiceDep
 from app.api.v1.openapi import business_responses
 from app.api.v1.params import PeriodParams, YearQuery
 from app.core.codes import ErrorCode
+from app.core.constants import RECEIPT_PDF_MEDIA_TYPE
 from app.domain.periods import Period
 from app.schemas.payroll import (
     PayrollPreviewResponse,
@@ -95,3 +96,29 @@ def get_receipt(
     receipt_id: uuid.UUID, teacher: CurrentTeacher, service: PayrollServiceDep
 ) -> ReceiptDetailResponse:
     return service.get_receipt(teacher, receipt_id)
+
+
+@router.get(
+    "/receipts/{receipt_id}/pdf",
+    summary="Descargar el recibo en PDF",
+    description="El recibo emitido en tamaño carta, con el mismo contenido que su detalle: "
+    "encabezado institucional, folio, periodo, docente, conceptos, total con letra y espacios "
+    "de firma. El nombre del archivo lleva el folio y el periodo. De otro docente: 404 (RN-04).",
+    response_class=Response,
+    responses={
+        HTTPStatus.OK: {
+            "content": {RECEIPT_PDF_MEDIA_TYPE: {"schema": {"type": "string", "format": "binary"}}},
+            "description": "Archivo PDF",
+        },
+        **business_responses(ErrorCode.RECEIPT_NOT_FOUND),
+    },
+)
+def download_receipt_pdf(
+    receipt_id: uuid.UUID, teacher: CurrentTeacher, service: PayrollServiceDep
+) -> Response:
+    document = service.receipt_pdf(teacher, receipt_id)
+    return Response(
+        content=document.content,
+        media_type=RECEIPT_PDF_MEDIA_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{document.filename}"'},
+    )

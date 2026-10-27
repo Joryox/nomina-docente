@@ -30,13 +30,13 @@ async function completeSetup(page: Page) {
   await expect(page.getByText("Materia «Bases de Datos» registrada")).toBeVisible();
   await expect(guide.getByText("1 de 3 pasos completos")).toBeVisible();
 
-  await guide.getByRole("button", { name: "Crear asignación" }).click();
-  const assignmentDialog = page.getByRole("dialog", { name: "Crear asignación" });
+  await guide.getByRole("button", { name: "Crear clase" }).click();
+  const assignmentDialog = page.getByRole("dialog", { name: "Nueva clase" });
   await chooseFromCombobox(page, "Materia", "bases");
   await chooseFromCombobox(page, "Carrera", "sistemas");
   await assignmentDialog.getByRole("combobox", { name: "Tarifa por hora" }).click();
   await page.getByRole("option", { name: "$135.00" }).click();
-  await assignmentDialog.getByRole("button", { name: "Crear asignación" }).click();
+  await assignmentDialog.getByRole("button", { name: "Crear clase" }).click();
   await expect(guide.getByText("2 de 3 pasos completos")).toBeVisible();
 
   await guide.getByRole("button", { name: "Agregar horario" }).click();

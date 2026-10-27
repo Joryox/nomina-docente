@@ -1,7 +1,7 @@
 /** Textos de la interfaz (es-MX). */
 export const TEXTS = {
   metadata: {
-    description: "Registro de asignaciones, horarios y bitácora docente, y recibo de nómina.",
+    description: "Registro de clases, horario y bitácora docente, y recibo de nómina.",
   },
   layout: {
     skipToContent: "Saltar al contenido",
@@ -240,6 +240,7 @@ export const TEXTS = {
     },
     today: {
       title: "Clases de hoy",
+      openLogbook: "Abrir la bitácora",
       register: "Registrar",
       registerAll: (count: number) => `Registrar las ${count}`,
       registered: "Registrada",
@@ -267,6 +268,8 @@ export const TEXTS = {
     },
     receipts: {
       title: "Últimos recibos",
+      viewAll: "Ver todos",
+      viewLabel: (period: string) => `Ver el recibo de la ${period}`,
       folio: "Folio",
       hours: "Horas",
       empty: "Aún no tienes recibos emitidos.",
@@ -288,11 +291,10 @@ export const TEXTS = {
             count === 1 ? "1 materia registrada" : `${count} materias registradas`,
         },
         assignments: {
-          title: "Asigna cada materia a una carrera",
+          title: "Crea tus clases",
           description:
             "Elige la materia, la carrera donde la impartes y tu tarifa por hora. Con esto se calcula tu pago.",
-          count: (count: number) =>
-            count === 1 ? "1 asignación activa" : `${count} asignaciones activas`,
+          count: (count: number) => (count === 1 ? "1 clase activa" : `${count} clases activas`),
           blocked: "Primero registra al menos una materia.",
         },
         schedules: {
@@ -301,7 +303,7 @@ export const TEXTS = {
             "Indica qué día y a qué hora das cada clase. Así podrás registrar tus clases con un clic.",
           count: (count: number) =>
             count === 1 ? "1 horario registrado" : `${count} horarios registrados`,
-          blocked: "Primero crea al menos una asignación.",
+          blocked: "Primero crea al menos una clase.",
         },
       },
       after:
@@ -322,8 +324,8 @@ export const TEXTS = {
       saved: (name: string) => `Materia «${name}» registrada`,
     },
     assignment: {
-      open: "Crear asignación",
-      title: "Crear asignación",
+      open: "Crear clase",
+      title: "Crear clase",
       description: "Une una materia con la carrera donde la impartes y tu tarifa por hora.",
       subject: "Materia",
       subjectPlaceholder: "Elige una materia",
@@ -332,8 +334,8 @@ export const TEXTS = {
       rate: "Tarifa por hora",
       ratePlaceholder: "Elige una tarifa",
       rateHint: "La que te corresponde según tu contrato. Puedes cambiarla después.",
-      submit: "Crear asignación",
-      submitting: "Creando asignación…",
+      submit: "Crear clase",
+      submitting: "Creando clase…",
       saved: (subject: string, career: string) => `Asignación ${subject} – ${career} creada`,
       loadError: "No pudimos cargar las opciones. Cierra la ventana e intenta de nuevo.",
     },
@@ -398,6 +400,15 @@ export const TEXTS = {
       5: "viernes",
       6: "sábado",
       7: "domingo",
+    },
+    weekdaysShort: {
+      1: "lun",
+      2: "mar",
+      3: "mié",
+      4: "jue",
+      5: "vie",
+      6: "sáb",
+      7: "dom",
     },
     fortnights: {
       1: "1.ª quincena",

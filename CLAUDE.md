@@ -196,7 +196,9 @@ backend/
 │   │   └── security/        → Argon2, JWT, política de contraseñas (+ data/), cabeceras, tamaño, CSRF, auditoría
 │   ├── db/                  → motor, sesión (get_db), base declarativa con convención de nombres, mixins y CHECK reutilizables
 │   ├── models/              → modelos ORM (un archivo por entidad, registrados en __init__.py)
-│   ├── domain/              → reglas puras sin E/S: periodos, redondeo, cálculo de nómina, intervalos, ocurrencias
+│   ├── domain/              → reglas puras sin E/S: periodos, redondeo, cálculo de nómina, intervalos, ocurrencias,
+│   │                          importe con letra
+│   ├── documents/           → recibo en PDF (fpdf2) y sus fuentes (fonts/, SIL OFL); solo presenta, no calcula
 │   ├── schemas/             → modelos Pydantic de entrada/salida (common.py: dinero, horas, paginación)
 │   ├── repositories/        → acceso a datos (sin lógica de negocio)
 │   ├── services/            → lógica de negocio (sin saber de HTTP); constraints.py traduce restricciones
@@ -230,7 +232,8 @@ backend/
 | --- | --- | --- |
 | `api/v1/routers` | `services`, `schemas`, `api/v1/dependencies`, dependencias de `core` | usar `Session`, `repositories` o `models` |
 | `api/v1/dependencies.py` | `services`, `repositories`, `db.session`, `core` | contener lógica (solo construye objetos) |
-| `services` | `repositories`, `schemas`, `domain`, `core` | conocer `Request`, `Response`, `HTTPException` ni códigos HTTP |
+| `services` | `repositories`, `schemas`, `domain`, `documents`, `core` | conocer `Request`, `Response`, `HTTPException` ni códigos HTTP |
+| `documents` | `schemas`, `domain`, `core.constants` | hacer E/S o calcular importes |
 | `domain` | `core.constants` | hacer E/S (base, reloj, HTTP); los routers solo usan sus objetos de valor (p. ej. `Period`) |
 | `repositories` | `models`, `db` | aplicar reglas de negocio |
 | `models` | `db.base` | importar cualquier capa superior |
@@ -580,8 +583,8 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 - [x] **4. Lógica de negocio:** materias, asignaciones, horarios, bitácora y cálculo de nómina
 - [x] **5. Sistema de diseño** (colores, tipografía, componentes)
 - [x] **6. Pantallas:** login, registro, panel principal y perfil
-- [ ] **7. Pantallas:** asignaciones, horarios y bitácora
-- [ ] **8. Recibo de nómina y exportación a PDF**
+- [x] **7. Pantallas:** materias, clases (asignaciones), horario y bitácora
+- [x] **8. Recibo de nómina y exportación a PDF**
 - [ ] **9. Animaciones y microinteracciones**
 - [ ] **10. Pruebas, QA y revisión de seguridad**
 - [ ] **11. Logos, pulido final y documentación**
@@ -603,7 +606,6 @@ Variables que deben coincidir entre apps: `CSRF_COOKIE_NAME` (backend) = `NEXT_P
 
 | Tema | Etapa | Opciones / criterio |
 | --- | --- | --- |
-| Generación del PDF del recibo | 8 | Generarlo en el backend (una sola fuente de cálculo y formato). Elegir la biblioteca en la etapa 8 considerando que funcione sin dependencias de sistema complicadas en Linux y Windows |
 | Paleta institucional | 11 | La paleta provisional (azul marino) y la tipografía quedaron en la etapa 5. Al llegar los logos: reemplazar la escala de `styles/brand.css`, declarar los archivos en `config/brand.ts` y correr `npm test` (docs/sistema-de-diseno.md §10) |
 | CSP de las páginas y script de tema | 10 | El script de preferencias es un `<script>` en línea en `<head>`; la CSP con *nonces* de la etapa 10 debe incluirlo (o pasar a un *hash* fijo) |
 | Cuentas de las pruebas e2e | 10 | `npm run test:e2e` deja cuentas `@e2e.example.com` en la base de desarrollo. Evaluar un comando de limpieza o una base dedicada para e2e |
@@ -852,3 +854,32 @@ Formato: fecha, etapa, qué se hizo y decisiones importantes. Lo más reciente v
 **Pendiente**
 
 - Etapa 7: pantallas de materias, asignaciones, horario y bitácora (se agregan a `constants/navigation.ts`). Etapa 8: recibos y PDF.
+
+### 2026-10-27 — Etapas 7 y 8: Operación completa y recibo en PDF (rama `producto-02-operacion-nomina`)
+
+**Qué se hizo**
+
+- **Navegación completa:** Inicio, Mis materias, Mis clases, Horario, Bitácora, Recibos y Mi perfil (`constants/navigation.ts`). Textos de estas pantallas en `constants/screens.ts`; en la interfaz las asignaciones se llaman «clases».
+- **Mis materias:** búsqueda sin acentos (servidor), filtro por estado, alta y edición en diálogo; quitar una materia la borra, la desactiva explicando por qué (tiene historial) o explica que primero hay que desactivar sus clases.
+- **Mis clases:** agrupadas por carrera con tarifa, horarios y horas semanales; filtros por carrera y estado; materia con combobox y alta en el mismo formulario; carrera y tarifa solo de catálogos; al editar se explica que la tarifa no afecta lo registrado y, con bitácora, que materia y carrera no cambian; desactivar, reactivar y eliminar con confirmación.
+- **Horario:** cuadrícula semanal lunes a sábado (domingo si tiene clases) con bloques a escala, lista por día en celular; alta, edición y eliminación; el empalme dice con qué clase, qué día y a qué hora.
+- **Bitácora:** hoy por defecto (antigüedad máxima publicada por el servidor), clases programadas con registro en un clic o todas, registro fuera de horario con aviso previo y precarga de horas, sesiones de la quincena filtrables por quincena y clase con totales, edición y eliminación solo en periodos abiertos (las cerradas, con candado y explicación).
+- **Recibos:** vista previa por quincena (renglones, totales, avisos y bloqueos), propuesta de quincenas terminadas sin recibo, emisión con confirmación que lleva al recibo, lista por año, detalle como documento oficial con importe con letra y firmas, impresión limpia (`print:`) y descarga en PDF.
+- **Backend:** `domain/amount_words.py` (importe con letra), `documents/receipt_pdf.py` (PDF carta con fpdf2 y fuentes incluidas), `GET /payroll/receipts/{id}/pdf` y `total_amount_words` en el detalle.
+- **Pruebas:** backend 562 en verde (Ruff, formato y mypy también); frontend 491 (Vitest); Playwright 17 (flujo completo de un docente nuevo hasta el PDF, cuenta de demostración en todas las pantallas, más los flujos de la etapa 6), en escritorio y a 390 px. `npm run build` en verde.
+
+**Decisiones**
+
+1. **fpdf2 para el PDF:** Python puro (sus dependencias, Pillow y fontTools, traen ruedas para Windows y Linux); WeasyPrint necesita Pango/GTK y ReportLab compila extensiones. Las fuentes viajan con el código para que el documento se vea igual en cualquier equipo.
+2. **El PDF y el detalle se arman con la misma respuesta** (`ReceiptDetailResponse`): el total con letra se calcula una sola vez en el dominio.
+3. **Los menús de acciones no son modales** (`DropdownMenu modal={false}`): abren diálogos y así el foco no queda atrapado al cerrarse.
+4. **Avisos tras una acción con `mutateAsync`:** si el botón se desmonta al terminar (una clase que pasa a «Registrada»), los callbacks de `mutate` no se ejecutan; las pruebas e2e lo detectaron.
+5. **El foco vuelve al campo de fecha** al elegir un día (`DatePicker`), también dentro de un diálogo.
+6. **`FormField` admite formularios cuyo schema transforma los valores** (entrada distinta de la salida).
+7. **El layout del panel va dentro de `Suspense`:** las rutas dinámicas (`/panel/recibos/[id]`) leen la ruta actual con `cacheComponents`.
+8. **Los datos de demostración no cambian:** ya tienen materias, clases en cuatro carreras, horario, bitácora de cuatro quincenas y dos recibos; la 1.ª quincena de octubre queda sin emitir para probar la emisión.
+
+**Pendiente**
+
+- Etapa 9 (animaciones), 10 (QA y seguridad) y 11 (logos). Cuando lleguen los logos, el PDF también debe usarlos (`documents/receipt_pdf.py` dibuja hoy el logotipo tipográfico).
+

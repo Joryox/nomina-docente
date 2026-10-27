@@ -187,8 +187,10 @@ export function FormRequiredNote({ className }: { className?: string }) {
 interface FormFieldProps<
   TValues extends FieldValues,
   TName extends FieldPath<TValues>,
+  TTransformed = TValues,
 > extends Omit<FieldProps, "error" | "children"> {
-  control: Control<TValues>;
+  /** Admite formularios cuyo schema transforma los valores (entrada distinta de la salida). */
+  control: Control<TValues, unknown, TTransformed>;
   name: TName;
   render: (field: ControllerRenderProps<TValues, TName>, state: ControllerFieldState) => ReactNode;
 }
@@ -198,14 +200,13 @@ interface FormFieldProps<
  * que no son `input` nativos (Select, Combobox, fecha, hora) y necesitan `value`/`onChange`;
  * con un `input` nativo basta `register()` dentro de un Field.
  */
-export function FormField<TValues extends FieldValues, TName extends FieldPath<TValues>>({
-  control,
-  name,
-  render,
-  ...fieldProps
-}: FormFieldProps<TValues, TName>) {
+export function FormField<
+  TValues extends FieldValues,
+  TName extends FieldPath<TValues>,
+  TTransformed = TValues,
+>({ control, name, render, ...fieldProps }: FormFieldProps<TValues, TName, TTransformed>) {
   return (
-    <Controller
+    <Controller<TValues, TName, TTransformed>
       control={control}
       name={name}
       render={({ field, fieldState }) => (
