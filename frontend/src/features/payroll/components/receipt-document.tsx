@@ -67,7 +67,25 @@ export function ReceiptDocument({ receipt }: { receipt: ReceiptDetail }) {
         ))}
       </dl>
 
-      <Table>
+      <p className="mb-2 text-overline text-fg-muted uppercase sm:hidden print:hidden">
+        {texts.concepts}
+      </p>
+      <ul className="divide-y divide-line border-y border-line sm:hidden print:hidden">
+        {receipt.lines.map((line) => (
+          <li key={`${line.assignment_id}-${line.hourly_rate}`} className="grid gap-1 py-3">
+            <div className="flex items-baseline justify-between gap-4">
+              <p className="font-semibold text-fg">{line.subject_name}</p>
+              <Money amount={line.amount} className="font-semibold" />
+            </div>
+            <p className="text-small text-fg-muted">{line.career_name}</p>
+            <p className="text-small text-fg-muted figures">
+              <Hours value={line.hours} /> × <Money amount={line.hourly_rate} />
+            </p>
+          </li>
+        ))}
+      </ul>
+
+      <Table className="hidden sm:table print:table">
         <TableCaption className="text-left text-overline text-fg-muted uppercase">
           {texts.concepts}
         </TableCaption>
