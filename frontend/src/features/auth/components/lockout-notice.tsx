@@ -9,7 +9,8 @@ const texts = TEXTS.auth.login;
 const TICK_MS = 1000;
 const SECONDS_PER_MINUTE = 60;
 
-function remainingText(seconds: number): string {
+/** Tiempo restante en palabras: «15 minutos», «1 minuto», «menos de un minuto». */
+export function remainingText(seconds: number): string {
   if (seconds < SECONDS_PER_MINUTE) {
     return texts.remainingUnderMinute;
   }

@@ -40,7 +40,7 @@ function personalParts(personalData: readonly string[]): string[] {
   });
 }
 
-interface RuleContext {
+export interface RuleContext {
   policy: PasswordPolicy;
   password: string;
   personalData: readonly string[];
@@ -51,7 +51,7 @@ interface RuleContext {
  * `true`/`false` si el requisito se puede revisar en el navegador; `null` si solo lo puede
  * revisar el servidor (contraseñas comunes) o aún faltan datos para revisarlo.
  */
-function isMet(rule: PasswordRule, context: RuleContext): boolean | null {
+export function isRuleMet(rule: PasswordRule, context: RuleContext): boolean | null {
   const { policy, password } = context;
   switch (rule) {
     case "min_length":
@@ -101,7 +101,7 @@ export function PasswordRequirements({
       <ul className="mt-1 grid gap-1">
         {rules.map((rule) => {
           const met = password
-            ? isMet(rule, { policy, password, personalData, currentPassword })
+            ? isRuleMet(rule, { policy, password, personalData, currentPassword })
             : null;
           return (
             <li

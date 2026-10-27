@@ -192,11 +192,12 @@ Tamaños: `sm`, `md` y `lg`; `icon` e `icon-sm` (con `aria-label` obligatorio). 
 
 | Componente | Cuándo | Cuándo no |
 | --- | --- | --- |
-| `Field` | Envoltorio de todo campo: etiqueta, `*` si es obligatorio, ayuda, control y error, conectados por ARIA (`aria-describedby`, `aria-invalid`, `required`) automáticamente | — |
+| `Field` | Envoltorio de todo campo: etiqueta, `*` si es obligatorio (`required`) o «(opcional)» en formularios con obligatorios (`optional`), ayuda, control y error, conectados por ARIA (`aria-describedby`, `aria-invalid`, `required`) automáticamente | — |
 | `FormField` | Igual, conectado a React Hook Form con `Controller` para controles no nativos | Con `<Input>` nativo basta `register()` dentro de `Field` |
 | `Fieldset` | Grupo de radios o casillas (`fieldset` + `legend`) | Un solo control |
 | `FormRequiredNote` | Al inicio de un formulario de captura con obligatorios | Formularios de 2 campos evidentes (iniciar sesión) |
 | `Input` | Texto corto que no existe en el sistema (clave, nombre) | Datos que ya existen: usa un selector |
+| `PasswordInput` | Toda contraseña: botón para mostrarla u ocultarla (`aria-pressed`) y aviso de Bloq Mayús anunciado y enlazado al campo | — |
 | `Textarea` (`showCount`) | Observaciones con límite (500) | — |
 | `Select` | Lista corta y conocida (tarifas, quincena, estado) | Más de ~8 opciones o cuando se busca por nombre |
 | `Combobox` | Listas largas que se reconocen por nombre (materias, carreras). La búsqueda ignora acentos, mayúsculas y el orden de las palabras; admite grupos y descripción | Texto libre: nunca acepta valores fuera de la lista |
@@ -266,13 +267,14 @@ Se usa lucide-react con trazo de 1.75 (`--icon-stroke`, aplicado a `svg.lucide` 
 | --- | --- |
 | `AppShell` | Estructura del panel. Barra lateral con grupos (Docencia, Registro, Nómina), elemento activo resaltado (`aria-current="page"`) y contraíble en escritorio con preferencia recordada y aplicada antes de pintar. En celular es un panel deslizable. La barra superior tiene migas de pan y el menú de la cuenta (perfil, cambiar contraseña, apariencia y cerrar sesión). Lo usa `features/auth/components/authenticated-shell.tsx` con los datos de la sesión |
 | `AuthLayout` | Iniciar sesión y registro. En escritorio, una franja en color primario con el nombre de la institución en serif; en celular, el logotipo arriba del formulario |
-| `SiteHeader` | Páginas públicas (estado del sistema, guía viva) |
+| `SiteHeader` | Páginas públicas (404, error inesperado, guía viva) |
+| `StatusScreen` | Pantalla completa de la página no encontrada y del error inesperado: código, título en serif, qué pasó y cómo seguir |
 | `PageHeader` | Título (único `h1`), descripción, contexto (`meta`), acciones y migas propias cuando la barra superior no las conoce |
 | `Logo` | Logo oficial de `config/brand.ts` o, mientras no exista, el logotipo tipográfico: siglas en serif dentro de un marco, como un sello. Variantes `full`, `compact` y `mark`; tono `inverse` sobre primario |
 | `SkipLink` | «Saltar al contenido»: primer elemento enfocable de cada página. Todos los layouts ponen `id="contenido"` en su `main` |
 | `ThemeSwitcher` · `ThemeMenuOptions` | Tema: como el sistema, claro u oscuro |
 
-La navegación está definida en `src/constants/navigation.ts`. Las secciones que aún no tienen pantalla llevan `ready: false` y se muestran deshabilitadas con «Pronto». Al construir la pantalla se cambia a `ready: true`, y nada más.
+La navegación está definida en `src/constants/navigation.ts` y **solo contiene secciones que existen**: nunca se muestran elementos deshabilitados ni «Pronto». Al construir una pantalla se agrega su elemento ahí y aparece sola en la barra lateral y en las migas; `isAvailableRoute()` permite enlazarla desde otras pantallas solo cuando ya existe.
 
 ![Panel con el AppShell](img/panel-claro.png)
 

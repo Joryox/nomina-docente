@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 import { APP_ROUTES } from "@/constants/routes";
+import { setSessionClosedOnPurpose } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 
 import { changePassword, login, logout, logoutAll, register, updateProfile } from "../api/auth";
@@ -11,6 +12,7 @@ function useEnterPanel() {
   const queryClient = useQueryClient();
   const router = useRouter();
   return (me: Me, nextPath: string) => {
+    setSessionClosedOnPurpose(false);
     queryClient.setQueryData(queryKeys.auth.me, me);
     router.replace(nextPath);
   };
@@ -29,12 +31,16 @@ export function useRegister() {
   });
 }
 
+/**
+ * Sale del panel con una navegación completa: Next.js conserva ocultas las páginas visitadas
+ * para volver rápido, y tras cerrar sesión no debe quedar en memoria nada del docente.
+ */
 function useLeavePanel() {
   const queryClient = useQueryClient();
-  const router = useRouter();
   return () => {
+    setSessionClosedOnPurpose(true);
     queryClient.clear();
-    router.replace(APP_ROUTES.login);
+    window.location.replace(APP_ROUTES.login);
   };
 }
 

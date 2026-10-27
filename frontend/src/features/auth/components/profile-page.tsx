@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TEXTS } from "@/constants/texts";
 import { toUserMessage } from "@/lib/api-error";
+import { useHydrated } from "@/lib/use-hydrated";
 
 import { useSession } from "../hooks/use-session";
 import { AccountDetails } from "./account-details";
@@ -19,11 +20,12 @@ const texts = TEXTS.profile;
 /** Mi perfil: datos personales, cuenta, contraseña y sesiones abiertas. */
 export function ProfilePage() {
   const session = useSession();
+  const hydrated = useHydrated();
 
   return (
     <>
       <PageHeader title={texts.title} description={texts.description} />
-      {session.isPending ? (
+      {!hydrated || session.isPending ? (
         <ProfileSkeleton />
       ) : session.isError ? (
         <Alert

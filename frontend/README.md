@@ -7,7 +7,7 @@ Aplicación construida con **Next.js 16 (App Router, Turbopack)**, **TypeScript 
 | Ruta                     | Propósito                                                                                                                                                                                                                                                                           |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/app/`               | Solo rutas y layouts de Next.js                                                                                                                                                                                                                                                     |
-| `src/features/`          | Funcionalidades (`auth`, `catalogs`, `subjects`, `assignments`, `schedules`, `logbook`, `payroll`, `dashboard`, `design-system` —la guía viva— y la temporal `system-status`), cada una con `components/`, `hooks/`, `api/`, `schemas/` y `types/`                                  |
+| `src/features/`          | Funcionalidades (`auth`, `catalogs`, `subjects`, `assignments`, `schedules`, `logbook`, `payroll`, `dashboard`, y `design-system` —la guía viva—), cada una con `components/`, `hooks/`, `api/`, `schemas/` y `types/`                                                              |
 | `src/components/ui/`     | Componentes base sobre Radix (Button, Field, Select, Combobox, DatePicker, TimeInput, DataTable, diálogos, avisos…), adaptados a los tokens                                                                                                                                         |
 | `src/components/domain/` | Componentes del dominio: `Money`, `Hours`, `PeriodLabel`, `Folio`, `StatusBadge`                                                                                                                                                                                                    |
 | `src/components/layout/` | `AppShell`, `AuthLayout`, `SiteHeader`, `PageHeader`, `Logo`, selector de tema y _providers_ globales (TanStack Query, tooltips, notificaciones)                                                                                                                                    |
@@ -40,15 +40,25 @@ Reglas, tokens y guía de uso de cada componente: [`docs/sistema-de-diseno.md`](
 
 Todos se ejecutan dentro de `frontend/`. La versión de Node está en `.nvmrc`.
 
-| Comando             | Qué hace                                             |
-| ------------------- | ---------------------------------------------------- |
-| `npm ci`            | Instala dependencias exactas del `package-lock.json` |
-| `npm run dev`       | Servidor de desarrollo                               |
-| `npm run build`     | Build de producción                                  |
-| `npm run lint`      | ESLint (sin advertencias permitidas)                 |
-| `npm run typecheck` | Genera tipos de rutas y ejecuta `tsc --noEmit`       |
-| `npm run format`    | Prettier (`format:check` para solo verificar)        |
-| `npm test`          | Vitest: contraste, valores literales y lógica pura   |
-| `npm run check`     | Lint + tipos + formato + pruebas                     |
-| `npm run api:types` | Regenera `src/lib/api-types.gen.ts` desde el backend |
-| `npm run api:check` | Verifica que los tipos generados estén al día        |
+| Comando             | Qué hace                                                     |
+| ------------------- | ------------------------------------------------------------ |
+| `npm ci`            | Instala dependencias exactas del `package-lock.json`         |
+| `npm run dev`       | Servidor de desarrollo                                       |
+| `npm run build`     | Build de producción                                          |
+| `npm run lint`      | ESLint (sin advertencias permitidas)                         |
+| `npm run typecheck` | Genera tipos de rutas y ejecuta `tsc --noEmit`               |
+| `npm run format`    | Prettier (`format:check` para solo verificar)                |
+| `npm test`          | Vitest: contraste, valores literales y lógica pura           |
+| `npm run check`     | Lint + tipos + formato + pruebas                             |
+| `npm run api:types` | Regenera `src/lib/api-types.gen.ts` desde el backend         |
+| `npm run api:check` | Verifica que los tipos generados estén al día                |
+| `npm run test:e2e`  | Playwright de punta a punta (con `scripts/dev.sh` en marcha) |
+
+## Pruebas de punta a punta
+
+`e2e/` contiene las pruebas de Playwright de los flujos de acceso, inicio y perfil, en escritorio y a 390 px de ancho: registro con validación en vivo, inicio de sesión con bloqueo, regreso a la página solicitada, guía de configuración completa, registro de una clase en un clic, perfil, cambio de contraseña, cierre de todas las sesiones, 404 y ausencia de desbordamiento horizontal.
+
+1. Levanta el sistema: `bash scripts/dev.sh`.
+2. En otra terminal: `cd frontend && npm run test:e2e`.
+
+Usan el Microsoft Edge instalado (`E2E_BROWSER_CHANNEL=chrome` para Google Chrome), así que no descargan navegadores. Cada corrida registra cuentas nuevas con correos `@e2e.example.com` en la base de desarrollo.

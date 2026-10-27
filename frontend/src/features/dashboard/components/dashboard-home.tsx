@@ -10,6 +10,7 @@ import { useSession } from "@/features/auth/hooks/use-session";
 import { toUserMessage } from "@/lib/api-error";
 import { currentHour } from "@/lib/calendar";
 import { formatFullDate } from "@/lib/formatters";
+import { useHydrated } from "@/lib/use-hydrated";
 
 import { useDashboardSummary } from "../hooks/use-dashboard";
 import type { DashboardSummary } from "../types/dashboard";
@@ -17,7 +18,8 @@ import { DashboardAlerts } from "./dashboard-alerts";
 import { DashboardSkeleton } from "./dashboard-skeleton";
 import { DashboardStats } from "./dashboard-stats";
 import { LatestReceipts } from "./latest-receipts";
-import { needsSetup, SetupGuide } from "./setup-guide";
+import { SetupGuide } from "./setup-guide";
+import { needsSetup } from "./setup-progress";
 import { TodayClasses } from "./today-classes";
 
 const texts = TEXTS.dashboard;
@@ -39,16 +41,18 @@ function greeting(name: string | undefined): string {
 export function DashboardHome() {
   const session = useSession();
   const summary = useDashboardSummary();
-  const firstName = session.data?.teacher?.first_names.split(" ")[0];
+  const hydrated = useHydrated();
+  const firstName = hydrated ? session.data?.teacher?.first_names.split(" ")[0] : undefined;
+  const data = hydrated ? summary.data : undefined;
 
   return (
     <>
       <PageHeader
         title={greeting(firstName)}
-        description={summary.data ? formatFullDate(summary.data.today.date) : undefined}
-        meta={summary.data ? <PeriodMeta summary={summary.data} /> : undefined}
+        description={data ? formatFullDate(data.today.date) : undefined}
+        meta={data ? <PeriodMeta summary={data} /> : undefined}
       />
-      {summary.isPending ? (
+      {!hydrated || summary.isPending ? (
         <DashboardSkeleton />
       ) : summary.isError ? (
         <Alert

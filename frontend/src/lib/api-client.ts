@@ -26,6 +26,14 @@ type SessionExpiredHandler = () => void;
 
 let sessionExpiredHandler: SessionExpiredHandler | null = null;
 let refreshInFlight: Promise<boolean> | null = null;
+// Tras cerrar sesión a propósito, las consultas que aún corren reciben 401: no es una sesión
+// vencida y no debe llevar a iniciar sesión «con regreso» a la página que se dejó.
+let sessionClosedOnPurpose = false;
+
+/** Marca si la persona cerró su sesión (`true`) o acaba de abrir una nueva (`false`). */
+export function setSessionClosedOnPurpose(closed: boolean): void {
+  sessionClosedOnPurpose = closed;
+}
 
 /**
  * Registra qué hacer cuando la sesión ya no se puede renovar (por ejemplo, redirigir a
@@ -142,7 +150,7 @@ async function request<TSchema extends z.ZodType>(
   if (response.status === HTTP_STATUS.unauthorized && !skipSessionRefresh) {
     if (await refreshSession()) {
       response = await send(method, path, body, signal);
-    } else {
+    } else if (!sessionClosedOnPurpose) {
       sessionExpiredHandler?.();
     }
   }
