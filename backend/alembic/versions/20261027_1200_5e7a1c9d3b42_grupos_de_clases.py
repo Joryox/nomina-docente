@@ -54,14 +54,14 @@ def downgrade() -> None:
     # Sin el grupo, dos asignaciones activas de la misma materia y carrera en grupos
     # distintos violarían la restricción anterior: se explica antes de intentarlo.
     op.execute(
-        f"""
+        """
         DO $$
         BEGIN
             IF EXISTS (
                 SELECT 1 FROM assignments WHERE is_active
                 GROUP BY teacher_id, subject_id, career_id HAVING count(*) > 1
             ) THEN
-                RAISE EXCEPTION 'No se puede revertir {revision}: hay asignaciones activas de '
+                RAISE EXCEPTION 'No se puede revertir 5e7a1c9d3b42: hay asignaciones activas de '
                     'la misma materia y carrera en grupos distintos. Desactiva las sobrantes.';
             END IF;
         END $$;
