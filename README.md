@@ -139,10 +139,10 @@ Las pruebas de punta a punta recorren el flujo completo de un docente nuevo, de 
 
 ## Créditos
 
-| Rol                | Nombre                                             |
-| ------------------ | -------------------------------------------------- |
-| Desarrollo         | `[Nombre del desarrollador]`                       |
-| Asesoría académica | `[Nombre del profesor investigador]`               |
-| Institución        | Tecnológico de Estudios Superiores de Huixquilucan |
+| Rol             | Nombre                                                    |
+| --------------- | --------------------------------------------------------- |
+| Desarrollo      | Jorge Raúl Ramos Alvarado                                 |
+| Profesor asesor | Hugo Montes de Oca                                        |
+| Institución     | Tecnológico de Estudios Superiores de Huixquilucan (TESH) |
 
 Tipografías Public Sans y Source Serif 4 bajo licencia SIL Open Font License. Código bajo licencia [MIT](LICENSE).

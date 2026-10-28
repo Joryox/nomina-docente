@@ -2,6 +2,8 @@
 name = "nomina-docente-backend"
 version = "1.0.0"
 description = "API REST del Sistema de Nómina Docente (TESH)"
+authors = [{ name = "Jorge Raúl Ramos Alvarado" }]
+license = "MIT"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
