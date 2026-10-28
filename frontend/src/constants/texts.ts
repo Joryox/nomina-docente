@@ -401,6 +401,16 @@ export const TEXTS = {
       6: "sábado",
       7: "domingo",
     },
+    /** Casillas de días del horario: L M X J V S D (X es miércoles, como en los calendarios). */
+    weekdaysLetter: {
+      1: "L",
+      2: "M",
+      3: "X",
+      4: "J",
+      5: "V",
+      6: "S",
+      7: "D",
+    },
     weekdaysShort: {
       1: "lun",
       2: "mar",
@@ -415,5 +425,12 @@ export const TEXTS = {
       2: "2.ª quincena",
     },
     hoursSuffix: "h",
+  },
+  /** Cómo se nombra una clase en toda la interfaz: «Programación Web · ISC · Grupo 3101». */
+  classes: {
+    separator: " · ",
+    group: (group: string) => `Grupo ${group}`,
+    shifts: { morning: "Matutino", afternoon: "Vespertino" },
+    shiftLabel: (shift: string) => `Turno ${shift.toLowerCase()}`,
   },
 } as const;

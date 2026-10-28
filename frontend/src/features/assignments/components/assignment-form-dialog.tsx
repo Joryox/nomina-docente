@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FormField, FormRequiredNote } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { FIELD_LIMITS } from "@/constants/validation";
 import {
   Select,
   SelectContent,
@@ -35,10 +36,10 @@ import { TEXTS } from "@/constants/texts";
 import { useCareers, useHourlyRates } from "@/features/catalogs/hooks/use-catalogs";
 import { useCreateSubject, useSubjects } from "@/features/subjects/hooks/use-subjects";
 import { toUserMessage } from "@/lib/api-error";
-import { formatMoney } from "@/lib/formatters";
+import { formatClassLabel, formatMoney } from "@/lib/formatters";
 
 import { useCreateAssignment, useUpdateAssignment } from "../hooks/use-assignments";
-import { assignmentFormSchema } from "../schemas/assignments";
+import { assignmentFormSchema, normalizeGroup } from "../schemas/assignments";
 import type {
   Assignment,
   AssignmentChanges,
@@ -56,10 +57,11 @@ function initialValues(assignment: Assignment | undefined): AssignmentFormValues
     subject_id: assignment?.subject.id ?? "",
     career_code: assignment?.career.code ?? "",
     hourly_rate: assignment?.hourly_rate.amount ?? "",
+    group: assignment?.group ?? "",
   };
 }
 
-/** Solo lo que cambió: la tarifa siempre; materia y carrera solo sin bitácora (RN-34). */
+/** Solo lo que cambió: tarifa y grupo siempre; materia y carrera solo sin bitácora (RN-34). */
 function changesOf(assignment: Assignment, values: AssignmentPayload): AssignmentChanges {
   const changes: AssignmentChanges = {};
   if (values.subject_id !== assignment.subject.id) {
@@ -70,6 +72,9 @@ function changesOf(assignment: Assignment, values: AssignmentPayload): Assignmen
   }
   if (values.hourly_rate !== assignment.hourly_rate.amount) {
     changes.hourly_rate = values.hourly_rate;
+  }
+  if (values.group !== assignment.group) {
+    changes.group = values.group;
   }
   return changes;
 }
@@ -116,7 +121,11 @@ export function AssignmentFormDialog({
     if (!assignment) {
       create.mutate(values, {
         onSuccess: (created) => {
-          toast.success(texts.created(created.subject.name, created.career.code));
+          toast.success(
+            texts.created(
+              formatClassLabel(created.subject.name, created.career.code, created.group),
+            ),
+          );
           changeOpen(false);
         },
       });
@@ -273,6 +282,27 @@ function AssignmentFields({
             onBlur={field.onBlur}
             placeholder={texts.careerPlaceholder}
             disabled={locked}
+          />
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="group"
+        label={texts.group}
+        hint={texts.groupHint}
+        optional
+        render={(field) => (
+          <Input
+            {...field}
+            value={field.value ?? ""}
+            onBlur={(event) => {
+              field.onChange(normalizeGroup(event.target.value) ?? "");
+              field.onBlur();
+            }}
+            placeholder={texts.groupPlaceholder}
+            maxLength={FIELD_LIMITS.groupCode}
+            autoComplete="off"
+            className="uppercase"
           />
         )}
       />

@@ -44,8 +44,9 @@ async function completeSetup(page: Page) {
   await guide.getByRole("button", { name: "Agregar horario" }).click();
   const scheduleDialog = page.getByRole("dialog", { name: "Agregar horario" });
   await chooseFromCombobox(page, "Clase", "bases");
-  await scheduleDialog.getByRole("combobox", { name: "Día de la semana" }).click();
-  await page.getByRole("option", { name: WEEKDAYS[todayWeekday() - 1] }).click();
+  await scheduleDialog
+    .getByRole("checkbox", { name: WEEKDAYS[todayWeekday() - 1], exact: true })
+    .click();
   await scheduleDialog.getByLabel("Hora de entrada").fill("00:00");
   await scheduleDialog.getByLabel("Hora de salida").fill("00:50");
   await scheduleDialog.getByLabel("Hora de salida").blur();
@@ -67,7 +68,9 @@ test.describe("panel", () => {
     await expect(page.getByText(/El importe final se fija al emitir el recibo/)).toBeVisible();
     const today = page.getByRole("region", { name: "Clases de hoy" });
     await expect(today.getByText("Bases de Datos")).toBeVisible();
-    await today.getByRole("button", { name: /Registrar Bases de Datos, 00:00–00:50/ }).click();
+    await today
+      .getByRole("button", { name: /Registrar Bases de Datos · ISC, 00:00–00:50/ })
+      .click();
     await expect(page.getByText("Clase registrada en tu bitácora")).toBeVisible();
     await expect(today.getByText("Registrada")).toBeVisible();
     await expect(page.getByRole("region", { name: "Últimos recibos" })).toContainText(

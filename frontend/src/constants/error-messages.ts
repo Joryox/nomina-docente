@@ -64,12 +64,14 @@ export const API_ERROR_MESSAGES = {
     "La materia tiene clases activas. Desactívalas o elimínalas en Mis clases antes de quitarla.",
   ASSIGNMENT_NOT_FOUND: "La clase no existe. Recarga la página y elígela de nuevo.",
   ASSIGNMENT_ALREADY_EXISTS:
-    "Ya tienes una clase activa de esa materia en esa carrera. Si cambió la tarifa, edita la clase en lugar de crear otra.",
+    "Ya tienes una clase activa de esa materia en esa carrera y con ese grupo. Escribe otro grupo o, si cambió la tarifa, edita la clase existente.",
   ASSIGNMENT_INACTIVE: "La clase está desactivada. Reactívala en Mis clases antes de modificarla.",
   ASSIGNMENT_HAS_LOGBOOK:
     "La clase tiene sesiones en la bitácora: no se puede borrar ni cambiar su materia o carrera. Desactívala y crea una nueva.",
   SCHEDULE_NOT_FOUND: "El horario no existe. Recarga la página.",
   SCHEDULE_OVERLAP: "El horario se empalma con otra de tus clases. Elige otra hora.",
+  SCHEDULE_RANGES_OVERLAP:
+    "Dos rangos de horas de la captura se empalman el mismo día. Revisa las horas.",
   TIME_RANGE_INVALID:
     "La hora de salida debe ser posterior a la hora de entrada. Una clase no puede cruzar la medianoche.",
   CLASS_TOO_SHORT: "La clase dura menos de lo permitido. Revisa la hora de entrada y de salida.",
@@ -103,10 +105,18 @@ export const ERROR_MESSAGES: Readonly<Record<string, string>> = {
  * datos ya vienen validados por `lib/api-error.ts`.
  */
 export const DETAILED_ERROR_MESSAGES = {
-  scheduleOverlap: (subject: string, career: string, weekday: string, range: string) =>
-    `El horario se empalma con ${subject} (${career}), ${weekday} ${range}. Elige otra hora de entrada o de salida.`,
-  sessionOverlap: (subject: string, range: string) =>
-    `La sesión se empalma con ${subject}, registrada ese día de ${range}. Revisa la hora de entrada y de salida.`,
+  scheduleOverlap: (
+    weekday: string,
+    range: string,
+    otherClass: string,
+    otherRange: string,
+    allOrNothing: boolean,
+  ) =>
+    `El ${weekday}, ${range} se empalma con ${otherClass} (${otherRange}).${allOrNothing ? " No se guardó ningún horario." : ""} Elige otra hora de entrada o de salida para ese día.`,
+  scheduleRangesOverlap: (weekday: string, first: string, second: string) =>
+    `El ${weekday}, ${first} y ${second} se empalman. Cambia las horas o quita ese día de uno de los rangos.`,
+  sessionOverlap: (otherClass: string, range: string) =>
+    `La sesión se empalma con ${otherClass}, registrada ese día de ${range}. Revisa la hora de entrada y de salida.`,
   classTooShort: (minutes: number) =>
     `La clase debe durar al menos ${minutes} minutos. Revisa la hora de entrada y de salida.`,
   classTooLong: (minutes: number) =>
@@ -130,6 +140,10 @@ export const VALIDATION_MESSAGES = {
   passwordMismatch: "Las contraseñas no coinciden. Escríbela igual en ambos campos.",
   maxLength: (max: number) => `Escribe como máximo ${max} caracteres.`,
   subjectCode: "Usa solo letras, números y guiones, sin espacios, por ejemplo SCD-1004.",
+  groupCode: "Usa solo letras, números y guiones, por ejemplo 3101 o 3101-A.",
+  weekdaysRequired: "Elige al menos un día.",
+  rangesOverlap: (weekday: string) =>
+    `Este rango se empalma con otro el ${weekday}. Cambia las horas o quita ese día.`,
   selectOption: "Elige una opción de la lista.",
   clockTime: "Escribe la hora en formato de 24 horas, por ejemplo 07:00.",
   date: "Elige una fecha válida.",

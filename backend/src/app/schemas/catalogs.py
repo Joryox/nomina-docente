@@ -54,7 +54,6 @@ class BusinessRulesResponse(BaseModel):
     afternoon_shift_start: ClockTime = Field(
         description="Desde esta hora de entrada la clase es vespertina; antes, matutina"
     )
-    group_code_max_length: int
     schedule_batch_max_ranges: int = Field(
         description="Rangos de horas en una captura de horarios de varios días"
     )

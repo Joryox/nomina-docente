@@ -42,7 +42,7 @@ import { useBusinessRules } from "@/features/catalogs/hooks/use-catalogs";
 import { useDashboardSummary } from "@/features/dashboard/hooks/use-dashboard";
 import { getErrorMessage, toUserMessage, toWarningMessage } from "@/lib/api-error";
 import type { ApiSchemas } from "@/lib/api-types";
-import { formatDateTime, formatPeriodName } from "@/lib/formatters";
+import { formatDateTime, formatPeriodName, formatSubjectWithGroup } from "@/lib/formatters";
 import { toPaginationState } from "@/lib/pagination";
 import { parsePeriodKey, periodKey, periodOf, recentPeriods } from "@/lib/periods";
 
@@ -241,7 +241,9 @@ function PreviewBody({ preview }: { preview: PayrollPreview }) {
               <TableBody>
                 {preview.lines.map((line) => (
                   <TableRow key={`${line.assignment_id}-${line.hourly_rate}`}>
-                    <TableCell className="font-medium">{line.subject_name}</TableCell>
+                    <TableCell className="font-medium">
+                      {formatSubjectWithGroup(line.subject_name, line.group)}
+                    </TableCell>
                     <TableCell>{line.career_name}</TableCell>
                     <TableCell className="text-right figures">{line.session_count}</TableCell>
                     <TableCell className="text-right">

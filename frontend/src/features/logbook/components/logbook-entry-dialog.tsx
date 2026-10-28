@@ -32,6 +32,7 @@ import { useBusinessRules } from "@/features/catalogs/hooks/use-catalogs";
 import { toUserMessage, toWarningMessage } from "@/lib/api-error";
 import type { ApiSchemas } from "@/lib/api-types";
 import { addDays } from "@/lib/calendar";
+import { formatClassContext } from "@/lib/formatters";
 
 import {
   useCreateLogbookEntry,
@@ -265,8 +266,8 @@ function EntryFields({
     .map((assignment) => ({
       value: assignment.id,
       label: assignment.subject.name,
-      description: assignment.career.name,
-      keywords: [assignment.career.code],
+      description: formatClassContext(assignment.career.name, assignment.group),
+      keywords: [assignment.career.code, ...(assignment.group ? [assignment.group] : [])],
     }));
   const oldest = addDays(rules.today, -rules.logbook_max_age_days);
 

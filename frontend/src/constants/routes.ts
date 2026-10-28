@@ -27,6 +27,7 @@ export const API_ROUTES = {
     deactivate: (id: string) => `/assignments/${id}/deactivate`,
     reactivate: (id: string) => `/assignments/${id}/reactivate`,
     schedules: (id: string) => `/assignments/${id}/schedules`,
+    schedulesBatch: (id: string) => `/assignments/${id}/schedules/batch`,
   },
   schedules: {
     weekly: "/schedules/weekly",

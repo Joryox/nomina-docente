@@ -16,7 +16,13 @@ import {
 import { TEXTS } from "@/constants/texts";
 import { RegisterClassesButton } from "@/features/logbook/components/register-classes-button";
 import { IssueReceiptButton } from "@/features/payroll/components/issue-receipt-button";
-import { formatFullDate, formatPeriodName, formatTimeRange } from "@/lib/formatters";
+import {
+  formatClassContext,
+  formatClassLabel,
+  formatFullDate,
+  formatPeriodName,
+  formatTimeRange,
+} from "@/lib/formatters";
 
 import type { DashboardSummary, PendingClass } from "../types/dashboard";
 
@@ -101,8 +107,8 @@ function PendingRow({ item }: { item: PendingClass }) {
           <time dateTime={item.date}>{formatFullDate(item.date)}</time>
           {" · "}
           <span className="figures">{range}</span>
-          {" · "}
-          {item.assignment.career_code}
+          {TEXTS.classes.separator}
+          {formatClassContext(item.assignment.career_code, item.assignment.group)}
         </p>
       </div>
       <RegisterClassesButton
@@ -113,7 +119,11 @@ function PendingRow({ item }: { item: PendingClass }) {
         label={texts.today.register}
         variant="outline"
         accessibleLabel={TEXTS.logbookActions.registerLabel(
-          item.assignment.subject_name,
+          formatClassLabel(
+            item.assignment.subject_name,
+            item.assignment.career_code,
+            item.assignment.group,
+          ),
           `${formatFullDate(item.date)}, ${range}`,
         )}
       />

@@ -9,8 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { APP_ROUTES } from "@/constants/routes";
 import { TEXTS } from "@/constants/texts";
+import { ClassShift } from "@/features/catalogs/components/class-shift";
 import { RegisterClassesButton } from "@/features/logbook/components/register-classes-button";
-import { formatTimeRange } from "@/lib/formatters";
+import { formatClassContext, formatClassLabel, formatTimeRange } from "@/lib/formatters";
 
 import type { DashboardSummary, TodayClass } from "../types/dashboard";
 
@@ -52,11 +53,14 @@ export function TodayClasses({ today }: { today: DashboardSummary["today"] }) {
               className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-3"
             >
               <div className="grid min-w-0 gap-0.5">
-                <p className="text-label font-semibold text-fg">{item.assignment.subject_name}</p>
+                <p className="flex flex-wrap items-center gap-2 text-label font-semibold text-fg">
+                  {item.assignment.subject_name}
+                  <ClassShift startTime={item.start_time} />
+                </p>
                 <p className="text-small text-fg-muted">
                   <span className="figures">{formatTimeRange(item.start_time, item.end_time)}</span>
-                  {" · "}
-                  {item.assignment.career_name}
+                  {TEXTS.classes.separator}
+                  {formatClassContext(item.assignment.career_name, item.assignment.group)}
                 </p>
               </div>
               <ClassAction date={today.date} item={item} />
@@ -97,7 +101,11 @@ function ClassAction({ date, item }: { date: string; item: TodayClass }) {
       label={texts.register}
       variant="outline"
       accessibleLabel={TEXTS.logbookActions.registerLabel(
-        item.assignment.subject_name,
+        formatClassLabel(
+          item.assignment.subject_name,
+          item.assignment.career_code,
+          item.assignment.group,
+        ),
         formatTimeRange(item.start_time, item.end_time),
       )}
     />

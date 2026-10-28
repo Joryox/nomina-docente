@@ -7,8 +7,8 @@ import { noContentSchema, scheduleSchema } from "@/lib/api-schemas";
 import { weeklyScheduleSchema } from "../schemas/schedules";
 import type {
   Schedule,
+  ScheduleBatchPayload,
   ScheduleChanges,
-  SchedulePayload,
   WeeklySchedule,
 } from "../types/schedules";
 
@@ -25,8 +25,18 @@ export function listAssignmentSchedules(
   });
 }
 
-export function createSchedule(assignmentId: string, body: SchedulePayload): Promise<Schedule> {
-  return apiClient.post(API_ROUTES.assignments.schedules(assignmentId), scheduleSchema, { body });
+/** Varios días y rangos en una sola transacción: el servidor guarda todos o ninguno. */
+export function createSchedules(
+  assignmentId: string,
+  body: ScheduleBatchPayload,
+): Promise<Schedule[]> {
+  return apiClient.post(
+    API_ROUTES.assignments.schedulesBatch(assignmentId),
+    z.array(scheduleSchema),
+    {
+      body,
+    },
+  );
 }
 
 export function updateSchedule(id: string, body: ScheduleChanges): Promise<Schedule> {

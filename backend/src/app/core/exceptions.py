@@ -178,7 +178,7 @@ ERROR_CATALOG: Mapping[ErrorCode, ErrorSpec] = {
     ),
     ErrorCode.ASSIGNMENT_NOT_FOUND: ErrorSpec(_NOT_FOUND, "La asignación no existe."),
     ErrorCode.ASSIGNMENT_ALREADY_EXISTS: ErrorSpec(
-        _CONFLICT, "Ya tienes una asignación activa de esa materia en esa carrera."
+        _CONFLICT, "Ya tienes una asignación activa de esa materia en esa carrera y grupo."
     ),
     ErrorCode.ASSIGNMENT_INACTIVE: ErrorSpec(
         _RULE, "La asignación está desactivada. Reactívala antes de modificarla."

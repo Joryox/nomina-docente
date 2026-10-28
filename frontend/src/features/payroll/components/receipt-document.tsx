@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SCREENS } from "@/constants/screens";
-import { formatDateTime } from "@/lib/formatters";
+import { formatDateTime, formatSubjectWithGroup } from "@/lib/formatters";
 
 import type { ReceiptDetail } from "../types/payroll";
 
@@ -74,7 +74,9 @@ export function ReceiptDocument({ receipt }: { receipt: ReceiptDetail }) {
         {receipt.lines.map((line) => (
           <li key={`${line.assignment_id}-${line.hourly_rate}`} className="grid gap-1 py-3">
             <div className="flex items-baseline justify-between gap-4">
-              <p className="font-semibold text-fg">{line.subject_name}</p>
+              <p className="font-semibold text-fg">
+                {formatSubjectWithGroup(line.subject_name, line.group)}
+              </p>
               <Money amount={line.amount} className="font-semibold" />
             </div>
             <p className="text-small text-fg-muted">{line.career_name}</p>
@@ -101,7 +103,9 @@ export function ReceiptDocument({ receipt }: { receipt: ReceiptDetail }) {
         <TableBody>
           {receipt.lines.map((line) => (
             <TableRow key={`${line.assignment_id}-${line.hourly_rate}`}>
-              <TableCell className="font-medium">{line.subject_name}</TableCell>
+              <TableCell className="font-medium">
+                {formatSubjectWithGroup(line.subject_name, line.group)}
+              </TableCell>
               <TableCell>{line.career_name}</TableCell>
               <TableCell className="text-right">
                 <Hours value={line.hours} />

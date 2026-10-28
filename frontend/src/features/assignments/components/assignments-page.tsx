@@ -16,6 +16,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Hours } from "@/components/domain/hours";
 import { Money } from "@/components/domain/money";
+import { ShiftBadge } from "@/components/domain/shift-badge";
 import { StatusBadge } from "@/components/domain/status-badge";
 import { Stagger, StaggerItem } from "@/components/ui/motion";
 import { Alert } from "@/components/ui/alert";
@@ -44,12 +45,18 @@ import { API_MAX_PAGE_SIZE } from "@/constants/query";
 import { APP_ROUTES } from "@/constants/routes";
 import { SCREENS } from "@/constants/screens";
 import { TEXTS } from "@/constants/texts";
-import { useCareers } from "@/features/catalogs/hooks/use-catalogs";
+import { useCareers, useShiftOf } from "@/features/catalogs/hooks/use-catalogs";
 import { ScheduleFormDialog } from "@/features/schedules/components/schedule-form-dialog";
 import { useSubjects } from "@/features/subjects/hooks/use-subjects";
 import { toUserMessage } from "@/lib/api-error";
 import type { ApiSchemas } from "@/lib/api-types";
-import { formatLongDate, formatTimeRange, formatWeekdayShort } from "@/lib/formatters";
+import {
+  formatClassLabel,
+  formatGroup,
+  formatLongDate,
+  formatTimeRange,
+  formatWeekdayShort,
+} from "@/lib/formatters";
 import { compareText } from "@/lib/search";
 
 import {
@@ -68,7 +75,7 @@ const STATUS_OPTIONS: readonly StatusFilter[] = ["active", "inactive", "all"];
 const ALL_CAREERS = "todas";
 
 function className(assignment: Assignment): string {
-  return `${assignment.subject.name} – ${assignment.career.code}`;
+  return formatClassLabel(assignment.subject.name, assignment.career.code, assignment.group);
 }
 
 /** Agrupa las clases por carrera, en orden alfabético de carrera y de materia. */
@@ -86,7 +93,10 @@ function byCareer(assignments: readonly Assignment[]) {
     .map(([code, group]) => ({
       code,
       name: group.name,
-      items: group.items.sort((a, b) => compareText(a.subject.name, b.subject.name)),
+      items: group.items.sort(
+        (a, b) =>
+          compareText(a.subject.name, b.subject.name) || compareText(a.group ?? "", b.group ?? ""),
+      ),
     }))
     .sort((a, b) => compareText(a.name, b.name));
 }
@@ -215,12 +225,28 @@ export function AssignmentsPage() {
 }
 
 function AssignmentRow({ assignment }: { assignment: Assignment }) {
+  const shiftOf = useShiftOf();
+  const group = formatGroup(assignment.group);
+  const shifts = [
+    ...new Set(assignment.schedules.map((schedule) => shiftOf(schedule.start_time))),
+  ].filter((shift) => shift !== null);
   return (
     <li className="grid gap-3 px-5 py-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,2fr)_auto] md:items-start">
       <div className="grid min-w-0 gap-1">
-        <p className="text-label font-semibold text-fg">{assignment.subject.name}</p>
+        <p className="text-label font-semibold text-fg">
+          {assignment.subject.name}
+          {group ? (
+            <span className="font-normal text-fg-muted">
+              {TEXTS.classes.separator}
+              {group}
+            </span>
+          ) : null}
+        </p>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={assignment.is_active ? "active" : "inactive"} />
+          {shifts.map((shift) => (
+            <ShiftBadge key={shift} shift={shift} />
+          ))}
           {assignment.has_logbook ? <Badge tone="neutral">{texts.hasLogbook}</Badge> : null}
         </div>
         {assignment.active_until ? (

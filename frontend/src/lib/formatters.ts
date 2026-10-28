@@ -119,6 +119,26 @@ export function formatTimeRange(start: string, end: string): string {
   return `${start}–${end}`;
 }
 
+/** `Grupo 3101`, o nada si la clase no tiene grupo. */
+export function formatGroup(group: string | null): string | null {
+  return group ? TEXTS.classes.group(group) : null;
+}
+
+/** `Programación Web · Grupo 3101`: la materia con su grupo, como en el recibo y su PDF. */
+export function formatSubjectWithGroup(subject: string, group: string | null): string {
+  return [subject, formatGroup(group)].filter(Boolean).join(TEXTS.classes.separator);
+}
+
+/** Lo que acompaña a la materia: `ISC · Grupo 3101` (o el nombre de la carrera). */
+export function formatClassContext(career: string, group: string | null): string {
+  return [career, formatGroup(group)].filter(Boolean).join(TEXTS.classes.separator);
+}
+
+/** Una clase en una sola línea: `Programación Web · ISC · Grupo 3101`. */
+export function formatClassLabel(subject: string, career: string, group: string | null): string {
+  return [subject, formatClassContext(career, group)].join(TEXTS.classes.separator);
+}
+
 function monthName(year: number, month: number): string {
   return monthFormatter.format(new Date(Date.UTC(year, month - 1, 1)));
 }

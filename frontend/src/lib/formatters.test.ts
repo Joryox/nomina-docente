@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  formatClassContext,
+  formatClassLabel,
   formatDateTime,
   formatDayOfPeriod,
   formatFullDate,
@@ -34,5 +36,13 @@ describe("formatos del sistema", () => {
         end_date: "2026-10-31",
       }),
     ).toBe("2.ª quincena de octubre de 2026 (16 al 31 de octubre)");
+  });
+
+  it("una clase con y sin grupo", () => {
+    expect(formatClassLabel("Programación Web", "ISC", "3101")).toBe(
+      "Programación Web · ISC · Grupo 3101",
+    );
+    expect(formatClassLabel("Programación Web", "ISC", null)).toBe("Programación Web · ISC");
+    expect(formatClassContext("Ingeniería Civil", "1201")).toBe("Ingeniería Civil · Grupo 1201");
   });
 });

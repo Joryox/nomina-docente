@@ -2,7 +2,6 @@
 
 from app.core.clock import BusinessCalendar
 from app.core.constants import (
-    GROUP_CODE_MAX_LENGTH,
     MAX_PAGE_SIZE,
     QUICK_LOGBOOK_MAX_ENTRIES,
     SCHEDULE_BATCH_MAX_RANGES,
@@ -50,7 +49,6 @@ class CatalogService:
             logbook_max_age_days=self._policy.logbook_max_age_days,
             payroll_issue_requires_closed_period=self._policy.payroll_issue_requires_closed_period,
             afternoon_shift_start=self._policy.afternoon_shift_start,
-            group_code_max_length=GROUP_CODE_MAX_LENGTH,
             schedule_batch_max_ranges=SCHEDULE_BATCH_MAX_RANGES,
             max_page_size=MAX_PAGE_SIZE,
             quick_logbook_max_entries=QUICK_LOGBOOK_MAX_ENTRIES,

@@ -120,6 +120,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/assignments/{assignment_id}/schedules/batch": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Agregar horarios de varios días
+     * @description Uno o más rangos de horas, cada uno con los días en que se repite (por ejemplo lunes, miércoles y viernes de 07:00 a 09:00). Se guardan **todos o ninguno** (RN-42): si un día choca con otra clase, el error dice qué día y con qué clase, y no se guarda nada. Dos rangos de la misma captura tampoco pueden cruzarse el mismo día.
+     */
+    post: operations["create_schedules_api_v1_assignments__assignment_id__schedules_batch_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/auth/change-password": {
     parameters: {
       query?: never;
@@ -741,6 +761,7 @@ export interface components {
      * AssignmentCreate
      * @example {
      *       "career_code": "ISC",
+     *       "group": "3101",
      *       "hourly_rate": "135.00",
      *       "subject_id": "0b5c2f8e-1f7a-4d6e-9a43-6c1d2e3f4a5b"
      *     }
@@ -751,6 +772,12 @@ export interface components {
        * @description Clave de una carrera activa del catálogo
        */
       career_code: string;
+      /**
+       * Group
+       * @description Grupo opcional (letras, números y guiones), por ejemplo «3101». Se guarda en mayúsculas; vacío o nulo es sin grupo
+       * @example 3101
+       */
+      group?: string | null;
       /**
        * Hourly Rate
        * @description Importe de una tarifa vigente del catálogo
@@ -790,6 +817,11 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+      /**
+       * Group
+       * @description Grupo, si lo tiene
+       */
+      group: string | null;
       /**
        * Has Logbook
        * @description Tiene sesiones registradas: no se puede borrar
@@ -844,6 +876,11 @@ export interface components {
       /** Career Name */
       career_name: string;
       /**
+       * Group
+       * @description Grupo de la asignación, si lo tiene
+       */
+      group: string | null;
+      /**
        * Id
        * Format: uuid
        */
@@ -856,7 +893,8 @@ export interface components {
     /**
      * AssignmentUpdate
      * @description Cambiar la tarifa siempre se permite y solo afecta a las sesiones que se registren
-     *     después. Cambiar la materia o la carrera solo se permite si no hay bitácora.
+     *     después. Cambiar la materia o la carrera solo se permite si no hay bitácora. El grupo se
+     *     cambia siempre (``null`` lo quita); los recibos emitidos conservan el que tenían.
      * @example {
      *       "hourly_rate": "145.00"
      *     }
@@ -864,6 +902,12 @@ export interface components {
     AssignmentUpdate: {
       /** Career Code */
       career_code?: string | null;
+      /**
+       * Group
+       * @description Grupo opcional (letras, números y guiones), por ejemplo «3101». Se guarda en mayúsculas; vacío o nulo es sin grupo
+       * @example 3101
+       */
+      group?: string | null;
       /** Hourly Rate */
       hourly_rate?: string | null;
       /** Subject Id */
@@ -875,6 +919,12 @@ export interface components {
      *     duplicarlas (igual que la política de contraseñas).
      */
     BusinessRulesResponse: {
+      /**
+       * Afternoon Shift Start
+       * @description Desde esta hora de entrada la clase es vespertina; antes, matutina
+       * @example 07:00
+       */
+      afternoon_shift_start: string;
       /** Class Max Duration Minutes */
       class_max_duration_minutes: number;
       /** Class Min Duration Minutes */
@@ -893,6 +943,11 @@ export interface components {
       payroll_issue_requires_closed_period: boolean;
       /** Quick Logbook Max Entries */
       quick_logbook_max_entries: number;
+      /**
+       * Schedule Batch Max Ranges
+       * @description Rangos de horas en una captura de horarios de varios días
+       */
+      schedule_batch_max_ranges: number;
       /**
        * Timezone
        * @example America/Mexico_City
@@ -1059,6 +1114,7 @@ export interface components {
       | "ASSIGNMENT_HAS_LOGBOOK"
       | "SCHEDULE_NOT_FOUND"
       | "SCHEDULE_OVERLAP"
+      | "SCHEDULE_RANGES_OVERLAP"
       | "TIME_RANGE_INVALID"
       | "CLASS_TOO_SHORT"
       | "CLASS_TOO_LONG"
@@ -1371,6 +1427,8 @@ export interface components {
       assignment_id: string;
       /** Career Name */
       career_name: string;
+      /** Group */
+      group: string | null;
       /**
        * Hourly Rate
        * @example 1250.00
@@ -1658,6 +1716,11 @@ export interface components {
       /** Career Name */
       career_name: string;
       /**
+       * Group
+       * @description Grupo copiado al emitir; nulo en recibos emitidos sin grupo
+       */
+      group: string | null;
+      /**
        * Hourly Rate
        * @example 1250.00
        */
@@ -1747,6 +1810,35 @@ export interface components {
       paternal_surname: string;
     };
     /**
+     * ScheduleBatchCreate
+     * @description Varios días y rangos de una clase en una sola captura: se guardan todos o ninguno
+     *     (RN-42).
+     * @example {
+     *       "ranges": [
+     *         {
+     *           "end_time": "09:00",
+     *           "start_time": "07:00",
+     *           "weekdays": [
+     *             1,
+     *             3,
+     *             5
+     *           ]
+     *         },
+     *         {
+     *           "end_time": "18:00",
+     *           "start_time": "16:00",
+     *           "weekdays": [
+     *             2
+     *           ]
+     *         }
+     *       ]
+     *     }
+     */
+    ScheduleBatchCreate: {
+      /** Ranges */
+      ranges: components["schemas"]["ScheduleRangeInput"][];
+    };
+    /**
      * ScheduleCreate
      * @example {
      *       "end_time": "09:00",
@@ -1770,6 +1862,24 @@ export interface components {
        * @example 1
        */
       weekday: components["schemas"]["Weekday"];
+    };
+    /**
+     * ScheduleRangeInput
+     * @description Un rango de horas que se repite en uno o varios días.
+     */
+    ScheduleRangeInput: {
+      /**
+       * End Time
+       * @example 07:00
+       */
+      end_time: string;
+      /**
+       * Start Time
+       * @example 07:00
+       */
+      start_time: string;
+      /** Weekdays */
+      weekdays: components["schemas"]["Weekday"][];
     };
     /** ScheduleResponse */
     ScheduleResponse: {
@@ -2307,7 +2417,7 @@ export interface operations {
            *       "error": {
            *         "code": "ASSIGNMENT_ALREADY_EXISTS",
            *         "details": {},
-           *         "message": "Ya tienes una asignación activa de esa materia en esa carrera."
+           *         "message": "Ya tienes una asignación activa de esa materia en esa carrera y grupo."
            *       }
            *     }
            */
@@ -2627,7 +2737,7 @@ export interface operations {
            *       "error": {
            *         "code": "ASSIGNMENT_ALREADY_EXISTS",
            *         "details": {},
-           *         "message": "Ya tienes una asignación activa de esa materia en esa carrera."
+           *         "message": "Ya tienes una asignación activa de esa materia en esa carrera y grupo."
            *       }
            *     }
            */
@@ -2833,7 +2943,7 @@ export interface operations {
            *       "error": {
            *         "code": "ASSIGNMENT_ALREADY_EXISTS",
            *         "details": {},
-           *         "message": "Ya tienes una asignación activa de esa materia en esa carrera."
+           *         "message": "Ya tienes una asignación activa de esa materia en esa carrera y grupo."
            *       }
            *     }
            */
@@ -3051,6 +3161,122 @@ export interface operations {
         };
       };
       /** @description Datos inválidos o regla de negocio incumplida. Códigos: `ASSIGNMENT_INACTIVE`, `TIME_RANGE_INVALID`, `CLASS_TOO_SHORT`, `CLASS_TOO_LONG`, `VALIDATION_ERROR`. */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "ASSIGNMENT_INACTIVE",
+           *         "details": {},
+           *         "message": "La asignación está desactivada. Reactívala antes de modificarla."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  create_schedules_api_v1_assignments__assignment_id__schedules_batch_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        assignment_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ScheduleBatchCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScheduleResponse"][];
+        };
+      };
+      /** @description Sin sesión válida. Códigos: `NOT_AUTHENTICATED`. */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "NOT_AUTHENTICATED",
+           *         "details": {},
+           *         "message": "Inicia sesión para continuar."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Sin perfil de docente, o falta el token CSRF en una escritura. Códigos: `TEACHER_PROFILE_REQUIRED`, `CSRF_TOKEN_INVALID`. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "TEACHER_PROFILE_REQUIRED",
+           *         "details": {},
+           *         "message": "Esta cuenta no tiene un perfil de docente."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description No existe o pertenece a otro docente (RN-04). Códigos: `ASSIGNMENT_NOT_FOUND`. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "ASSIGNMENT_NOT_FOUND",
+           *         "details": {},
+           *         "message": "La asignación no existe."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Choca con datos existentes o con un periodo emitido. Códigos: `SCHEDULE_OVERLAP`. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "error": {
+           *         "code": "SCHEDULE_OVERLAP",
+           *         "details": {},
+           *         "message": "El horario se empalma con otra de tus clases. Elige otra hora."
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Datos inválidos o regla de negocio incumplida. Códigos: `ASSIGNMENT_INACTIVE`, `SCHEDULE_RANGES_OVERLAP`, `TIME_RANGE_INVALID`, `CLASS_TOO_SHORT`, `CLASS_TOO_LONG`, `VALIDATION_ERROR`. */
       422: {
         headers: {
           [name: string]: unknown;
