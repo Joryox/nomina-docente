@@ -18,7 +18,8 @@ routers (API) → services (negocio) → repositories (datos) → models (ORM)
 | `src/app/models/` | Modelos ORM (uno por archivo; se registran en `models/__init__.py` para Alembic) |
 | `src/app/schemas/` | Contratos Pydantic de entrada y salida |
 | `src/app/repositories/` | Acceso a datos, sin reglas de negocio |
-| `src/app/domain/` | Reglas puras sin E/S: periodos quincenales, redondeo (único módulo que redondea), cálculo del recibo, intervalos de clase y ocurrencias del horario |
+| `src/app/domain/` | Reglas puras sin E/S: periodos quincenales, redondeo (único módulo que redondea), cálculo del recibo, importe con letra, intervalos de clase y ocurrencias del horario |
+| `src/app/documents/` | Recibo en PDF con fpdf2 (Python puro) y sus fuentes (`fonts/`, SIL OFL); `brand/` lo escribe `scripts/apply-brand.sh` |
 | `src/app/services/` | Lógica de negocio, sin HTTP: materias, asignaciones, horarios, bitácora, nómina, panel y catálogos; `constraints.py` traduce restricciones de la base a códigos de dominio |
 | `src/app/api/v1/routers/` | Endpoints delgados |
 | `src/app/api/v1/dependencies.py` | Composición: arma servicios con sus repositorios; `get_current_user`, `get_current_teacher` y `require_roles` |
@@ -72,6 +73,6 @@ El esquema de base de datos está documentado en [`docs/base-de-datos.md`](../do
 
 | `GET /docs` | Documentación interactiva (OpenAPI en `/api/v1/openapi.json`) |
 
-Lógica de negocio (etapa 4), todas con sesión de docente: catálogos (`/catalogs/*`), materias (`/subjects`), asignaciones y sus horarios (`/assignments`), horario semanal (`/schedules`), bitácora (`/logbook`, `/logbook/scheduled`, `/logbook/quick`), nómina (`/payroll/periods`, `/payroll/preview`, `/payroll/receipts`) y panel (`/dashboard/summary`). La tabla completa, las convenciones (dinero como cadena, paginación, filtros) y el catálogo de códigos de error están en [`docs/api.md`](../docs/api.md).
+Rutas de negocio, todas con sesión de docente: catálogos (`/catalogs/*`), materias (`/subjects`), asignaciones y sus horarios (`/assignments`), horario semanal (`/schedules`), bitácora (`/logbook`, `/logbook/scheduled`, `/logbook/quick`), nómina (`/payroll/periods`, `/payroll/preview`, `/payroll/receipts`) y panel (`/dashboard/summary`). La tabla completa, las convenciones (dinero como cadena, paginación, filtros) y el catálogo de códigos de error están en [`docs/api.md`](../docs/api.md).
 
 Toda petición que modifica datos requiere el encabezado `X-CSRF-Token`. Detalle en [`docs/seguridad.md`](../docs/seguridad.md).

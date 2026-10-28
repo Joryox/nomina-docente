@@ -1,6 +1,6 @@
 # Frontend — Aplicación web del Sistema de Nómina Docente
 
-Aplicación construida con **Next.js 16 (App Router, Turbopack)**, **TypeScript estricto**, **Tailwind CSS 4** y **shadcn/ui**, organizada por funcionalidades.
+Aplicación construida con **Next.js 16 (App Router, Turbopack)**, **TypeScript estricto**, **Tailwind CSS 4**, componentes propios sobre **Radix UI** y **Framer Motion**, organizada por funcionalidades.
 
 ## Estructura
 
@@ -12,7 +12,7 @@ Aplicación construida con **Next.js 16 (App Router, Turbopack)**, **TypeScript 
 | `src/components/domain/` | Componentes del dominio: `Money`, `Hours`, `PeriodLabel`, `Folio`, `StatusBadge`                                                                                                                                                                                                    |
 | `src/components/layout/` | `AppShell`, `AuthLayout`, `SiteHeader`, `PageHeader`, `Logo`, selector de tema y _providers_ globales (TanStack Query, tooltips, notificaciones)                                                                                                                                    |
 | `src/lib/`               | Cliente HTTP (`api-client.ts`), tipos generados del OpenAPI (`api-types.gen.ts`, no se edita), schemas compartidos (`api-schemas.ts`), claves de consulta e invalidación (`query-keys.ts`, `query-invalidation.ts`), errores de la API (`api-error.ts`), formateadores y utilidades |
-| `src/config/`            | Variables de entorno validadas con Zod (`env.ts` públicas, `server-env.ts` solo servidor), marca (`brand.ts`) y tipografías (`fonts.ts`)                                                                                                                                            |
+| `src/config/`            | Variables de entorno validadas con Zod (`env.ts` públicas, `server-env.ts` solo servidor), marca (`brand.ts` y `brand-assets.json`), tipografías (`fonts.ts`) y cabeceras de seguridad                                                                                              |
 | `src/constants/`         | Textos, mensajes de error, rutas, navegación, preferencias, constantes HTTP y de localización                                                                                                                                                                                       |
 | `src/styles/`            | Color de marca (`brand.css`), tokens de diseño (`tokens.css`), su mapeo a Tailwind (`globals.css`), catálogo de tokens y pruebas de contraste y de valores literales                                                                                                                |
 | `public/brand/`          | Logos oficiales de la institución                                                                                                                                                                                                                                                   |

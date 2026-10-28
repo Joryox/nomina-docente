@@ -94,7 +94,11 @@ export function PasswordRequirements({
   /** «Distinta de la actual» solo aplica al cambiar la contraseña. */
   showNotCurrent?: boolean;
 }) {
-  const rules = policy.rules.filter((rule) => showNotCurrent || rule !== "not_current");
+  // «Distinta de la actual» solo tiene sentido al cambiarla; el servidor siempre la exige ahí.
+  const rules: PasswordRule[] = policy.rules.filter((rule) => rule !== "not_current");
+  if (showNotCurrent) {
+    rules.push("not_current");
+  }
   return (
     <div id={id} className="rounded-md border border-line bg-surface-sunken px-3 py-2.5 text-small">
       <p className="font-medium text-fg">{texts.title}</p>

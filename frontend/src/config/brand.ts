@@ -1,14 +1,13 @@
+import brandAssets from "./brand-assets.json";
 import { env } from "./env";
 
 /**
- * Identidad institucional en un solo lugar. Cambiar de marca es:
- *
- * 1. Copiar los archivos oficiales a `public/brand/` con los nombres de `BRAND_ASSETS`.
- * 2. Declararlos aquí en `logo` (y su versión para fondo oscuro en `logoOnDark`).
- * 3. Reemplazar la escala de color de `src/styles/brand.css` y correr `npm test`.
+ * Identidad institucional en un solo lugar. Los logos los declara `brand-assets.json`, que
+ * escribe `bash scripts/apply-brand.sh <carpeta> <color>` junto con la escala de color de
+ * `src/styles/brand.css` (ver README, «Logos y color institucional»).
  *
  * El nombre y las siglas vienen de la configuración (NEXT_PUBLIC_INSTITUTION_*), no de aquí.
- * Mientras `logo` sea `null`, el componente Logo muestra el logotipo tipográfico provisional.
+ * Mientras `logo` sea `null`, el componente Logo muestra el logotipo tipográfico.
  */
 
 export interface BrandImage {
@@ -29,8 +28,8 @@ export const BRAND = {
   institutionName: env.institutionName,
   institutionShortName: env.institutionShortName,
   appName: env.appName,
-  /** Logo oficial; `null` hasta que la institución entregue los archivos (etapa 11). */
-  logo: null as BrandImage | null,
+  /** Logo oficial; `null` mientras la institución no entregue los archivos. */
+  logo: brandAssets.logo as BrandImage | null,
   /** Versión del logo para modo oscuro (normalmente la monocromática). */
-  logoOnDark: null as BrandImage | null,
+  logoOnDark: brandAssets.logoOnDark as BrandImage | null,
 } as const;

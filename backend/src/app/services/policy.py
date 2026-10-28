@@ -1,4 +1,4 @@
-"""Límites institucionales configurables que aplican los servicios (sección 9.4 de CLAUDE.md).
+"""Límites institucionales configurables que aplican los servicios (ver backend/.env.example).
 
 Los servicios reciben este objeto en lugar de ``Settings``: solo conocen las reglas que
 usan, y las pruebas pueden construir una política distinta sin tocar el entorno.

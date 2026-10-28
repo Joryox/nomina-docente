@@ -1,5 +1,5 @@
 """Unidad de trabajo: el servicio decide cuándo se confirma o se revierte la transacción
-sin conocer la sesión de SQLAlchemy (CLAUDE.md, sección 4.2)."""
+sin conocer la sesión de SQLAlchemy (docs/arquitectura.md)."""
 
 from collections.abc import Iterator
 from contextlib import contextmanager

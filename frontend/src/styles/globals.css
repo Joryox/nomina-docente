@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 @import "./brand.css";
 @import "./tokens.css";
 
@@ -178,6 +177,17 @@
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Cambio de tema: solo mientras dura (atributo que pone preferences-store). */
+:root[data-theme-changing] *,
+:root[data-theme-changing] *::before,
+:root[data-theme-changing] *::after {
+  transition:
+    background-color var(--duration-slow) var(--easing-standard),
+    border-color var(--duration-slow) var(--easing-standard),
+    color var(--duration-slow) var(--easing-standard),
+    fill var(--duration-slow) var(--easing-standard) !important;
 }
 
 /* Impresión (recibo de nómina): página carta limpia, sin la estructura del panel. */

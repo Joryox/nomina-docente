@@ -14,7 +14,7 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    // Todo acceso a la API pasa por lib/api-client.ts (CLAUDE.md, sección 4.3).
+    // Todo acceso a la API pasa por lib/api-client.ts (docs/arquitectura.md).
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/lib/api-client.ts"],
     rules: {

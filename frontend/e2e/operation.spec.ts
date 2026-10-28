@@ -46,8 +46,10 @@ function previousPeriodEnd(): { year: number; month: number; day: number } {
 
 async function chooseOption(page: Page, label: string | RegExp, search: string) {
   await page.getByRole("combobox", { name: label }).click();
-  await page.getByPlaceholder("Escribe para buscar…").fill(search);
+  await page.getByPlaceholder("Escribe para buscar…").last().fill(search);
   await page.getByRole("option").first().click();
+  // Espera a que la lista termine de cerrarse (tiene animación de salida).
+  await expect(page.getByPlaceholder("Escribe para buscar…")).toHaveCount(0);
 }
 
 async function chooseSelect(page: Page, label: string | RegExp, option: string | RegExp) {

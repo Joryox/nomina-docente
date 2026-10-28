@@ -89,3 +89,7 @@ Desktop.ini
 $RECYCLE.BIN/
 .directory
 .Trash-*
+
+# Notas internas del equipo y archivos que generan las herramientas de desarrollo
+CLAUDE.md
+frontend/AGENTS.md

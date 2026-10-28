@@ -1,4 +1,4 @@
-"""Lógica de negocio (etapa 4): bajas lógicas y tarifa congelada en la bitácora.
+"""Lógica de negocio: bajas lógicas y tarifa congelada en la bitácora.
 
 1. ``subjects.is_active``: una materia usada en asignaciones no se borra, se desactiva.
 2. ``assignments.active_until``: último día en que la asignación estuvo activa. Permite

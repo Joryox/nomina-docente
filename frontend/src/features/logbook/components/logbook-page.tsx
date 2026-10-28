@@ -15,6 +15,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Hours } from "@/components/domain/hours";
 import { StatusBadge } from "@/components/domain/status-badge";
+import { Appear, Stagger, StaggerItem } from "@/components/ui/motion";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -202,9 +203,10 @@ function ScheduledForDate({ date }: { date: string }) {
               <Alert tone="info">{texts.scheduled.locked}</Alert>
             </div>
           ) : null}
-          <ul className="divide-y divide-line">
+          <Stagger as="ul" className="divide-y divide-line">
             {classes.map((item) => (
-              <li
+              <StaggerItem
+                as="li"
                 key={item.schedule_id}
                 className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-3"
               >
@@ -219,7 +221,9 @@ function ScheduledForDate({ date }: { date: string }) {
                   </p>
                 </div>
                 {item.registered ? (
-                  <StatusBadge status="session-registered" label={texts.scheduled.registered} />
+                  <Appear>
+                    <StatusBadge status="session-registered" label={texts.scheduled.registered} />
+                  </Appear>
                 ) : locked ? (
                   <StatusBadge status="session-locked" />
                 ) : !item.is_due ? (
@@ -246,9 +250,9 @@ function ScheduledForDate({ date }: { date: string }) {
                     )}
                   />
                 )}
-              </li>
+              </StaggerItem>
             ))}
-          </ul>
+          </Stagger>
         </>
       )}
     </Card>

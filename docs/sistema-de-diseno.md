@@ -1,6 +1,6 @@
 # Sistema de diseño
 
-Referencia visual y de interacción del **Sistema de Nómina Docente** (etapa 5). Todo lo visual de las etapas 6 a 9 se construye con las piezas descritas aquí. La versión interactiva es la **guía viva** en <http://localhost:3000/sistema-diseno>, disponible solo en desarrollo.
+Referencia visual y de interacción del **Sistema de Nómina Docente**. Todas las pantallas se construyen con las piezas descritas aquí. La versión interactiva es la **guía viva** en <http://localhost:3000/sistema-diseno>, disponible solo en desarrollo.
 
 ![Guía viva en modo claro](img/guia-viva-claro.png)
 
@@ -36,7 +36,7 @@ Referencia visual y de interacción del **Sistema de Nómina Docente** (etapa 5)
 
 ### Lo que no se hace
 
-Esta lista amplía la de CLAUDE.md §7.1:
+Además:
 
 - Degradados morado/azul, *glassmorphism* (los desenfoques están eliminados de Tailwind) y sombras difusas como adorno.
 - Bordes muy redondeados: el radio máximo es de 6 px. Las etiquetas de estado tienen esquinas rectas, como un sello.
@@ -159,7 +159,7 @@ Las sombras se tiñen con la tinta del sistema (azul muy oscuro), nunca con negr
 
 `sm` 640 px · `md` 768 px · `lg` 1024 px · `xl` 1280 px. Viven en `globals.css` porque las *media queries* no aceptan variables. El diseño se piensa para escritorio, pero las clases van de menor a mayor. La barra lateral aparece desde `lg`; DataTable cambia a tarjetas por debajo de `md`.
 
-### Movimiento (preparado para la etapa 9)
+### Movimiento
 
 | Token | Valor | Uso previsto |
 | --- | --- | --- |
@@ -276,7 +276,7 @@ Se usa lucide-react con trazo de 1.75 (`--icon-stroke`, aplicado a `svg.lucide` 
 
 La navegación está definida en `src/constants/navigation.ts` y **solo contiene secciones que existen**: nunca se muestran elementos deshabilitados ni «Pronto». Al construir una pantalla se agrega su elemento ahí y aparece sola en la barra lateral y en las migas; `isAvailableRoute()` permite enlazarla desde otras pantallas solo cuando ya existe.
 
-![Panel con el AppShell](img/panel-claro.png)
+![Panel con el AppShell](img/app-inicio-claro.png)
 
 ### Tema claro y oscuro
 
@@ -316,7 +316,7 @@ Todos los textos viven en `src/constants/`: `texts.ts`, `error-messages.ts`, `wa
 | Botones con verbo y objeto | «Emitir recibo», «Borrar asignación» | «Aceptar», «OK», «Sí» |
 | La confirmación pregunta lo concreto | «¿Borrar la asignación Bases de Datos – ISC?» | «¿Está seguro?» |
 | El vacío explica y propone | «Aún no registras sesiones en esta quincena. Registra la primera…» | «No hay datos» |
-| Formatos del sistema (CLAUDE.md §7.4) | `$1,250.00 MXN`, `15 de octubre de 2026`, `07:00`, `12.50 h`, «2.ª quincena» | `$1250`, `10/15/26`, `7:00 a.m.` |
+| Formatos del sistema | `$1,250.00 MXN`, `15 de octubre de 2026`, `07:00`, `12.50 h`, «2.ª quincena» | `$1250`, `10/15/26`, `7:00 a.m.` |
 | Mayúsculas solo al inicio y en nombres propios | «Recibos de nómina» | «Recibos De Nómina» |
 | Sin emojis ni signos de exclamación de entusiasmo | «Sesión registrada» | «¡Listo! 🎉» |
 | Raya (–) en rangos de horas y guion en claves | `07:00–09:00`, `SCD-1004` | `07:00 - 09:00` |
@@ -334,16 +334,21 @@ Todos los textos viven en `src/constants/`: `texts.ts`, `error-messages.ts`, `wa
 
 ## 10. Cómo reemplazar la marca
 
-Cuando el TESH entregue los logos oficiales:
+Cuando la institución entregue los archivos oficiales, un solo comando aplica logos y color en la interfaz y en el recibo en PDF:
 
-1. **Archivos:** cópialos a `frontend/public/brand/` con los nombres de su README (`logo.svg`, `logo-monochrome.svg`, `isotype.svg`, `favicon.svg`).
-2. **Logo:** en `frontend/src/config/brand.ts` declara `logo: { src: BRAND_ASSETS.logo, width, height }` y `logoOnDark` (normalmente la versión monocromática). El componente `Logo` deja de mostrar el logotipo tipográfico en todo el sistema.
-3. **Ícono:** reemplaza `frontend/src/app/icon.svg` por el favicon oficial (Next.js lo publica solo).
-4. **Color:** reemplaza los 11 pasos de `frontend/src/styles/brand.css` por la escala del color institucional en OKLCH, del 50 (más claro) al 950. Para obtenerla, toma el color principal del logo, conviértelo a OKLCH (por ejemplo, con <https://oklch.com>), conserva su tono y su croma, y reparte la claridad como en la escala actual (0.97, 0.94, 0.89, 0.82, 0.73, 0.63, 0.53, 0.45, 0.38, 0.31, 0.24), bajando el croma en los extremos.
-5. **Verifica:** `npm test`. Si un par no cumple AA, la prueba dice cuál y con qué contraste; en ese caso ajusta qué paso usa el token semántico en `tokens.css` (por ejemplo, `--primary: var(--brand-900)`), no el componente. Revisa la guía viva en ambos modos.
-6. **Nombre:** el nombre y las siglas vienen de `NEXT_PUBLIC_INSTITUTION_NAME` y `NEXT_PUBLIC_INSTITUTION_SHORT_NAME` (`frontend/.env.local`).
+```bash
+bash scripts/apply-brand.sh <carpeta-con-logos> "#8A1538"
+```
 
-No se toca ningún componente.
+| Paso automático | Resultado |
+| --- | --- |
+| Copia `logo.svg` (obligatorio), `logo-monochrome.svg` y `favicon.svg` | `frontend/public/brand/`, `frontend/src/app/icon.svg` y `backend/src/app/documents/brand/` |
+| Declara los logos con sus medidas (del `viewBox`) | `frontend/src/config/brand-assets.json`: el componente `Logo` deja de mostrar el logotipo tipográfico |
+| Genera la escala de 11 pasos en OKLCH con el tono y el croma del color, dentro de sRGB y con las claridades de la escala actual | `frontend/src/styles/brand.css` |
+| Fija el color primario del PDF (paso 800) | `backend/src/app/documents/brand/brand.json` |
+| Corre `npm test` | Si un par de texto y fondo no cumple AA, la prueba dice cuál; en ese caso se ajusta qué paso usa el token semántico en `tokens.css` (por ejemplo, `--primary: var(--brand-900)`), no el componente |
+
+El nombre y las siglas vienen de `NEXT_PUBLIC_INSTITUTION_NAME` y `NEXT_PUBLIC_INSTITUTION_SHORT_NAME` (`frontend/.env.local`) e `INSTITUTION_NAME` e `INSTITUTION_SHORT_NAME` (`backend/.env`). No se toca ningún componente.
 
 ## 11. Guía viva y capturas
 
@@ -370,6 +375,4 @@ No se toca ningún componente.
 
 ![Formularios de la guía](img/guia-formularios.png)
 
-![Panel en celular, modo oscuro](img/panel-celular-oscuro.png)
-
-Las capturas se tomaron con Microsoft Edge sin interfaz (`playwright-core` instalado fuera del repositorio), a 1280 px de ancho, y a 390 px para la del celular.
+Las capturas se tomaron con Playwright y Microsoft Edge sin interfaz, a 1280 px de ancho.

@@ -1,7 +1,7 @@
 "use client";
 
 import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
-import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
+import { ToggleGroup } from "radix-ui";
 
 import { DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
 import { THEME_PREFERENCES, type ThemePreference } from "@/constants/preferences";
@@ -16,11 +16,15 @@ function isThemePreference(value: string): value is ThemePreference {
   return (THEME_PREFERENCES as readonly string[]).includes(value);
 }
 
-/** Selector segmentado de tema (encabezado público, guía viva). La elección se recuerda. */
+/**
+ * Selector segmentado de tema (acceso, páginas públicas). La elección se recuerda. Es un
+ * grupo de botones excluyentes (sin campo de formulario oculto, que no hace falta aquí).
+ */
 export function ThemeSwitcher({ className }: { className?: string }) {
   const preference = useThemePreference();
   return (
-    <RadioGroupPrimitive.Root
+    <ToggleGroup.Root
+      type="single"
       aria-label={texts.label}
       value={preference}
       onValueChange={(value) => isThemePreference(value) && setThemePreference(value)}
@@ -30,7 +34,7 @@ export function ThemeSwitcher({ className }: { className?: string }) {
       {THEME_PREFERENCES.map((option) => {
         const Icon = ICONS[option];
         return (
-          <RadioGroupPrimitive.Item
+          <ToggleGroup.Item
             key={option}
             value={option}
             aria-label={texts.options[option]}
@@ -38,14 +42,14 @@ export function ThemeSwitcher({ className }: { className?: string }) {
             className={cn(
               "inline-flex size-(--control-height-sm) items-center justify-center rounded-sm text-fg-muted",
               "transition-colors duration-(--duration-fast) hover:text-fg",
-              "data-[state=checked]:bg-primary-soft data-[state=checked]:text-primary-ink",
+              "data-[state=on]:bg-primary-soft data-[state=on]:text-primary-ink",
             )}
           >
             <Icon aria-hidden="true" className="size-4" />
-          </RadioGroupPrimitive.Item>
+          </ToggleGroup.Item>
         );
       })}
-    </RadioGroupPrimitive.Root>
+    </ToggleGroup.Root>
   );
 }
 

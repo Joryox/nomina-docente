@@ -8,6 +8,7 @@ El documento solo **presenta** el recibo emitido (``ReceiptDetailResponse``): lo
 vienen calculados y congelados; aquí no se calcula nada.
 """
 
+import json
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -32,6 +33,11 @@ from app.domain.periods import Period, long_date
 from app.schemas.payroll import ReceiptDetailResponse
 
 FONTS_DIR = Path(__file__).parent / "fonts"
+# Identidad institucional que escribe scripts/apply-brand.sh: logo y color primario. Sin
+# esos archivos se usan el logotipo tipográfico y el color de RECEIPT_PDF_BRAND_RGB.
+BRAND_DIR = Path(__file__).parent / "brand"
+BRAND_LOGO = BRAND_DIR / "logo.svg"
+BRAND_COLORS = BRAND_DIR / "brand.json"
 SANS = "PublicSans"
 SERIF = "SourceSerif"
 _FONT_FILES = {
@@ -76,8 +82,15 @@ class ReceiptFile:
     content: bytes
 
 
+def brand_rgb() -> tuple[int, int, int]:
+    if BRAND_COLORS.exists():
+        red, green, blue = json.loads(BRAND_COLORS.read_text(encoding="utf-8"))["primary_rgb"]
+        return int(red), int(green), int(blue)
+    return RECEIPT_PDF_BRAND_RGB
+
+
 def format_money(amount: Decimal) -> str:
-    """``$1,250.00 MXN`` (CLAUDE.md §7.4)."""
+    """``$1,250.00 MXN`` (docs/sistema-de-diseno.md §8)."""
     return f"${amount:,.2f} MXN"
 
 
@@ -114,7 +127,7 @@ class _ReceiptDocument(FPDF):
 
     def header(self) -> None:
         # Franja superior en color primario, como el membrete de un oficio.
-        self.set_fill_color(*RECEIPT_PDF_BRAND_RGB)
+        self.set_fill_color(*brand_rgb())
         self.rect(0, 0, self.w, _BAND_HEIGHT, style="F")
 
     def footer(self) -> None:
@@ -142,14 +155,17 @@ def render_receipt_pdf(receipt: ReceiptDetailResponse) -> bytes:
 def _letterhead(pdf: FPDF, receipt: ReceiptDetailResponse) -> None:
     top = pdf.get_y()
     left = pdf.l_margin
-    # Logotipo tipográfico (siglas en un marco, como un sello) mientras no hay logo oficial.
-    pdf.set_draw_color(*RECEIPT_PDF_BRAND_RGB)
-    pdf.set_line_width(0.6)
-    pdf.rect(left, top, _SEAL_WIDTH, _SEAL_HEIGHT)
-    pdf.set_font(SERIF, "B", 13)
-    pdf.set_text_color(*RECEIPT_PDF_BRAND_RGB)
-    pdf.set_xy(left, top)
-    pdf.cell(_SEAL_WIDTH, _SEAL_HEIGHT, receipt.institution.short_name, align="C")
+    if BRAND_LOGO.exists():
+        pdf.image(str(BRAND_LOGO), x=left, y=top, w=_SEAL_WIDTH)
+    else:
+        # Logotipo tipográfico (siglas en un marco, como un sello) mientras no hay logo oficial.
+        pdf.set_draw_color(*brand_rgb())
+        pdf.set_line_width(0.6)
+        pdf.rect(left, top, _SEAL_WIDTH, _SEAL_HEIGHT)
+        pdf.set_font(SERIF, "B", 13)
+        pdf.set_text_color(*brand_rgb())
+        pdf.set_xy(left, top)
+        pdf.cell(_SEAL_WIDTH, _SEAL_HEIGHT, receipt.institution.short_name, align="C")
 
     text_left = left + _SEAL_WIDTH + 5
     title_width = 62.0
@@ -176,7 +192,7 @@ def _letterhead(pdf: FPDF, receipt: ReceiptDetailResponse) -> None:
     pdf.cell(title_width, 5.5, receipt.folio, align="R")
 
     pdf.set_y(max(name_bottom, top + 20) + 4)
-    pdf.set_draw_color(*RECEIPT_PDF_BRAND_RGB)
+    pdf.set_draw_color(*brand_rgb())
     pdf.set_line_width(0.5)
     pdf.line(left, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
     pdf.set_draw_color(*RECEIPT_PDF_LINE_RGB)
@@ -249,7 +265,7 @@ def _totals(pdf: FPDF, receipt: ReceiptDetailResponse) -> None:
         pdf.set_font(SANS, "B" if emphasis else "", 10.5 if emphasis else 9.5)
         pdf.cell(box_width / 2, 7, label)
         pdf.cell(box_width / 2, 7, value, align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.set_draw_color(*RECEIPT_PDF_BRAND_RGB)
+    pdf.set_draw_color(*brand_rgb())
     pdf.line(left, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
     pdf.set_draw_color(*RECEIPT_PDF_LINE_RGB)
     pdf.ln(5)

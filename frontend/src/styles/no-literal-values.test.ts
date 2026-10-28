@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * Verificación de «cero valores sueltos» (CLAUDE.md §4.4 y §7.2): fuera de los archivos de
+ * Verificación de «cero valores sueltos» (docs/sistema-de-diseno.md §9): fuera de los archivos de
  * tokens no puede haber colores literales, valores arbitrarios de Tailwind con medidas o
  * colores, ni utilidades de las escalas por defecto que globals.css elimina (Tailwind las
  * ignoraría en silencio y el componente se vería sin estilo).

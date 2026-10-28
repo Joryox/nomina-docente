@@ -18,10 +18,10 @@ export const DialogTrigger = DialogPrimitive.Trigger;
 export const DialogClose = DialogPrimitive.Close;
 
 export const overlayClasses =
-  "fixed inset-0 z-(--layer-overlay) bg-overlay data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0";
+  "fixed inset-0 z-(--layer-overlay) bg-overlay duration-(--duration-base) data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0";
 
 export const dialogPanelClasses =
-  "fixed top-1/2 left-1/2 z-(--layer-modal) grid max-h-(--dialog-max-height) w-(--dialog-viewport-width) max-w-dialog -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-line bg-surface-raised text-fg shadow-md outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0";
+  "fixed top-1/2 left-1/2 z-(--layer-modal) grid max-h-(--dialog-max-height) w-(--dialog-viewport-width) max-w-dialog -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-line bg-surface-raised text-fg shadow-md outline-none duration-(--duration-base) ease-enter data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-1 data-[state=closed]:animate-out data-[state=closed]:fade-out-0";
 
 export function DialogContent({
   className,

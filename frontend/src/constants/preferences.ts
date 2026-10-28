@@ -16,6 +16,8 @@ export const ROOT_ATTRIBUTES = {
   theme: "data-theme",
   themePreference: "data-theme-preference",
   sidebar: "data-sidebar",
+  /** Presente mientras cambia el tema: los colores pasan de uno a otro en lugar de saltar. */
+  themeChanging: "data-theme-changing",
 } as const;
 
 export const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)";

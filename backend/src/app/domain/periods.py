@@ -26,7 +26,7 @@ from app.core.constants import (
 
 
 def long_date(day: date) -> str:
-    """Fecha larga en español (CLAUDE.md §7.4): «15 de octubre de 2026»."""
+    """Fecha larga en español (docs/sistema-de-diseno.md §8): «15 de octubre de 2026»."""
     return f"{day.day} de {MONTH_NAMES[day.month]} de {day.year}"
 
 

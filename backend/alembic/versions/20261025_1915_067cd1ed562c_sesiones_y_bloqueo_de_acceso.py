@@ -1,4 +1,4 @@
-"""Sesiones, refresh tokens y bloqueo de acceso (etapa 3).
+"""Sesiones, refresh tokens y bloqueo de acceso.
 
 1. ``users``: contador de intentos fallidos (``failed_login_attempts``, no negativo) y fin
    del bloqueo temporal (``locked_until``) contra fuerza bruta.
