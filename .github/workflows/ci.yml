@@ -1,0 +1,91 @@
+# Verificaciones del backend y del frontend en cada push y pull request a main.
+# Los valores de las variables son de prueba: no hay secretos en este flujo.
+name: Integración continua
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Ruff, mypy y pytest)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres-ci
+          POSTGRES_DB: nomina_docente_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # Sustituyen a los valores de ejemplo de .env (las variables de entorno tienen prioridad).
+      DB_PASSWORD: postgres-ci
+      JWT_SECRET: valor-de-integracion-continua-sin-uso-fuera-de-las-pruebas
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Configuración de ejemplo
+        run: cp .env.example .env
+      - name: Dependencias
+        run: uv sync --locked
+      - name: Lint
+        run: uv run ruff check .
+      - name: Formato
+        run: uv run ruff format --check .
+      - name: Tipos
+        run: uv run mypy
+      - name: Pruebas
+        run: uv run pytest --require-db
+
+  frontend:
+    name: Frontend (lint, tipos, pruebas y build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Configuración de ejemplo
+        run: |
+          cp .env.example .env.local
+          cp ../backend/.env.example ../backend/.env
+      - name: Dependencias
+        run: npm ci
+      - name: Lint, tipos, formato y pruebas
+        run: npm run check
+      - name: Tipos de la API al día con el backend
+        run: npm run api:check
+      - name: Build de producción
+        run: npm run build

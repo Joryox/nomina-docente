@@ -2,6 +2,7 @@
 
 Aplicación web para que el personal docente del **Tecnológico de Estudios Superiores de Huixquilucan (TESH)** registre las clases que imparte y obtenga su **recibo de nómina quincenal**, calculado automáticamente y descargable en PDF.
 
+[![Integración continua](https://github.com/Joryox/nomina-docente/actions/workflows/ci.yml/badge.svg)](https://github.com/Joryox/nomina-docente/actions/workflows/ci.yml)
 ![Versión](https://img.shields.io/badge/versión-1.0.0-1d3a6e)
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
@@ -79,6 +80,7 @@ Solo se carga con `APP_ENV=development`.
 
 ```
 nomina-docente/
+├── .github/workflows/       integración continua (verificaciones en cada push y pull request)
 ├── backend/                 API REST (FastAPI, arquitectura por capas)
 │   ├── src/app/             código: routers → servicios → repositorios → modelos; dominio puro y PDF
 │   ├── alembic/             migraciones del esquema (revisadas a mano)
@@ -125,7 +127,7 @@ npm run check && npm run build
 npm run test:e2e
 ```
 
-Las pruebas de punta a punta recorren el flujo completo de un docente nuevo, de la primera materia a la descarga del PDF, en escritorio y a 390 px de ancho.
+Las verificaciones del backend y del frontend corren también en GitHub Actions con cada push y pull request a `main` ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)). Las pruebas de punta a punta recorren el flujo completo de un docente nuevo, de la primera materia a la descarga del PDF, en escritorio y a 390 px de ancho.
 
 ## Tecnologías
 

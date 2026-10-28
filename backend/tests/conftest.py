@@ -3,7 +3,8 @@
 Las pruebas marcadas con ``@pytest.mark.db`` usan la base ``DB_NAME_TEST``, migrada a la
 última versión al iniciar la sesión de pruebas. Cada prueba corre dentro de una transacción
 que se revierte al terminar. Si no hay conexión, las pruebas se saltan con un mensaje que
-explica cómo preparar la base, en lugar de fallar.
+explica cómo preparar la base, en lugar de fallar; con ``--require-db`` (integración continua)
+la falta de conexión es un error.
 """
 
 from collections.abc import Callable, Iterator
@@ -35,6 +36,14 @@ DB_UNAVAILABLE_HINT = (
     "No hay conexión a la base de pruebas {database} ({reason}). "
     "Revisa DB_PASSWORD en backend/.env y ejecuta scripts/create-databases.sh."
 )
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--require-db",
+        action="store_true",
+        help="Falla en lugar de saltar las pruebas si no hay base de pruebas.",
+    )
 
 
 @pytest.fixture
@@ -84,7 +93,7 @@ def settings() -> Settings:
 
 
 @pytest.fixture(scope="session")
-def test_engine(settings: Settings) -> Iterator[Engine]:
+def test_engine(settings: Settings, request: pytest.FixtureRequest) -> Iterator[Engine]:
     engine = create_engine(settings.test_database_url, pool_pre_ping=True)
     try:
         with engine.connect():
@@ -92,7 +101,10 @@ def test_engine(settings: Settings) -> Iterator[Engine]:
     except OperationalError as error:
         engine.dispose()
         reason = str(error.orig).strip().splitlines()[0] if error.orig else "sin detalle"
-        pytest.skip(DB_UNAVAILABLE_HINT.format(database=settings.db_name_test, reason=reason))
+        message = DB_UNAVAILABLE_HINT.format(database=settings.db_name_test, reason=reason)
+        if request.config.getoption("require_db"):
+            pytest.fail(message)
+        pytest.skip(message)
     run_alembic(engine, command.upgrade, "head")
     yield engine
     engine.dispose()
