@@ -6,6 +6,14 @@ from pydantic import ValidationError
 from app.core.config import ConfigurationError, Settings, describe_validation_error, get_settings
 
 
+@pytest.fixture(autouse=True)
+def _isolated_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Las pruebas no dependen de las variables del proceso (en CI, DB_PASSWORD y
+    JWT_SECRET vienen del entorno): cada una declara lo que necesita."""
+    for name in Settings.model_fields:
+        monkeypatch.delenv(name.upper(), raising=False)
+
+
 def build_settings(values: dict[str, Any]) -> Settings:
     return Settings(_env_file=None, **values)
 
