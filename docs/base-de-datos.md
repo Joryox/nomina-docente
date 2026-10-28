@@ -138,6 +138,7 @@ erDiagram
         bigint teacher_id FK
         bigint subject_id FK
         bigint career_id FK
+        varchar group_code "nulo"
         bigint hourly_rate_id FK
         boolean is_active
         date active_until "nulo"
@@ -193,6 +194,7 @@ erDiagram
         bigint assignment_id FK
         varchar subject_name "copia"
         varchar career_name "copia"
+        varchar group_code "copia, nulo"
         integer minutes
         numeric hours "generada"
         numeric hourly_rate "copia"
@@ -303,7 +305,7 @@ Fuente del catálogo: volante oficial de admisión 2024 del TESH (sección 5.1).
 
 ### 2.9 `assignments` — asignaciones
 
-Docente + materia + carrera + tarifa por hora (RN-13).
+Docente + materia + carrera + tarifa por hora (RN-13), con un grupo opcional (RN-41).
 
 | Columna | Tipo | Nulo | Restricciones | Descripción |
 | --- | --- | --- | --- | --- |
@@ -312,8 +314,9 @@ Docente + materia + carrera + tarifa por hora (RN-13).
 | `teacher_id` | `bigint` | No | FK → `teachers.id` `RESTRICT`; índice | Docente |
 | `subject_id` | `bigint` | No | FK compuesta `(subject_id, teacher_id)` → `subjects(id, teacher_id)` `RESTRICT`; índice | Materia, que debe ser del mismo docente |
 | `career_id` | `bigint` | No | FK → `careers.id` `RESTRICT`; índice | Carrera del catálogo |
+| `group_code` | `varchar(10)` | Sí | `ck_assignments_group_code_format`: `^[A-Z0-9]+(-[A-Z0-9]+)*$` | Grupo ya normalizado (`3101`, `3101-A`); nulo si no tiene (RN-41) |
 | `hourly_rate_id` | `bigint` | No | FK → `hourly_rates.id` `RESTRICT`; índice | Tarifa del catálogo (RN-11) |
-| `is_active` | `boolean` | No | Por defecto `true`; índice único parcial `uq_assignments_active_teacher_subject_career` sobre `(teacher_id, subject_id, career_id) WHERE is_active` | Una sola asignación activa por materia y carrera (RN-14) |
+| `is_active` | `boolean` | No | Por defecto `true`; índice único parcial `uq_assignments_active_teacher_subject_career_group` sobre `(teacher_id, subject_id, career_id, group_code) NULLS NOT DISTINCT WHERE is_active` | Una sola asignación activa por materia, carrera y grupo; «sin grupo» cuenta como un valor (RN-14, RN-41) |
 | `active_until` | `date` | Sí | `ck_assignments_active_until_consistent` (`is_active = (active_until IS NULL)`) | Último día activo (zona de la institución). Se aceptan sesiones con fecha hasta ese día (RN-38) |
 | `created_at`, `updated_at` | `timestamptz` | No | | Marcas de tiempo |
 
@@ -384,6 +387,7 @@ Copia fija e inmutable de la nómina de un periodo (RN-28).
 | `assignment_id` | `bigint` | No | FK compuesta `(assignment_id, teacher_id)` → `assignments(id, teacher_id)` `RESTRICT`; índice; único `(receipt_id, assignment_id, hourly_rate)` | Asignación de origen (trazabilidad). Un renglón por asignación **y tarifa**: un cambio de tarifa dentro de la quincena produce dos renglones |
 | `subject_name` | `varchar(150)` | No | Recortado | Nombre de la materia al emitir |
 | `career_name` | `varchar(150)` | No | Recortado | Nombre de la carrera al emitir |
+| `group_code` | `varchar(10)` | Sí | `ck_payroll_receipt_lines_group_code_format` | Grupo al emitir; nulo si no tenía o si el recibo se emitió antes de existir los grupos |
 | `minutes` | `integer` | No | `> 0` | Minutos impartidos en el periodo |
 | `hours` | `numeric(8,2)` | No | Generada: `round(minutes / 60, 2)` | Horas, con 2 decimales |
 | `hourly_rate` | `numeric(10,2)` | No | `> 0` | Tarifa al emitir |
@@ -448,7 +452,7 @@ Además de los índices que crean automáticamente las llaves primarias, los `UN
 | `ix_assignments_subject_id_teacher_id` | `subject_id, teacher_id` | FK compuesta |
 | `ix_assignments_career_id` | `career_id` | FK |
 | `ix_assignments_hourly_rate_id` | `hourly_rate_id` | FK |
-| `uq_assignments_active_teacher_subject_career` | `teacher_id, subject_id, career_id` `WHERE is_active` | RN-14 |
+| `uq_assignments_active_teacher_subject_career_group` | `teacher_id, subject_id, career_id, group_code` `NULLS NOT DISTINCT WHERE is_active` | RN-14, RN-41 |
 | `ix_schedules_assignment_id_teacher_id` | `assignment_id, teacher_id` | FK compuesta y borrado en cascada |
 | `ix_logbook_entries_assignment_id_teacher_id` | `assignment_id, teacher_id` | FK compuesta |
 | `ix_logbook_entries_teacher_id_session_date` | `teacher_id, session_date` | Bitácora de un docente en un rango de fechas (vista previa del recibo, cierre del periodo) |
@@ -617,6 +621,7 @@ Los nombres estables permiten que el backend traduzca una violación a un códig
 | `3295e857da8d` | Esquema inicial: extensiones, tipos, funciones, triggers y las 13 tablas del sistema |
 | `067cd1ed562c` | Sesiones y bloqueo de acceso: `auth_sessions`, `refresh_tokens` y columnas de bloqueo en `users` |
 | `8c41d2f7a9b3` | Lógica de negocio: `subjects.is_active`, `assignments.active_until`, `logbook_entries.hourly_rate_id` (tarifa congelada) y renglones del recibo únicos por asignación y tarifa |
+| `5e7a1c9d3b42` | Grupos de clases: `assignments.group_code` y su copia en `payroll_receipt_lines`; la unicidad de asignaciones activas incluye el grupo con `NULLS NOT DISTINCT`. Los recibos emitidos no se reescriben. Revertirla se detiene con un mensaje claro si hay clases activas que solo difieren por el grupo |
 
 Las migraciones se escriben y revisan a mano: *autogenerate* no detecta extensiones, tipos, funciones, secuencias ni triggers, y no compara bien las restricciones de exclusión. Usa SQL literal a propósito: una migración es una fotografía del esquema y no debe cambiar si cambian las constantes de la aplicación. Una prueba verifica que *autogenerate* no encuentre diferencias entre los modelos y la base migrada.
 

@@ -3,7 +3,7 @@
 Aplicación web para que el personal docente del **Tecnológico de Estudios Superiores de Huixquilucan (TESH)** registre las clases que imparte y obtenga su **recibo de nómina quincenal**, calculado automáticamente y descargable en PDF.
 
 [![Integración continua](https://github.com/Joryox/nomina-docente/actions/workflows/ci.yml/badge.svg)](https://github.com/Joryox/nomina-docente/actions/workflows/ci.yml)
-![Versión](https://img.shields.io/badge/versión-1.0.0-1d3a6e)
+![Versión](https://img.shields.io/badge/versión-1.1.0-1d3a6e)
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
@@ -15,21 +15,21 @@ Aplicación web para que el personal docente del **Tecnológico de Estudios Supe
 
 ## ¿Qué es y para quién?
 
-Cada docente tiene su propia cuenta y solo ve su información. Registra una vez las materias que imparte, las asigna a una carrera con su tarifa por hora y arma su horario semanal. Cada día registra en la bitácora las clases que impartió (casi siempre con un clic) y, al cerrar la quincena, el sistema calcula las horas y el importe por materia y carrera y emite un recibo con folio que ya no cambia.
+Cada docente tiene su propia cuenta y solo ve su información. Registra una vez las materias que imparte, las asigna a una carrera (y, si la da a varios grupos, a cada grupo) con su tarifa por hora y arma su horario semanal. Cada día registra en la bitácora las clases que impartió (casi siempre con un clic) y, al cerrar la quincena, el sistema calcula las horas y el importe por materia y carrera y emite un recibo con folio que ya no cambia.
 
 El sistema está pensado para **impedir errores**, no solo para reportarlos: todo lo que ya existe se elige de una lista, las horas usan formato de 24 h con máscara, no se aceptan fechas futuras ni horarios empalmados, los montos los calcula siempre el servidor con aritmética decimal exacta y toda acción irreversible pide confirmación explicando sus consecuencias.
 
 ## Funciones
 
-| Sección          | Qué hace                                                                                                                                                                                                                                         |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Inicio**       | Saludo, quincena actual, horas y monto estimado, clases de hoy para registrar en un clic, avisos con acción (clases sin registrar, quincena terminada sin recibo) y últimos recibos. Un docente nuevo ve una guía de configuración de tres pasos |
-| **Mis materias** | Alta, edición y búsqueda sin acentos; una materia con historial se desactiva en lugar de borrarse                                                                                                                                                |
-| **Mis clases**   | Materia + carrera + tarifa por hora, agrupadas por carrera, con sus horarios. Cambiar la tarifa no altera lo ya registrado                                                                                                                       |
-| **Horario**      | Vista semanal en bloques (lista por día en celular). Si un horario choca con otro, el mensaje dice con qué clase, qué día y a qué hora                                                                                                           |
-| **Bitácora**     | Clases programadas del día con horario precargado, registro fuera de horario con aviso, sesiones de la quincena con totales. Las quincenas con recibo quedan cerradas                                                                            |
-| **Recibos**      | Vista previa por quincena con avisos, emisión con folio consecutivo, lista por año, detalle como documento oficial con importe con letra, impresión y **PDF tamaño carta**                                                                       |
-| **Mi perfil**    | Datos personales, cambio de contraseña con requisitos en vivo y cierre de sesión en todos los dispositivos                                                                                                                                       |
+| Sección          | Qué hace                                                                                                                                                                                                                                                                               |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Inicio**       | Saludo, quincena actual, horas y monto estimado, clases de hoy para registrar en un clic, avisos con acción (clases sin registrar, quincena terminada sin recibo) y últimos recibos. Un docente nuevo ve una guía de configuración de tres pasos                                       |
+| **Mis materias** | Alta, edición y búsqueda sin acentos; una materia con historial se desactiva en lugar de borrarse                                                                                                                                                                                      |
+| **Mis clases**   | Materia + carrera + grupo opcional + tarifa por hora, agrupadas por carrera, con sus horarios y su turno. La misma materia puede darse a varios grupos. Cambiar la tarifa no altera lo ya registrado                                                                                   |
+| **Horario**      | Vista semanal en bloques (lista por día en celular). Se capturan varios días de una vez (L M X J V S D) con uno o más rangos de horas; si un día choca con otra clase, no se guarda ninguno y el mensaje dice qué día y con cuál. Turno matutino o vespertino calculado por el sistema |
+| **Bitácora**     | Clases programadas del día con horario precargado, registro fuera de horario con aviso, sesiones de la quincena con totales. Las quincenas con recibo quedan cerradas                                                                                                                  |
+| **Recibos**      | Vista previa por quincena con avisos, emisión con folio consecutivo, lista por año, detalle como documento oficial con importe con letra, impresión y **PDF tamaño carta**                                                                                                             |
+| **Mi perfil**    | Datos personales, cambio de contraseña con requisitos en vivo y cierre de sesión en todos los dispositivos                                                                                                                                                                             |
 
 Además: modo claro y oscuro, diseño adaptable a celular, accesibilidad WCAG 2.2 AA (contraste verificado por pruebas, navegación completa con teclado) y animaciones sutiles que respetan «reducir movimiento».
 
@@ -68,7 +68,7 @@ bash scripts/dev.sh                # levanta todo: http://localhost:3000
 
 ## Cuenta de demostración
 
-`bash scripts/demo-data.sh` crea una docente **ficticia** con 6 materias, 7 clases en 4 carreras, horario semanal, bitácora de cuatro quincenas y dos recibos emitidos. La quincena anterior queda terminada y sin recibo, lista para probar la emisión.
+`bash scripts/demo-data.sh` crea una docente **ficticia** con 6 materias, 8 clases en 4 carreras, horario semanal, bitácora de cuatro quincenas y dos recibos emitidos. Incluye una materia en dos grupos el mismo día (Programación Orientada a Objetos, grupo 3101 en la mañana y 3102 en la tarde) y otra impartida tres días a la semana (Cálculo Diferencial, grupo 1201). La quincena anterior queda terminada y sin recibo, lista para probar la emisión.
 
 | Correo                     | Contraseña            |
 | -------------------------- | --------------------- |
