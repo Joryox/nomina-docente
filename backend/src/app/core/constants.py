@@ -219,8 +219,8 @@ DOCS_PATHS: Final = ("/docs", "/redoc", f"{API_V1_PREFIX}/openapi.json")
 # Tamaño carta en milímetros y márgenes del documento.
 RECEIPT_PDF_FORMAT: Final = "Letter"
 RECEIPT_PDF_MARGIN_MM: Final = 18
-# Colores en sRGB: el azul marino de la marca provisional (brand-800) y los neutros fríos
-# de la interfaz. El color primario lo reemplaza scripts/apply-brand.sh (documents/brand/brand.json).
+# Colores en sRGB: el azul marino de la marca (brand-800) y los neutros fríos de la interfaz.
+# El primario lo reemplaza scripts/apply-brand.sh (documents/brand/brand.json).
 RECEIPT_PDF_BRAND_RGB: Final = (24, 56, 110)
 RECEIPT_PDF_INK_RGB: Final = (30, 36, 48)
 RECEIPT_PDF_MUTED_RGB: Final = (88, 96, 112)

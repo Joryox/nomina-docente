@@ -16,7 +16,7 @@ test.describe("acceso", () => {
     await expect(
       page.getByText(/Sistema de nómina para el personal docente/).filter({ visible: true }),
     ).toBeVisible();
-    await expect(page.getByRole("group", { name: "Tema de color" })).toBeVisible();
+    await expect(page.getByRole("radiogroup", { name: "Tema de color" })).toBeVisible();
     await expectNoHorizontalOverflow(page);
 
     await page.goto("/no-existe");
