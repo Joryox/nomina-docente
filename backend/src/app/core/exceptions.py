@@ -192,6 +192,9 @@ ERROR_CATALOG: Mapping[ErrorCode, ErrorSpec] = {
     ErrorCode.SCHEDULE_OVERLAP: ErrorSpec(
         _CONFLICT, "El horario se empalma con otra de tus clases. Elige otra hora."
     ),
+    ErrorCode.SCHEDULE_RANGES_OVERLAP: ErrorSpec(
+        _RULE, "Dos rangos de horas de la captura se empalman el mismo día. Revisa las horas."
+    ),
     ErrorCode.TIME_RANGE_INVALID: ErrorSpec(
         _RULE, "La hora de salida debe ser posterior a la hora de entrada."
     ),

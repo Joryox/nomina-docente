@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import date
 from typing import Any
 
@@ -13,6 +14,7 @@ from tests.business import (
     Api,
     add_schedule,
     create_assignment,
+    create_subject,
     error,
     logged,
     ok,
@@ -202,6 +204,28 @@ class TestIssue:
         again = ok(teacher_api.get(f"/payroll/receipts/{receipt['id']}"))
         assert again == receipt
 
+    def test_each_group_is_a_line_and_the_receipt_keeps_its_group(self, teacher_api: Api) -> None:
+        """RN-41: dos grupos de la misma materia son dos renglones; el recibo copia el grupo
+        y no cambia si después se cambia el grupo de la asignación."""
+        subject = create_subject(teacher_api, "Programación Web")
+        payload = {"subject_id": subject["id"], "career_code": "ISC", "hourly_rate": "125.00"}
+        morning = ok(teacher_api.post("/assignments", payload | {"group": "3101"}), 201)
+        evening = ok(teacher_api.post("/assignments", payload | {"group": "3102"}), 201)
+        logged(teacher_api, morning["id"], LAST_MONDAY_OF_Q1, "07:00", "09:00")
+        logged(teacher_api, evening["id"], LAST_MONDAY_OF_Q1, "14:00", "16:00")
+
+        preview = _preview(teacher_api, Q1)
+        receipt = ok(_issue(teacher_api, Q1), 201)
+        ok(teacher_api.patch(f"/assignments/{morning['id']}", {"group": "3201"}))
+
+        assert [(line["subject_name"], line["group"]) for line in preview["lines"]] == [
+            ("Programación Web", "3101"),
+            ("Programación Web", "3102"),
+        ]
+        assert [line["group"] for line in receipt["lines"]] == ["3101", "3102"]
+        again = ok(teacher_api.get(f"/payroll/receipts/{receipt['id']}"))
+        assert again == receipt
+
     def test_a_period_is_issued_only_once(
         self, teacher_api: Api, first_fortnight: dict[str, Any]
     ) -> None:
@@ -235,11 +259,8 @@ class TestIssue:
         self, teacher_api: Api, business_app: FastAPI, settings: Settings
     ) -> None:
         policy = BusinessPolicy.from_settings(settings)
-        business_app.dependency_overrides[get_business_policy] = lambda: BusinessPolicy(
-            class_min_duration_minutes=policy.class_min_duration_minutes,
-            class_max_duration_minutes=policy.class_max_duration_minutes,
-            logbook_max_age_days=policy.logbook_max_age_days,
-            payroll_issue_requires_closed_period=False,
+        business_app.dependency_overrides[get_business_policy] = lambda: replace(
+            policy, payroll_issue_requires_closed_period=False
         )
         assignment = create_assignment(teacher_api)
         logged(teacher_api, assignment["id"], MONDAY, "07:00", "09:00")

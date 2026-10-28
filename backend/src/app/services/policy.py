@@ -5,6 +5,7 @@ usan, y las pruebas pueden construir una política distinta sin tocar el entorno
 """
 
 from dataclasses import dataclass
+from datetime import time
 from typing import Self
 
 from app.core.config import Settings
@@ -16,6 +17,7 @@ class BusinessPolicy:
     class_max_duration_minutes: int
     logbook_max_age_days: int
     payroll_issue_requires_closed_period: bool
+    afternoon_shift_start: time
 
     @classmethod
     def from_settings(cls, settings: Settings) -> Self:
@@ -24,4 +26,5 @@ class BusinessPolicy:
             class_max_duration_minutes=settings.class_max_duration_minutes,
             logbook_max_age_days=settings.logbook_max_age_days,
             payroll_issue_requires_closed_period=settings.payroll_issue_requires_closed_period,
+            afternoon_shift_start=settings.afternoon_shift_start,
         )

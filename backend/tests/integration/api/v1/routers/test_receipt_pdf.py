@@ -60,6 +60,17 @@ def test_pdf_has_the_receipt_content_and_a_descriptive_filename(
     assert "$250.00 MXN" in text
 
 
+def test_pdf_shows_the_group_of_each_line(teacher_api: Api) -> None:
+    networks = create_assignment(teacher_api, "Redes", "ISC", "125.00")
+    ok(teacher_api.patch(f"/assignments/{networks['id']}", {"group": "3101"}))
+    logged(teacher_api, networks["id"], LAST_MONDAY_OF_Q1, "07:00", "09:00")
+    issued = ok(teacher_api.post("/payroll/receipts", Q1), 201)
+
+    text = _text(teacher_api.get(f"/payroll/receipts/{issued['id']}/pdf").content)
+
+    assert "Redes · Grupo 3101" in text
+
+
 def test_pdf_of_another_teacher_is_not_found(
     teacher_api: Api, other_api: Api, receipt: dict[str, Any]
 ) -> None:

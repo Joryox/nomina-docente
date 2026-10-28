@@ -20,7 +20,7 @@ from app.schemas.assignments import (
     AssignmentUpdate,
 )
 from app.schemas.common import StatusFilter
-from app.schemas.schedules import ScheduleCreate, ScheduleResponse
+from app.schemas.schedules import ScheduleBatchCreate, ScheduleCreate, ScheduleResponse
 
 router = APIRouter(prefix="/assignments", tags=["asignaciones"])
 
@@ -188,3 +188,32 @@ def create_schedule(
     service: ScheduleServiceDep,
 ) -> ScheduleResponse:
     return service.create(teacher, assignment_id, data)
+
+
+@router.post(
+    "/{assignment_id}/schedules/batch",
+    status_code=HTTPStatus.CREATED,
+    summary="Agregar horarios de varios días",
+    description="Uno o más rangos de horas, cada uno con los días en que se repite (por "
+    "ejemplo lunes, miércoles y viernes de 07:00 a 09:00). Se guardan **todos o ninguno** "
+    "(RN-42): si un día choca con otra clase, el error dice qué día y con qué clase, y no se "
+    "guarda nada. Dos rangos de la misma captura tampoco pueden cruzarse el mismo día.",
+    tags=["horarios"],
+    responses=business_responses(
+        NOT_FOUND,
+        ErrorCode.ASSIGNMENT_INACTIVE,
+        ErrorCode.SCHEDULE_OVERLAP,
+        ErrorCode.SCHEDULE_RANGES_OVERLAP,
+        ErrorCode.TIME_RANGE_INVALID,
+        ErrorCode.CLASS_TOO_SHORT,
+        ErrorCode.CLASS_TOO_LONG,
+        writes=True,
+    ),
+)
+def create_schedules(
+    assignment_id: uuid.UUID,
+    data: ScheduleBatchCreate,
+    teacher: CurrentTeacher,
+    service: ScheduleServiceDep,
+) -> list[ScheduleResponse]:
+    return service.create_many(teacher, assignment_id, data)

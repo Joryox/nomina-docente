@@ -1,5 +1,6 @@
 """Configuración tipada leída de variables de entorno (y de backend/.env)."""
 
+from datetime import time
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
@@ -85,6 +86,8 @@ class Settings(BaseSettings):
     class_min_duration_minutes: int = Field(gt=0, lt=MINUTES_PER_DAY)
     class_max_duration_minutes: int = Field(gt=0, lt=MINUTES_PER_DAY)
     logbook_max_age_days: int = Field(ge=0)
+    # Hora desde la que una clase cuenta como vespertina (RN-43); antes, matutina.
+    afternoon_shift_start: time
 
     @field_validator("jwt_secret")
     @classmethod
@@ -98,6 +101,13 @@ class Settings(BaseSettings):
     def _split_cors_origins(cls, value: object) -> object:
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
+
+    @field_validator("afternoon_shift_start")
+    @classmethod
+    def _require_whole_minute(cls, value: time) -> time:
+        if value.second or value.microsecond or value.tzinfo is not None:
+            raise ValueError("debe ser una hora HH:MM de 24 horas, sin segundos ni zona")
         return value
 
     @model_validator(mode="after")

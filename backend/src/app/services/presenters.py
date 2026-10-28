@@ -47,8 +47,26 @@ def assignment_summary(assignment: Assignment) -> AssignmentSummary:
         subject_name=assignment.subject.name,
         career_code=assignment.career.code,
         career_name=assignment.career.name,
+        group=assignment.group_code,
         is_active=assignment.is_active,
     )
+
+
+def describe_class(assignment: Assignment) -> str:
+    """«Bases de Datos (Ingeniería en Sistemas Computacionales, grupo 3101)» para mensajes."""
+    group = f", grupo {assignment.group_code}" if assignment.group_code else ""
+    return f"{assignment.subject.name} ({assignment.career.name}{group})"
+
+
+def class_details(assignment: Assignment) -> dict[str, str | None]:
+    """Datos de una clase dentro de ``details`` de un error o una advertencia."""
+    return {
+        "assignment_id": str(assignment.public_id),
+        "subject_name": assignment.subject.name,
+        "career_code": assignment.career.code,
+        "career_name": assignment.career.name,
+        "group": assignment.group_code,
+    }
 
 
 def schedule_range(schedule: Schedule) -> TimeRange:

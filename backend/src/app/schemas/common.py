@@ -164,4 +164,5 @@ class AssignmentSummary(BaseModel):
     subject_name: str
     career_code: str
     career_name: str
+    group: str | None = Field(description="Grupo de la asignación, si lo tiene")
     is_active: bool

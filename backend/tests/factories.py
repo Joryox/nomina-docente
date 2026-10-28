@@ -64,12 +64,14 @@ def create_assignment(
     career: Career,
     hourly_rate: HourlyRate,
     subject: Subject | None = None,
+    group_code: str | None = None,
 ) -> Assignment:
     subject = subject or create_subject(session, teacher)
     assignment = Assignment(
         teacher_id=teacher.id,
         subject_id=subject.id,
         career_id=career.id,
+        group_code=group_code,
         hourly_rate_id=hourly_rate.id,
     )
     return _persist(session, assignment)

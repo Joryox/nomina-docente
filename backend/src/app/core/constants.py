@@ -110,6 +110,7 @@ CATALOG_DESCRIPTION_MAX_LENGTH: Final = 255
 SUBJECT_NAME_MAX_LENGTH: Final = 150
 SUBJECT_CODE_MAX_LENGTH: Final = 20
 LOGBOOK_NOTES_MAX_LENGTH: Final = 500
+GROUP_CODE_MAX_LENGTH: Final = 10
 
 
 # --- Materias (RN-08, RN-09) ---------------------------------------------------------------
@@ -146,6 +147,12 @@ SUBJECT_NAME_ROMAN_NUMERALS: Final = frozenset(
 SUBJECT_CODE_PATTERN: Final = r"^[A-Za-z0-9][A-Za-z0-9\-]*$"
 
 
+# --- Grupos (RN-41) ------------------------------------------------------------------------
+# Clave del grupo ya normalizada (mayúsculas, sin espacios): «3101», «3101-A». La misma
+# expresión la exige un CHECK de la base.
+GROUP_CODE_PATTERN: Final = r"^[A-Z0-9]+(-[A-Z0-9]+)*$"
+
+
 # --- Listados y paginación (docs/api.md) -------------------------------------------------
 DEFAULT_PAGE_SIZE: Final = 20
 MAX_PAGE_SIZE: Final = 100
@@ -153,6 +160,8 @@ SEARCH_TERM_MAX_LENGTH: Final = 100
 
 # Máximo de clases en un registro rápido de bitácora: más que las de un día completo.
 QUICK_LOGBOOK_MAX_ENTRIES: Final = 20
+# Rangos de horas en una captura de horarios de varios días (RN-42); cada rango, 1 a 7 días.
+SCHEDULE_BATCH_MAX_RANGES: Final = 7
 # Detalle máximo de advertencias con lista (clases sin registrar, sesiones fuera de horario).
 WARNING_DETAIL_MAX_ITEMS: Final = 50
 DASHBOARD_LATEST_RECEIPTS: Final = 3

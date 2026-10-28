@@ -7,12 +7,15 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Index,
+    String,
     UniqueConstraint,
     true,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.constants import GROUP_CODE_MAX_LENGTH
 from app.db.base import Base
+from app.db.checks import group_code_format
 from app.db.mixins import IdentityPkMixin, PublicIdMixin, TimestampMixin
 
 if TYPE_CHECKING:
@@ -35,19 +38,24 @@ class Assignment(IdentityPkMixin, PublicIdMixin, TimestampMixin, Base):
         ),
         # Destino de las llaves compuestas de schedules, logbook_entries y recibos.
         UniqueConstraint("id", "teacher_id"),
-        # RN-14: una sola asignación activa por materia y carrera. Las inactivas conservan
-        # su historial y permiten crear otra, por ejemplo con una tarifa distinta.
+        # RN-14 y RN-41: una sola asignación activa por materia, carrera y grupo. NULLS NOT
+        # DISTINCT hace que «sin grupo» cuente como un valor: no puede haber dos asignaciones
+        # activas sin grupo de la misma materia y carrera. Las inactivas conservan su
+        # historial y permiten crear otra, por ejemplo con una tarifa distinta.
         Index(
-            "uq_assignments_active_teacher_subject_career",
+            "uq_assignments_active_teacher_subject_career_group",
             "teacher_id",
             "subject_id",
             "career_id",
+            "group_code",
             unique=True,
             postgresql_where="is_active",
+            postgresql_nulls_not_distinct=True,
         ),
         Index("ix_assignments_subject_id_teacher_id", "subject_id", "teacher_id"),
         # Una asignación activa no tiene fecha de fin; una desactivada siempre la tiene.
         CheckConstraint("is_active = (active_until IS NULL)", name="active_until_consistent"),
+        CheckConstraint(group_code_format("group_code"), name="group_code_format"),
         {"comment": "Asignación: docente + materia + carrera + tarifa por hora."},
     )
 
@@ -62,6 +70,9 @@ class Assignment(IdentityPkMixin, PublicIdMixin, TimestampMixin, Base):
     hourly_rate_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("hourly_rates.id", ondelete="RESTRICT"), index=True
     )
+    # Grupo opcional, ya normalizado («3101»): distingue la misma materia y carrera impartida
+    # a grupos distintos (RN-41).
+    group_code: Mapped[str | None] = mapped_column(String(GROUP_CODE_MAX_LENGTH))
     is_active: Mapped[bool] = mapped_column(default=True, server_default=true())
     # Último día en que estuvo activa (zona de la institución). Se pueden registrar sesiones
     # con fecha hasta ese día, aunque la asignación ya esté desactivada.

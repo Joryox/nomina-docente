@@ -8,12 +8,17 @@ RATE_145 = Decimal("145.00")
 
 
 def _session(
-    key: int, minutes: int, rate: Decimal, subject: str = "Bases de Datos"
+    key: int,
+    minutes: int,
+    rate: Decimal,
+    subject: str = "Bases de Datos",
+    group: str | None = None,
 ) -> SessionForPayroll:
     return SessionForPayroll(
         assignment_key=key,
         subject_name=subject,
         career_name="Ingeniería en Sistemas Computacionales",
+        group_code=group,
         hourly_rate=rate,
         minutes=minutes,
     )
@@ -82,3 +87,21 @@ def test_a_full_fortnight_does_not_lose_cents() -> None:
 
     assert result.total_amount == Decimal("1329.17")
     assert result.total_hours == Decimal("9.17")
+
+
+def test_each_group_is_its_own_line_and_lines_without_group_go_first() -> None:
+    """RN-41: la misma materia y carrera en dos grupos son dos asignaciones y dos renglones."""
+    result = calculate_payroll(
+        [
+            _session(3, 120, RATE_125, group="3102"),
+            _session(2, 120, RATE_125, group="3101"),
+            _session(1, 60, RATE_125),
+        ]
+    )
+
+    assert [(line.group_code, line.minutes) for line in result.lines] == [
+        (None, 60),
+        ("3101", 120),
+        ("3102", 120),
+    ]
+    assert result.total_amount == Decimal("625.00")

@@ -84,6 +84,7 @@ def valid_settings_values() -> dict[str, Any]:
         "class_min_duration_minutes": 30,
         "class_max_duration_minutes": 300,
         "logbook_max_age_days": 30,
+        "afternoon_shift_start": "14:00",
     }
 
 

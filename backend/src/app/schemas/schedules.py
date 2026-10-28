@@ -5,7 +5,7 @@ from typing import Annotated, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.core.constants import Weekday
+from app.core.constants import SCHEDULE_BATCH_MAX_RANGES, Weekday
 from app.schemas.common import AssignmentSummary, ClockTime, Hours, StrictInput
 
 IsoWeekday = Annotated[
@@ -22,6 +22,41 @@ class ScheduleCreate(StrictInput):
         extra="forbid",
         json_schema_extra={
             "examples": [{"weekday": 1, "start_time": "07:00", "end_time": "09:00"}]
+        },
+    )
+
+
+class ScheduleRangeInput(StrictInput):
+    """Un rango de horas que se repite en uno o varios días."""
+
+    weekdays: list[IsoWeekday] = Field(min_length=1, max_length=len(Weekday))
+    start_time: ClockTime
+    end_time: ClockTime
+
+    @model_validator(mode="after")
+    def _unique_weekdays(self) -> Self:
+        if len(set(self.weekdays)) != len(self.weekdays):
+            raise ValueError("Cada día se elige una sola vez en un rango.")
+        return self
+
+
+class ScheduleBatchCreate(StrictInput):
+    """Varios días y rangos de una clase en una sola captura: se guardan todos o ninguno
+    (RN-42)."""
+
+    ranges: list[ScheduleRangeInput] = Field(min_length=1, max_length=SCHEDULE_BATCH_MAX_RANGES)
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "ranges": [
+                        {"weekdays": [1, 3, 5], "start_time": "07:00", "end_time": "09:00"},
+                        {"weekdays": [2], "start_time": "16:00", "end_time": "18:00"},
+                    ]
+                }
+            ]
         },
     )
 

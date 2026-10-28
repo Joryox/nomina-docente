@@ -30,7 +30,7 @@ from app.core.constants import (
     TIMEZONE,
 )
 from app.domain.periods import Period, long_date
-from app.schemas.payroll import ReceiptDetailResponse
+from app.schemas.payroll import ReceiptDetailResponse, ReceiptLineResponse
 
 FONTS_DIR = Path(__file__).parent / "fonts"
 # Identidad institucional que escribe scripts/apply-brand.sh: logo y color primario. Sin
@@ -56,6 +56,7 @@ LABEL_EMPLOYEE = "Número de empleado"
 NOT_CAPTURED = "Sin número"
 SECTION_CONCEPTS = "Conceptos"
 COLUMNS = ("Materia", "Carrera", "Horas", "Tarifa por hora (MXN)", "Importe (MXN)")
+LABEL_GROUP = "Grupo"
 LABEL_TOTAL_HOURS = "Total de horas"
 LABEL_TOTAL = "Total bruto"
 LABEL_WORDS = "Importe con letra"
@@ -244,7 +245,7 @@ def _concepts(pdf: FPDF, receipt: ReceiptDetailResponse) -> None:
         for line in receipt.lines:
             table.row(
                 (
-                    line.subject_name,
+                    _subject_cell(line),
                     line.career_name,
                     format_hours(line.hours),
                     format_amount(line.hourly_rate),
@@ -252,6 +253,13 @@ def _concepts(pdf: FPDF, receipt: ReceiptDetailResponse) -> None:
                 )
             )
     pdf.ln(4)
+
+
+def _subject_cell(line: ReceiptLineResponse) -> str:
+    """«Programación Web · Grupo 3101»; sin grupo, solo la materia."""
+    if line.group is None:
+        return line.subject_name
+    return f"{line.subject_name} · {LABEL_GROUP} {line.group}"
 
 
 def _totals(pdf: FPDF, receipt: ReceiptDetailResponse) -> None:

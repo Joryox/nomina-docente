@@ -9,7 +9,7 @@ from datetime import date
 
 from pydantic import BaseModel, Field
 
-from app.schemas.common import Money, Page
+from app.schemas.common import ClockTime, Money, Page
 
 
 class CareerTypeResponse(BaseModel):
@@ -50,6 +50,13 @@ class BusinessRulesResponse(BaseModel):
     )
     payroll_issue_requires_closed_period: bool = Field(
         description="Si es verdadero, solo se emite el recibo de una quincena ya terminada"
+    )
+    afternoon_shift_start: ClockTime = Field(
+        description="Desde esta hora de entrada la clase es vespertina; antes, matutina"
+    )
+    group_code_max_length: int
+    schedule_batch_max_ranges: int = Field(
+        description="Rangos de horas en una captura de horarios de varios días"
     )
     max_page_size: int
     quick_logbook_max_entries: int

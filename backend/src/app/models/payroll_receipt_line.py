@@ -16,6 +16,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.constants import (
     CATALOG_NAME_MAX_LENGTH,
+    GROUP_CODE_MAX_LENGTH,
     HOURLY_RATE_PRECISION,
     HOURS_DECIMAL_PLACES,
     HOURS_PRECISION,
@@ -25,7 +26,7 @@ from app.core.constants import (
     SUBJECT_NAME_MAX_LENGTH,
 )
 from app.db.base import Base
-from app.db.checks import trimmed_not_blank
+from app.db.checks import group_code_format, trimmed_not_blank
 from app.db.mixins import IdentityPkMixin
 
 if TYPE_CHECKING:
@@ -55,6 +56,7 @@ class PayrollReceiptLine(IdentityPkMixin, Base):
         Index("ix_payroll_receipt_lines_receipt_id_teacher_id", "receipt_id", "teacher_id"),
         CheckConstraint(trimmed_not_blank("subject_name"), name="subject_name_trimmed"),
         CheckConstraint(trimmed_not_blank("career_name"), name="career_name_trimmed"),
+        CheckConstraint(group_code_format("group_code"), name="group_code_format"),
         CheckConstraint("minutes > 0", name="minutes_positive"),
         CheckConstraint("hourly_rate > 0", name="hourly_rate_positive"),
         # RN-25 y RN-26: importe = minutos * tarifa / 60, redondeado a 2 decimales. round()
@@ -71,6 +73,8 @@ class PayrollReceiptLine(IdentityPkMixin, Base):
     assignment_id: Mapped[int] = mapped_column(BigInteger)
     subject_name: Mapped[str] = mapped_column(String(SUBJECT_NAME_MAX_LENGTH))
     career_name: Mapped[str] = mapped_column(String(CATALOG_NAME_MAX_LENGTH))
+    # Copia del grupo al emitir; los recibos emitidos antes de existir el grupo lo tienen nulo.
+    group_code: Mapped[str | None] = mapped_column(String(GROUP_CODE_MAX_LENGTH))
     minutes: Mapped[int] = mapped_column(Integer)
     hours: Mapped[Decimal] = mapped_column(
         Numeric(HOURS_PRECISION, HOURS_DECIMAL_PLACES),

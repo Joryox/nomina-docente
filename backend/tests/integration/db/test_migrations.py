@@ -6,10 +6,15 @@ import pytest
 from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
-from sqlalchemy import Connection, Engine, inspect, text
+from sqlalchemy import Connection, Engine, inspect, select, text
+from sqlalchemy.exc import DBAPIError
+from sqlalchemy.orm import Session
 
 import app.models
-from tests.helpers import run_alembic
+from app.models import Career, HourlyRate, Subject
+from app.seeds.runner import run_seeds
+from tests.factories import create_assignment, create_teacher
+from tests.helpers import run_alembic, run_alembic_on
 
 pytestmark = pytest.mark.db
 
@@ -31,6 +36,9 @@ EXPECTED_TABLES = {
     "user_roles",
     "users",
 }
+
+# Revisión anterior a la de grupos de clases (5e7a1c9d3b42).
+GROUPS_PREVIOUS_REVISION = "8c41d2f7a9b3"
 
 # Prefijo esperado por tipo de restricción (pg_constraint.contype). Los NOT NULL ('n') los
 # nombra PostgreSQL y no forman parte de la convención.
@@ -133,3 +141,25 @@ def test_downgrade_and_upgrade_cycle(test_engine: Engine) -> None:
 
     with test_engine.connect() as connection:
         assert set(inspect(connection).get_table_names()) == EXPECTED_TABLES
+
+
+def test_reverting_groups_refuses_classes_that_differ_only_by_group(test_engine: Engine) -> None:
+    """El downgrade de los grupos explica por qué no puede continuar en lugar de fallar con
+    un error de índice; todo ocurre en una transacción que se revierte."""
+    with test_engine.connect() as connection:
+        transaction = connection.begin()
+        try:
+            with Session(bind=connection, join_transaction_mode="create_savepoint") as session:
+                run_seeds(session)
+                teacher = create_teacher(session)
+                career = session.scalars(select(Career)).first()
+                rate = session.scalars(select(HourlyRate)).first()
+                assert career is not None and rate is not None
+                morning = create_assignment(session, teacher, career, rate, group_code="3101")
+                subject = session.get(Subject, morning.subject_id)
+                create_assignment(session, teacher, career, rate, subject, group_code="3102")
+
+                with pytest.raises(DBAPIError, match="grupos distintos"):
+                    run_alembic_on(connection, command.downgrade, GROUPS_PREVIOUS_REVISION)
+        finally:
+            transaction.rollback()
