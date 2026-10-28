@@ -207,7 +207,7 @@ def require_roles(*roles: RoleCode) -> Callable[[Principal, AuthService], Princi
     return dependency
 
 
-# --- Lógica de negocio (etapa 4) ---------------------------------------------------------
+# --- Lógica de negocio --------------------------------------------------------------------
 def get_business_calendar() -> BusinessCalendar:
     """Fecha y hora de la institución. Es independiente de ``get_clock`` para que las pruebas
     fijen «hoy» sin invalidar los tokens de sesión (ver ``BusinessCalendar``)."""

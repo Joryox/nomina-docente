@@ -1,273 +1,148 @@
 # Sistema de Nómina Docente
 
-Sistema web para que el personal docente del **Tecnológico de Estudios Superiores de Huixquilucan (TESH)** registre sus asignaciones, horarios y sesiones impartidas, y obtenga su **recibo de nómina quincenal** calculado automáticamente.
+Aplicación web para que el personal docente del **Tecnológico de Estudios Superiores de Huixquilucan (TESH)** registre las clases que imparte y obtenga su **recibo de nómina quincenal**, calculado automáticamente y descargable en PDF.
 
+![Versión](https://img.shields.io/badge/versión-1.0.0-1d3a6e)
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
-![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?logo=sqlalchemy&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-App%20Router-000000?logo=nextdotjs&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-06B6D4?logo=tailwindcss&logoColor=white)
 ![Licencia MIT](https://img.shields.io/badge/Licencia-MIT-informational)
 
-> **Estado:** en desarrollo. Etapa 5 concluida (sistema de diseño: tokens con modo claro y oscuro, componentes accesibles, estructura del panel y guía viva). Las pantallas llegan en las etapas 6 a 8. Consulta la [hoja de ruta](#hoja-de-ruta).
+![Inicio del docente](docs/img/app-inicio-claro.png)
 
----
+## ¿Qué es y para quién?
 
-## Descripción
+Cada docente tiene su propia cuenta y solo ve su información. Registra una vez las materias que imparte, las asigna a una carrera con su tarifa por hora y arma su horario semanal. Cada día registra en la bitácora las clases que impartió (casi siempre con un clic) y, al cerrar la quincena, el sistema calcula las horas y el importe por materia y carrera y emite un recibo con folio que ya no cambia.
 
-Cada docente lleva el control de las clases que imparte en una o varias carreras. A partir de las sesiones registradas en su bitácora, el sistema calcula las horas trabajadas por materia y carrera, aplica la tarifa por hora correspondiente y genera un recibo de nómina con folio, listo para descargarse en PDF.
+El sistema está pensado para **impedir errores**, no solo para reportarlos: todo lo que ya existe se elige de una lista, las horas usan formato de 24 h con máscara, no se aceptan fechas futuras ni horarios empalmados, los montos los calcula siempre el servidor con aritmética decimal exacta y toda acción irreversible pide confirmación explicando sus consecuencias.
 
-El diseño parte de un principio: **el sistema debe impedir errores**. Por eso usa selectores en lugar de texto libre, valida en el navegador, en el servidor y en la base de datos, y calcula todos los montos de forma automática.
+## Funciones
 
-## Características
+| Sección          | Qué hace                                                                                                                                                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Inicio**       | Saludo, quincena actual, horas y monto estimado, clases de hoy para registrar en un clic, avisos con acción (clases sin registrar, quincena terminada sin recibo) y últimos recibos. Un docente nuevo ve una guía de configuración de tres pasos |
+| **Mis materias** | Alta, edición y búsqueda sin acentos; una materia con historial se desactiva en lugar de borrarse                                                                                                                                                |
+| **Mis clases**   | Materia + carrera + tarifa por hora, agrupadas por carrera, con sus horarios. Cambiar la tarifa no altera lo ya registrado                                                                                                                       |
+| **Horario**      | Vista semanal en bloques (lista por día en celular). Si un horario choca con otro, el mensaje dice con qué clase, qué día y a qué hora                                                                                                           |
+| **Bitácora**     | Clases programadas del día con horario precargado, registro fuera de horario con aviso, sesiones de la quincena con totales. Las quincenas con recibo quedan cerradas                                                                            |
+| **Recibos**      | Vista previa por quincena con avisos, emisión con folio consecutivo, lista por año, detalle como documento oficial con importe con letra, impresión y **PDF tamaño carta**                                                                       |
+| **Mi perfil**    | Datos personales, cambio de contraseña con requisitos en vivo y cierre de sesión en todos los dispositivos                                                                                                                                       |
 
-- **Cuenta personal por docente.** Registro e inicio de sesión; cada docente solo ve y administra su propia información.
-- **Catálogo de carreras.** Las carreras se eligen de un menú alimentado por la base de datos.
-- **Asignaciones.** Combinación de materia, carrera y tarifa por hora, con tarifas tomadas de un catálogo.
-- **Horarios semanales** con validación de horas y detección de empalmes.
-- **Bitácora de sesiones** precargada con el horario del día, ajustable por el docente.
-- **Recibo de nómina quincenal** calculado automáticamente, con vista previa en vivo, advertencias (clases sin registrar, sesiones fuera de horario), desglose por materia y carrera, folio consecutivo y exportación a PDF (etapa 8).
-- **Historial que no cambia en silencio:** cada sesión guarda la tarifa con la que se registró y el recibo emitido es una copia fija que bloquea la bitácora de su quincena.
-- **Interfaz institucional y accesible:** sistema de diseño propio con modo claro y oscuro, contraste WCAG AA verificado por pruebas automáticas, navegación completa con teclado y controles que previenen errores (horas de 24 h con máscara, fechas futuras deshabilitadas, búsqueda sin acentos).
-- **Precisión monetaria:** todos los cálculos con aritmética decimal exacta, en pesos mexicanos (MXN).
-- **Interfaz en español de México**, accesible (WCAG 2.2 AA) y responsiva.
+Además: modo claro y oscuro, diseño adaptable a celular, accesibilidad WCAG 2.2 AA (contraste verificado por pruebas, navegación completa con teclado) y animaciones sutiles que respetan «reducir movimiento».
 
-## Stack técnico
+## Capturas
 
-| Capa | Tecnologías |
-| --- | --- |
-| Backend | Python 3.12+, FastAPI, Pydantic v2, SQLAlchemy 2, Alembic, psycopg 3, uv |
-| Seguridad | JWT en cookie `httpOnly`, contraseñas con Argon2id, protección CSRF |
-| Frontend | Next.js 16 (App Router), TypeScript estricto, Tailwind CSS 4, shadcn/ui, Framer Motion, React Hook Form, Zod, TanStack Query |
-| Base de datos | PostgreSQL |
-| Calidad | Ruff, mypy, pytest, ESLint, Prettier |
+| Modo claro                                                     | Modo oscuro                                                      |
+| -------------------------------------------------------------- | ---------------------------------------------------------------- |
+| ![Inicio, modo claro](docs/img/app-inicio-claro.png)           | ![Inicio, modo oscuro](docs/img/app-inicio-oscuro.png)           |
+| ![Horario semanal, modo claro](docs/img/app-horario-claro.png) | ![Horario semanal, modo oscuro](docs/img/app-horario-oscuro.png) |
+| ![Bitácora, modo claro](docs/img/app-bitacora-claro.png)       | ![Bitácora, modo oscuro](docs/img/app-bitacora-oscuro.png)       |
+| ![Recibo de nómina, modo claro](docs/img/app-recibo-claro.png) | ![Recibo de nómina, modo oscuro](docs/img/app-recibo-oscuro.png) |
+
+<p align="center"><img src="docs/img/app-recibo-pdf.png" alt="Recibo de nómina en PDF, tamaño carta" width="560"></p>
+
+## Instalación
+
+Requisitos: **git**, **Python 3.12+** con [uv](https://docs.astral.sh/uv/), **Node.js 24 LTS** y **PostgreSQL 16+** (con `psql`). Funciona en Windows 11 con Git Bash y en Linux; todos los comandos se ejecutan desde la raíz del repositorio.
+
+```bash
+git clone https://github.com/Joryox/nomina-docente.git
+cd nomina-docente
+bash scripts/setup.sh              # crea backend/.env y frontend/.env.local e instala dependencias
+```
+
+Escribe la contraseña de tu usuario de PostgreSQL en `DB_PASSWORD` (`backend/.env`) y continúa:
+
+```bash
+bash scripts/create-databases.sh   # bases de desarrollo y de pruebas
+bash scripts/migrate.sh            # tablas, restricciones y extensiones
+bash scripts/seed.sh               # carreras del TESH, tarifas y roles
+bash scripts/demo-data.sh          # cuenta de demostración (opcional)
+bash scripts/dev.sh                # levanta todo: http://localhost:3000
+```
+
+`Ctrl+C` detiene ambos servidores. La documentación interactiva de la API está en http://127.0.0.1:8000/docs (solo fuera de producción). En Windows, configura los finales de línea del clon con `git config core.autocrlf false` y `git config core.eol lf`.
+
+## Cuenta de demostración
+
+`bash scripts/demo-data.sh` crea una docente **ficticia** con 6 materias, 7 clases en 4 carreras, horario semanal, bitácora de cuatro quincenas y dos recibos emitidos. La quincena anterior queda terminada y sin recibo, lista para probar la emisión.
+
+| Correo                     | Contraseña            |
+| -------------------------- | --------------------- |
+| `docente.demo@example.com` | `Pizarron-Verde-2026` |
+
+Solo se carga con `APP_ENV=development`.
 
 ## Estructura del proyecto
 
 ```
 nomina-docente/
-├── backend/        API REST en FastAPI (arquitectura limpia por capas)
-├── frontend/       Aplicación web en Next.js (organizada por funcionalidades)
-│   └── public/brand/   Logos institucionales
-├── docs/           Documentación técnica (arquitectura, base de datos, seguridad y diagramas)
-├── scripts/        Utilidades para el entorno de desarrollo
-├── CLAUDE.md       Reglas de negocio, convenciones y bitácora técnica del proyecto
-├── README.md
-└── LICENSE
+├── backend/                 API REST (FastAPI, arquitectura por capas)
+│   ├── src/app/             código: routers → servicios → repositorios → modelos; dominio puro y PDF
+│   ├── alembic/             migraciones del esquema (revisadas a mano)
+│   └── tests/               pruebas unitarias y de integración (pytest)
+├── frontend/                aplicación web (Next.js, organizada por funcionalidades)
+│   ├── src/                 rutas, features, componentes del sistema de diseño, configuración
+│   ├── e2e/                 pruebas de punta a punta (Playwright)
+│   └── public/brand/        logos institucionales
+├── docs/                    documentación técnica e imágenes
+├── scripts/                 instalación, base de datos, datos de demostración y marca
+├── CHANGELOG.md             historial de versiones
+└── README.md
 ```
 
-| Documento | Contenido |
-| --- | --- |
-| [`docs/arquitectura.md`](docs/arquitectura.md) | Componentes, capas y flujo de datos |
-| [`docs/reglas-de-negocio.md`](docs/reglas-de-negocio.md) | Cada regla RN-XX, dónde se valida y su prueba; fórmula del cálculo con un ejemplo; diagramas de la emisión y del ciclo de vida de una sesión |
-| [`docs/api.md`](docs/api.md) | Convenciones, tabla de endpoints y catálogo de códigos de error |
-| [`docs/base-de-datos.md`](docs/base-de-datos.md) | Diagrama entidad-relación, diccionario de datos y decisiones de diseño |
-| [`docs/seguridad.md`](docs/seguridad.md) | Flujos de autenticación, amenazas y mitigaciones |
-| [`docs/sistema-de-diseno.md`](docs/sistema-de-diseno.md) | Dirección visual, paleta y tipografía, tokens, guía de uso de cada componente, accesibilidad, redacción y cómo reemplazar la marca |
+| Documento                                                | Contenido                                                                |
+| -------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [`docs/arquitectura.md`](docs/arquitectura.md)           | Componentes, capas y flujo de datos                                      |
+| [`docs/reglas-de-negocio.md`](docs/reglas-de-negocio.md) | Cada regla, dónde se valida y su prueba; fórmula del cálculo con ejemplo |
+| [`docs/api.md`](docs/api.md)                             | Convenciones, endpoints y catálogo de códigos de error                   |
+| [`docs/base-de-datos.md`](docs/base-de-datos.md)         | Modelo entidad-relación, diccionario de datos y migraciones              |
+| [`docs/seguridad.md`](docs/seguridad.md)                 | Autenticación, sesiones, CSRF, CSP, amenazas y lista para producción     |
+| [`docs/sistema-de-diseno.md`](docs/sistema-de-diseno.md) | Paleta, tipografía, tokens, componentes y accesibilidad                  |
 
-## Requisitos
+## Logos y color institucional
 
-El entorno principal de desarrollo es **Windows 11 con Git Bash**. Todo funciona igual en **Linux** con Bash.
-
-| Herramienta | Versión | Notas |
-| --- | --- | --- |
-| git | 2.40 o superior | En Windows incluye Git Bash |
-| Python | 3.12 o superior | uv puede instalarlo si no existe |
-| [uv](https://docs.astral.sh/uv/) | 0.5 o superior | Dependencias y entorno virtual del backend |
-| Node.js | 24 LTS (ver `frontend/.nvmrc`) | Incluye npm 10 o superior |
-| PostgreSQL | 16 o superior (se usa 18) | Servidor local y cliente `psql` |
-
-### Instalar las herramientas
-
-**Windows 11** (PowerShell, instalación de usuario):
-
-```powershell
-# uv
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-
-# Node.js LTS
-winget install --id OpenJS.NodeJS.LTS --exact
-
-# Agregar psql al PATH del usuario (ajusta la versión de PostgreSQL si es otra)
-$pg = 'C:\Program Files\PostgreSQL\18\bin'
-$path = [Environment]::GetEnvironmentVariable('Path', 'User')
-if (($path -split ';') -notcontains $pg) { [Environment]::SetEnvironmentVariable('Path', "$path;$pg", 'User') }
-```
-
-Después, cierra y vuelve a abrir Git Bash para que tome el nuevo `PATH`. PostgreSQL se instala con el instalador oficial de EDB.
-
-**Linux** (Debian/Ubuntu como referencia):
+Cuando lleguen los archivos oficiales, un solo comando los aplica en la interfaz y en el recibo en PDF:
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-sudo apt install postgresql postgresql-client
-# Node.js 24 LTS con nvm (lee frontend/.nvmrc)
-nvm install 24
+bash scripts/apply-brand.sh <carpeta-con-logos> "#8A1538"
 ```
 
-## Instalación
+La carpeta debe tener `logo.svg` y, si existen, `logo-monochrome.svg` (modo oscuro) y `favicon.svg`. El script copia los archivos, declara los logos, genera la escala de color institucional a partir del código hexadecimal, actualiza el ícono de la pestaña y el PDF, y corre las pruebas de contraste. Detalle en [`docs/sistema-de-diseno.md`](docs/sistema-de-diseno.md#10-cómo-reemplazar-la-marca).
 
-Todos los comandos se ejecutan en **Git Bash** (Windows) o en una terminal Bash (Linux), desde la raíz del repositorio.
-
-### 1. Clonar el repositorio
+## Pruebas
 
 ```bash
-git clone https://github.com/Joryox/nomina-docente.git
-cd nomina-docente
-```
-
-En Windows, configura los finales de línea del repositorio local (el proyecto usa LF):
-
-```bash
-git config core.autocrlf false
-git config core.eol lf
-```
-
-### 2. Preparar el entorno
-
-```bash
-bash scripts/setup.sh
-```
-
-Crea `backend/.env` (con un `JWT_SECRET` aleatorio) y `frontend/.env.local` si no existen, e instala las dependencias de ambas apps.
-
-### 3. Configurar y crear las bases de datos
-
-1. Abre `backend/.env` y escribe en `DB_PASSWORD` la contraseña del usuario de PostgreSQL (`DB_USER`, por defecto `postgres`).
-2. Crea las bases `nomina_docente` y `nomina_docente_test`:
-
-   ```bash
-   bash scripts/create-databases.sh
-   ```
-
-3. Crea las tablas (y las extensiones `btree_gist` y `unaccent`) en la base de desarrollo y carga los catálogos (carreras del TESH, tarifas y roles):
-
-   ```bash
-   bash scripts/migrate.sh
-   bash scripts/seed.sh
-   ```
-
-Los tres scripts son idempotentes: ejecutarlos de nuevo no duplica ni rompe nada. Las pruebas migran por su cuenta la base de pruebas.
-
-### 4. Levantar el proyecto
-
-```bash
-bash scripts/dev.sh
-```
-
-| Servicio | URL |
-| --- | --- |
-| Aplicación web | http://localhost:3000 |
-| API a través del frontend | http://localhost:3000/api/v1/health |
-| API directa y documentación | http://127.0.0.1:8000/docs |
-
-La página inicial muestra el estado de la API y de la base de datos. `Ctrl+C` detiene ambos servidores.
-
-### Probar el registro y el inicio de sesión
-
-1. Con `bash scripts/dev.sh` en marcha, abre http://localhost:3000/panel: como no hay sesión, te lleva a **Iniciar sesión**.
-2. Entra a **Regístrate** (http://localhost:3000/registro), captura tus datos y una contraseña que cumpla los requisitos que se muestran (al menos 12 caracteres, una letra y un número, sin tu nombre ni tu correo). Al crear la cuenta llegas al **panel**, que muestra tu nombre.
-3. Abre el menú de tu cuenta (arriba a la derecha) y elige **Cerrar sesión**: vuelves a Iniciar sesión y `/panel` deja de estar disponible.
-4. Inicia sesión con tu correo y contraseña. Con una contraseña incorrecta verás «Correo o contraseña incorrectos»; tras 5 intentos fallidos seguidos la cuenta se bloquea 15 minutos.
-
-En las herramientas del navegador (Aplicación → Cookies) verás `nomina_access`, `nomina_refresh` (ruta `/api/v1/auth`) y `nomina_session` como `HttpOnly`, y `nomina_csrf` legible. La API documentada está en http://127.0.0.1:8000/docs (sección *autenticación*).
-
-Para levantar cada app por separado: `uv run python -m app` dentro de `backend/` y `npm run dev` dentro de `frontend/`.
-
-### Sistema de diseño y guía viva
-
-Con `bash scripts/dev.sh` en marcha, la **guía viva** está en http://localhost:3000/sistema-diseno: muestra todos los tokens (con el contraste de cada par calculado en vivo), la tipografía y cada componente con sus variantes y estados, en modo claro y oscuro. Solo existe en desarrollo (`DESIGN_GUIDE_ENABLED` en `frontend/.env.local`; en un build de producción responde 404). El tema se elige con el selector de la esquina superior y se recuerda. Reglas y guía de uso: [`docs/sistema-de-diseno.md`](docs/sistema-de-diseno.md).
-
-| Modo claro | Modo oscuro |
-| --- | --- |
-| ![Iniciar sesión en modo claro](docs/img/iniciar-sesion-claro.png) | ![Iniciar sesión en modo oscuro](docs/img/iniciar-sesion-oscuro.png) |
-| ![Guía viva en modo claro](docs/img/guia-viva-claro.png) | ![Guía viva en modo oscuro](docs/img/guia-viva-oscuro.png) |
-
-### Datos de demostración
-
-Para presentar el sistema sin capturar nada, carga una cuenta de demostración con datos **ficticios**:
-
-```bash
-bash scripts/demo-data.sh
-```
-
-Crea (o completa, si ya existe) a «Docente Demostración Ficticia» con 6 materias, 7 asignaciones en 4 carreras (ISC, IIND, LADM, IMEC) con las 3 tarifas, su horario semanal, la bitácora de las tres quincenas anteriores y de la actual, un cambio de tarifa a mitad del historial y los recibos emitidos de las dos quincenas más antiguas. La quincena anterior queda **terminada sin recibo**, lista para mostrar la emisión. Al final imprime las credenciales:
-
-| Dato | Valor |
-| --- | --- |
-| Correo | `docente.demo@example.com` |
-| Contraseña | `Pizarron-Verde-2026` |
-
-- Todo pasa por los servicios del sistema, con las mismas validaciones que una captura real (no escribe directo en las tablas).
-- Es idempotente: ejecutarlo otra vez solo agrega lo que falte.
-- Se niega a correr si `APP_ENV` no es `development`. Requiere las migraciones y los datos semilla.
-
-### Probar la API en `/docs`
-
-1. Levanta el backend (`bash scripts/dev.sh` o `uv run python -m app` en `backend/`) y abre http://127.0.0.1:8000/docs.
-2. Pide el token CSRF: **autenticación → `GET /api/v1/auth/csrf`** → *Try it out* → *Execute*. La cookie queda en el navegador; copia el valor de `csrf_token`.
-3. Inicia sesión con **`POST /api/v1/auth/login`** y el cuerpo `{"email": "docente.demo@example.com", "password": "Pizarron-Verde-2026"}`. En las rutas que modifican datos, agrega el encabezado `X-CSRF-Token` con el valor del paso 2 (Swagger no lo agrega solo: para las escrituras es más cómodo `curl` o el frontend).
-4. Con la sesión iniciada, las consultas funcionan directamente desde `/docs`:
-   - **panel → `GET /dashboard/summary`**: horas y monto estimado de la quincena actual, clases de hoy y últimos recibos;
-   - **nómina → `GET /payroll/periods?year=2026`**: las 24 quincenas con su estado (`issued`, `closed`, `open`, `future`);
-   - **nómina → `GET /payroll/preview`** con la quincena que aparece como `closed`: renglones, totales y advertencias;
-   - **horarios → `GET /schedules/weekly`** y **bitácora → `GET /logbook`** (con filtros y totales).
-
-El catálogo de endpoints y de códigos de error está en [`docs/api.md`](docs/api.md).
-
-### 5. Pruebas y calidad
-
-```bash
-# Backend (dentro de backend/)
+# Backend (en backend/)
 uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest
 
-# Frontend (dentro de frontend/)
-npm run check && npm run api:check && npm run build
+# Frontend (en frontend/)
+npm run check && npm run build
+
+# De punta a punta (con bash scripts/dev.sh en marcha, en frontend/)
+npm run test:e2e
 ```
 
-Las pruebas que necesitan la base de datos se saltan, con un aviso que explica cómo prepararla, si `nomina_docente_test` no está disponible.
+Las pruebas de punta a punta recorren el flujo completo de un docente nuevo, de la primera materia a la descarga del PDF, en escritorio y a 390 px de ancho.
 
-## Scripts de desarrollo
+## Tecnologías
 
-| Script | Descripción |
-| --- | --- |
-| [`scripts/setup.sh`](scripts/setup.sh) | Crea los archivos `.env` que falten e instala dependencias |
-| [`scripts/create-databases.sh`](scripts/create-databases.sh) | Crea las bases de desarrollo y de pruebas |
-| [`scripts/migrate.sh`](scripts/migrate.sh) | Aplica las migraciones de Alembic (acepta argumentos, p. ej. `downgrade base`) |
-| [`scripts/seed.sh`](scripts/seed.sh) | Carga los datos semilla: carreras, tipos de carrera, tarifas y roles |
-| [`scripts/dev.sh`](scripts/dev.sh) | Levanta backend y frontend con un solo comando |
-| [`scripts/demo-data.sh`](scripts/demo-data.sh) | Carga la cuenta de demostración con datos ficticios (solo desarrollo) |
-| [`scripts/generate-api-types.sh`](scripts/generate-api-types.sh) | Regenera los tipos de TypeScript desde el OpenAPI (`--check` verifica que estén al día) |
-
-Más detalles en [`scripts/README.md`](scripts/README.md).
-
-## Hoja de ruta
-
-- [x] 0. Cimientos y documentación
-- [x] 1. Arquitectura base del backend y frontend
-- [x] 2. Base de datos: modelos, migraciones y catálogo de carreras
-- [x] 3. Autenticación: registro, inicio de sesión, sesión y seguridad
-- [x] 4. Lógica de negocio: materias, asignaciones, horarios, bitácora y cálculo de nómina
-- [x] 5. Sistema de diseño
-- [ ] 6. Pantallas: inicio de sesión, registro y panel principal
-- [ ] 7. Pantallas: asignaciones, horarios y bitácora
-- [ ] 8. Recibo de nómina y exportación a PDF
-- [ ] 9. Animaciones y microinteracciones
-- [ ] 10. Pruebas, QA y revisión de seguridad
-- [ ] 11. Logos, pulido final y documentación
-
-**Fuera del alcance de esta versión:** cálculo de ISR e IMSS, rol de administrador y despliegue en servidor.
+| Capa          | Tecnologías                                                                                                                           |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend       | Python 3.12+, FastAPI, Pydantic v2, SQLAlchemy 2, Alembic, psycopg 3, fpdf2, uv                                                       |
+| Seguridad     | JWT revocable en cookie `HttpOnly`, refresh token rotativo, Argon2id, CSRF _double-submit_, CSP                                       |
+| Frontend      | Next.js 16 (App Router), React 19, TypeScript estricto, Tailwind CSS 4, Radix UI, TanStack Query, React Hook Form, Zod, Framer Motion |
+| Base de datos | PostgreSQL con restricciones de exclusión (`btree_gist`) y triggers de inmutabilidad                                                  |
+| Calidad       | Ruff, mypy estricto, pytest, ESLint, Prettier, Vitest, Playwright                                                                     |
 
 ## Créditos
 
-| Rol | Nombre |
-| --- | --- |
-| Desarrollo | _[Tu nombre]_ |
-| Profesor asesor | _[Nombre del profesor asesor]_ |
-| Institución | Tecnológico de Estudios Superiores de Huixquilucan (TESH) |
+| Rol                | Nombre                                             |
+| ------------------ | -------------------------------------------------- |
+| Desarrollo         | `[Nombre del desarrollador]`                       |
+| Asesoría académica | `[Nombre del profesor investigador]`               |
+| Institución        | Tecnológico de Estudios Superiores de Huixquilucan |
 
-## Licencia
-
-Distribuido bajo la licencia MIT. Consulta [`LICENSE`](LICENSE).
+Tipografías Public Sans y Source Serif 4 bajo licencia SIL Open Font License. Código bajo licencia [MIT](LICENSE).

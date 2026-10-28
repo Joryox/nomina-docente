@@ -255,7 +255,7 @@ En el frontend: `NEXT_PUBLIC_CSRF_COOKIE_NAME` (= `CSRF_COOKIE_NAME`) y `SESSION
 | `object-src` | `'none'` | Sin complementos |
 | `base-uri`, `form-action` | `'self'` | Sin `<base>` ni formularios hacia otros sitios |
 | `frame-ancestors` | `'none'` | Sin incrustación (también `X-Frame-Options: DENY`) |
-| `upgrade-insecure-requests`, HSTS | solo en producción | Todo por HTTPS |
+| `Strict-Transport-Security` | solo en producción (dos años, con subdominios) | Todo por HTTPS; el navegador solo la aplica si la página llegó por HTTPS |
 
 Riesgo aceptado de `'unsafe-inline'` en scripts y cómo se mitiga: React escapa todo el texto; el único `dangerouslySetInnerHTML` es el script del tema, una constante sin datos del usuario (`lib/theme/preferences-script.ts`); no se cargan scripts de terceros; la API responde JSON con `Content-Security-Policy: default-src 'none'`, y las cookies de sesión son `HttpOnly`, así que un script inyectado no podría leerlas.
 

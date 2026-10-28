@@ -1,4 +1,4 @@
-"""Repositorios que usará la autenticación (etapa 3): usuarios, roles y docentes."""
+"""Repositorios que usará la autenticación: usuarios, roles y docentes."""
 
 import uuid
 

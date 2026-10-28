@@ -1,4 +1,4 @@
-"""Ayudantes para las pruebas de la API de negocio (etapa 4).
+"""Ayudantes para las pruebas de la API de negocio.
 
 El calendario del negocio se fija en ``TODAY`` (miércoles 21 de octubre de 2026, 18:00 en
 America/Mexico_City): la quincena en curso es la 2.ª de octubre y la 1.ª ya terminó.

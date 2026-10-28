@@ -7,8 +7,9 @@ import { DURATIONS, EASINGS, MOTION_DISTANCE, STAGGER_SECONDS } from "@/styles/m
 
 /**
  * Movimiento del sistema: sutil y con propósito. Usa los tokens de `styles/motion.ts` y, con
- * `prefers-reduced-motion`, todo aparece al instante (el `MotionConfig` global quita los
- * desplazamientos y aquí también se anulan las duraciones).
+ * `prefers-reduced-motion`, todo aparece al instante: el `MotionConfig` global quita los
+ * desplazamientos y aquí las duraciones valen 0. El estado inicial es siempre el mismo (el
+ * servidor no conoce la preferencia), así el HTML del servidor y el del cliente coinciden.
  */
 
 /** Entrada de cada página: aparece y sube unos píxeles. */
@@ -16,24 +17,32 @@ export function PageTransition({ children }: { children: ReactNode }) {
   const reduced = useReducedMotion();
   return (
     <motion.div
-      initial={reduced ? false : { opacity: 0, y: MOTION_DISTANCE.page }}
+      initial={{ opacity: 0, y: MOTION_DISTANCE.page }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: DURATIONS.slow, ease: EASINGS.enter }}
+      transition={{ duration: reduced ? 0 : DURATIONS.slow, ease: EASINGS.enter }}
     >
       {children}
     </motion.div>
   );
 }
 
-const containerVariants: Variants = {
-  hidden: {},
-  shown: { transition: { staggerChildren: STAGGER_SECONDS } },
-};
+function containerVariants(reduced: boolean): Variants {
+  return {
+    hidden: {},
+    shown: { transition: { staggerChildren: reduced ? 0 : STAGGER_SECONDS } },
+  };
+}
 
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: MOTION_DISTANCE.item },
-  shown: { opacity: 1, y: 0, transition: { duration: DURATIONS.slow, ease: EASINGS.enter } },
-};
+function itemVariants(reduced: boolean): Variants {
+  return {
+    hidden: { opacity: 0, y: MOTION_DISTANCE.item },
+    shown: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: reduced ? 0 : DURATIONS.slow, ease: EASINGS.enter },
+    },
+  };
+}
 
 interface StaggerProps {
   children: ReactNode;
@@ -51,8 +60,8 @@ export function Stagger({ children, className, as = "div", ...aria }: StaggerPro
   return (
     <Component
       className={className}
-      variants={containerVariants}
-      initial={reduced ? false : "hidden"}
+      variants={containerVariants(Boolean(reduced))}
+      initial="hidden"
       animate="shown"
       {...aria}
     >
@@ -70,9 +79,10 @@ export function StaggerItem({
   className?: string;
   as?: "div" | "li";
 }) {
+  const reduced = useReducedMotion();
   const Component = motion[as];
   return (
-    <Component className={className} variants={itemVariants}>
+    <Component className={className} variants={itemVariants(Boolean(reduced))}>
       {children}
     </Component>
   );
@@ -87,9 +97,9 @@ export function Appear({ children, className }: { children: ReactNode; className
   return (
     <motion.span
       className={className}
-      initial={reduced ? false : { opacity: 0, scale: MOTION_DISTANCE.popScale }}
+      initial={{ opacity: 0, scale: MOTION_DISTANCE.popScale }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: DURATIONS.base, ease: EASINGS.enter }}
+      transition={{ duration: reduced ? 0 : DURATIONS.base, ease: EASINGS.enter }}
     >
       {children}
     </motion.span>

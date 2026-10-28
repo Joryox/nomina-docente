@@ -276,7 +276,7 @@ Se usa lucide-react con trazo de 1.75 (`--icon-stroke`, aplicado a `svg.lucide` 
 
 La navegación está definida en `src/constants/navigation.ts` y **solo contiene secciones que existen**: nunca se muestran elementos deshabilitados ni «Pronto». Al construir una pantalla se agrega su elemento ahí y aparece sola en la barra lateral y en las migas; `isAvailableRoute()` permite enlazarla desde otras pantallas solo cuando ya existe.
 
-![Panel con el AppShell](img/panel-claro.png)
+![Panel con el AppShell](img/app-inicio-claro.png)
 
 ### Tema claro y oscuro
 
@@ -375,6 +375,4 @@ El nombre y las siglas vienen de `NEXT_PUBLIC_INSTITUTION_NAME` y `NEXT_PUBLIC_I
 
 ![Formularios de la guía](img/guia-formularios.png)
 
-![Panel en celular, modo oscuro](img/panel-celular-oscuro.png)
-
-Las capturas se tomaron con Microsoft Edge sin interfaz (`playwright-core` instalado fuera del repositorio), a 1280 px de ancho, y a 390 px para la del celular.
+Las capturas se tomaron con Playwright y Microsoft Edge sin interfaz, a 1280 px de ancho.

@@ -28,11 +28,11 @@ function contentSecurityPolicy(production: boolean): string {
     "form-action": ["'self'"],
     "frame-ancestors": ["'none'"],
   };
-  const policy = Object.entries(directives).map(([name, values]) => `${name} ${values.join(" ")}`);
-  if (production) {
-    policy.push("upgrade-insecure-requests");
-  }
-  return policy.join("; ");
+  // Sin upgrade-insecure-requests: rompería un servidor local por HTTP; en producción, HSTS
+  // obliga a HTTPS (los navegadores solo lo aplican cuando la página llegó por HTTPS).
+  return Object.entries(directives)
+    .map(([name, values]) => `${name} ${values.join(" ")}`)
+    .join("; ");
 }
 
 export const PAGE_SECURITY_HEADERS = [

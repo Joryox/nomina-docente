@@ -88,7 +88,7 @@ export const DESIGN_GUIDE = {
   },
   motion: {
     description:
-      "Duraciones y curvas para la etapa 9. Con «reducir movimiento» del sistema operativo, todas valen 0 ms.",
+      "Duraciones y curvas de las animaciones. Con «reducir movimiento» del sistema operativo, todas valen 0 ms.",
     play: "Reproducir",
   },
   buttons: {
