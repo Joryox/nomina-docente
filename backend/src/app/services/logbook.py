@@ -61,11 +61,13 @@ from app.services.constraints import translate_constraint
 from app.services.policy import BusinessPolicy
 from app.services.presenters import (
     assignment_summary,
+    class_details,
+    describe_class,
     period_response,
     receipt_period,
     schedule_range,
 )
-from app.services.schedules import describe_class, ensure_valid_duration
+from app.services.schedules import ensure_valid_duration
 
 
 def entry_range(entry: LogbookEntry) -> TimeRange:
@@ -344,8 +346,7 @@ class LogbookService:
                     "conflicts": [
                         {
                             "logbook_entry_id": str(conflict.public_id),
-                            "subject_name": conflict.assignment.subject.name,
-                            "career_name": conflict.assignment.career.name,
+                            **class_details(conflict.assignment),
                             "start_time": conflict.start_time.strftime(CLOCK_TIME_FORMAT),
                             "end_time": conflict.end_time.strftime(CLOCK_TIME_FORMAT),
                         }

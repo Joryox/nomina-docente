@@ -1,7 +1,10 @@
 {
   "name": "nomina-docente-frontend",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
+  "description": "Interfaz web del Sistema de Nómina Docente (TESH)",
+  "author": "Jorge Raúl Ramos Alvarado",
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

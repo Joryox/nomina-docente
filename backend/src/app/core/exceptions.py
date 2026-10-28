@@ -178,7 +178,7 @@ ERROR_CATALOG: Mapping[ErrorCode, ErrorSpec] = {
     ),
     ErrorCode.ASSIGNMENT_NOT_FOUND: ErrorSpec(_NOT_FOUND, "La asignación no existe."),
     ErrorCode.ASSIGNMENT_ALREADY_EXISTS: ErrorSpec(
-        _CONFLICT, "Ya tienes una asignación activa de esa materia en esa carrera."
+        _CONFLICT, "Ya tienes una asignación activa de esa materia en esa carrera y grupo."
     ),
     ErrorCode.ASSIGNMENT_INACTIVE: ErrorSpec(
         _RULE, "La asignación está desactivada. Reactívala antes de modificarla."
@@ -191,6 +191,9 @@ ERROR_CATALOG: Mapping[ErrorCode, ErrorSpec] = {
     ErrorCode.SCHEDULE_NOT_FOUND: ErrorSpec(_NOT_FOUND, "El horario no existe."),
     ErrorCode.SCHEDULE_OVERLAP: ErrorSpec(
         _CONFLICT, "El horario se empalma con otra de tus clases. Elige otra hora."
+    ),
+    ErrorCode.SCHEDULE_RANGES_OVERLAP: ErrorSpec(
+        _RULE, "Dos rangos de horas de la captura se empalman el mismo día. Revisa las horas."
     ),
     ErrorCode.TIME_RANGE_INVALID: ErrorSpec(
         _RULE, "La hora de salida debe ser posterior a la hora de entrada."

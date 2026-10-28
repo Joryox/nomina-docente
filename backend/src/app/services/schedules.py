@@ -1,11 +1,15 @@
-"""Horarios semanales de las asignaciones (RN-16 a RN-18).
+"""Horarios semanales de las asignaciones (RN-16 a RN-18, RN-42).
 
 Antes de guardar, el servicio busca empalmes con **todas** las clases del docente (de
-cualquier asignación) y responde con la clase con la que choca. La restricción de exclusión
-de la base garantiza lo mismo ante peticiones simultáneas.
+cualquier asignación) y responde con el día y la clase con la que choca. La restricción de
+exclusión de la base garantiza lo mismo ante peticiones simultáneas.
+
+Una captura de varios días (``create_many``) valida todos los horarios antes de escribir y
+los guarda en una sola transacción: si uno no es válido, no se guarda ninguno.
 """
 
 import uuid
+from itertools import combinations
 
 from app.core.codes import ErrorCode
 from app.core.constants import CLOCK_TIME_FORMAT, WEEKDAY_NAMES, Weekday
@@ -20,6 +24,7 @@ from app.repositories.errors import ConstraintViolationError
 from app.repositories.schedule import ScheduleRepository
 from app.repositories.unit_of_work import UnitOfWork
 from app.schemas.schedules import (
+    ScheduleBatchCreate,
     ScheduleCreate,
     ScheduleResponse,
     ScheduleUpdate,
@@ -29,7 +34,15 @@ from app.schemas.schedules import (
 )
 from app.services.constraints import translate_constraint
 from app.services.policy import BusinessPolicy
-from app.services.presenters import assignment_summary, schedule_range, schedule_response
+from app.services.presenters import (
+    assignment_summary,
+    class_details,
+    describe_class,
+    schedule_range,
+    schedule_response,
+)
+
+DayRange = tuple[Weekday, TimeRange]
 
 
 def ensure_valid_duration(time_range: TimeRange, policy: BusinessPolicy) -> None:
@@ -57,10 +70,6 @@ def ensure_valid_duration(time_range: TimeRange, policy: BusinessPolicy) -> None
             f"{policy.class_max_duration_minutes}. Revisa la hora de entrada y de salida.",
             details={"max_minutes": policy.class_max_duration_minutes},
         )
-
-
-def describe_class(assignment: Assignment) -> str:
-    return f"{assignment.subject.name} ({assignment.career.name})"
 
 
 class ScheduleService:
@@ -103,6 +112,44 @@ class ScheduleService:
         except ConstraintViolationError as error:
             raise translate_constraint(error) from None
         return schedule_response(schedule, assignment)
+
+    def create_many(
+        self, teacher: Teacher, assignment_id: uuid.UUID, data: ScheduleBatchCreate
+    ) -> list[ScheduleResponse]:
+        """RN-42: todos los días y rangos de la captura, o ninguno."""
+        assignment = self._require_assignment(teacher, assignment_id)
+        if not assignment.is_active:
+            raise domain_error(ErrorCode.ASSIGNMENT_INACTIVE)
+        for item in data.ranges:
+            ensure_valid_duration(TimeRange(item.start_time, item.end_time), self._policy)
+        requested = sorted(
+            (
+                (Weekday(day), TimeRange(item.start_time, item.end_time))
+                for item in data.ranges
+                for day in item.weekdays
+            ),
+            key=lambda pair: (pair[0], pair[1].start),
+        )
+        self._ensure_ranges_apart(requested)
+        for weekday, time_range in requested:
+            self._ensure_no_overlap(teacher, weekday, time_range, all_or_nothing=True)
+        schedules = [
+            Schedule(
+                assignment_id=assignment.id,
+                teacher_id=teacher.id,
+                weekday=weekday,
+                start_time=time_range.start,
+                end_time=time_range.end,
+            )
+            for weekday, time_range in requested
+        ]
+        try:
+            with self._unit_of_work.transaction():
+                for schedule in schedules:
+                    self._schedules.add(schedule)
+        except ConstraintViolationError as error:
+            raise translate_constraint(error) from None
+        return [schedule_response(schedule, assignment) for schedule in schedules]
 
     def update(
         self, teacher: Teacher, schedule_id: uuid.UUID, data: ScheduleUpdate
@@ -163,6 +210,38 @@ class ScheduleService:
         exclude: Schedule | None = None,
     ) -> None:
         ensure_valid_duration(time_range, self._policy)
+        self._ensure_no_overlap(teacher, weekday, time_range, exclude=exclude)
+
+    @staticmethod
+    def _ensure_ranges_apart(requested: list[DayRange]) -> None:
+        """Dos rangos de la misma captura no pueden cruzarse el mismo día."""
+        for (day, first), (other_day, second) in combinations(requested, 2):
+            if day == other_day and first.overlaps(second):
+                raise domain_error(
+                    ErrorCode.SCHEDULE_RANGES_OVERLAP,
+                    f"El {WEEKDAY_NAMES[day]}, {first.label()} y {second.label()} se empalman. "
+                    "Cambia las horas o quita ese día de uno de los rangos.",
+                    details={
+                        "weekday": day,
+                        "ranges": [
+                            {
+                                "start_time": item.start.strftime(CLOCK_TIME_FORMAT),
+                                "end_time": item.end.strftime(CLOCK_TIME_FORMAT),
+                            }
+                            for item in (first, second)
+                        ],
+                    },
+                )
+
+    def _ensure_no_overlap(
+        self,
+        teacher: Teacher,
+        weekday: Weekday,
+        time_range: TimeRange,
+        *,
+        exclude: Schedule | None = None,
+        all_or_nothing: bool = False,
+    ) -> None:
         conflicts = self._schedules.find_overlapping(
             teacher.id,
             weekday,
@@ -172,24 +251,28 @@ class ScheduleService:
         )
         if conflicts:
             first = conflicts[0]
-            when = f"{WEEKDAY_NAMES[first.weekday]} {schedule_range(first).label()}"
+            day = WEEKDAY_NAMES[weekday]
+            outcome = " No se guardó ningún horario." if all_or_nothing else ""
             raise domain_error(
                 ErrorCode.SCHEDULE_OVERLAP,
-                f"El horario se empalma con {describe_class(first.assignment)}, {when}. "
-                "Elige otra hora de entrada o de salida.",
+                f"El {day}, {time_range.label()} se empalma con "
+                f"{describe_class(first.assignment)}, de {schedule_range(first).label()}."
+                f"{outcome} Elige otra hora de entrada o de salida para ese día.",
                 details={
+                    "weekday": weekday,
+                    "start_time": time_range.start.strftime(CLOCK_TIME_FORMAT),
+                    "end_time": time_range.end.strftime(CLOCK_TIME_FORMAT),
+                    "all_or_nothing": all_or_nothing,
                     "conflicts": [
                         {
                             "schedule_id": str(conflict.public_id),
-                            "assignment_id": str(conflict.assignment.public_id),
-                            "subject_name": conflict.assignment.subject.name,
-                            "career_name": conflict.assignment.career.name,
+                            **class_details(conflict.assignment),
                             "weekday": conflict.weekday,
                             "start_time": conflict.start_time.strftime(CLOCK_TIME_FORMAT),
                             "end_time": conflict.end_time.strftime(CLOCK_TIME_FORMAT),
                         }
                         for conflict in conflicts
-                    ]
+                    ],
                 },
             )
 

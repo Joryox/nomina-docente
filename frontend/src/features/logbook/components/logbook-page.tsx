@@ -44,11 +44,14 @@ import { API_MAX_PAGE_SIZE, RECENT_PERIODS_COUNT } from "@/constants/query";
 import { SCREENS } from "@/constants/screens";
 import { TEXTS } from "@/constants/texts";
 import { useAssignments } from "@/features/assignments/hooks/use-assignments";
+import { ClassShift } from "@/features/catalogs/components/class-shift";
 import { useBusinessRules } from "@/features/catalogs/hooks/use-catalogs";
 import { toUserMessage } from "@/lib/api-error";
 import type { ApiSchemas } from "@/lib/api-types";
 import { addDays } from "@/lib/calendar";
 import {
+  formatClassContext,
+  formatClassLabel,
   formatDayOfPeriod,
   formatFullDate,
   formatPeriodName,
@@ -211,13 +214,16 @@ function ScheduledForDate({ date }: { date: string }) {
                 className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-3"
               >
                 <div className="grid min-w-0 gap-0.5">
-                  <p className="text-label font-semibold text-fg">{item.assignment.subject_name}</p>
+                  <p className="flex flex-wrap items-center gap-2 text-label font-semibold text-fg">
+                    {item.assignment.subject_name}
+                    <ClassShift startTime={item.start_time} />
+                  </p>
                   <p className="text-small text-fg-muted">
                     <span className="figures">
                       {formatTimeRange(item.start_time, item.end_time)}
                     </span>
-                    {" · "}
-                    {item.assignment.career_name}
+                    {TEXTS.classes.separator}
+                    {formatClassContext(item.assignment.career_name, item.assignment.group)}
                   </p>
                 </div>
                 {item.registered ? (
@@ -245,7 +251,11 @@ function ScheduledForDate({ date }: { date: string }) {
                     label={texts.scheduled.register}
                     variant="outline"
                     accessibleLabel={TEXTS.logbookActions.registerLabel(
-                      item.assignment.subject_name,
+                      formatClassLabel(
+                        item.assignment.subject_name,
+                        item.assignment.career_code,
+                        item.assignment.group,
+                      ),
                       formatTimeRange(item.start_time, item.end_time),
                     )}
                   />
@@ -299,7 +309,9 @@ function SessionsOfPeriod({
       cell: (entry) => (
         <div className="grid gap-0.5">
           <span className="font-semibold text-fg">{entry.assignment.subject_name}</span>
-          <span className="text-small text-fg-muted">{entry.assignment.career_name}</span>
+          <span className="text-small text-fg-muted">
+            {formatClassContext(entry.assignment.career_name, entry.assignment.group)}
+          </span>
         </div>
       ),
     },
@@ -397,7 +409,7 @@ function SessionsOfPeriod({
                 <SelectItem value={ALL}>{texts.sessions.allAssignments}</SelectItem>
                 {(assignments.data?.items ?? []).map((item) => (
                   <SelectItem key={item.id} value={item.id}>
-                    {`${item.subject.name} – ${item.career.code}`}
+                    {formatClassLabel(item.subject.name, item.career.code, item.group)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -453,7 +465,11 @@ function SessionsOfPeriod({
 function EntryActions({ entry }: { entry: LogbookEntry }) {
   const [action, setAction] = useState<"edit" | "delete" | null>(null);
   const remove = useDeleteLogbookEntry();
-  const name = entry.assignment.subject_name;
+  const name = formatClassLabel(
+    entry.assignment.subject_name,
+    entry.assignment.career_code,
+    entry.assignment.group,
+  );
   const close = (open: boolean) => !open && setAction(null);
 
   return (

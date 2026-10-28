@@ -44,15 +44,21 @@ Todas las respuestas de error tienen el mismo formato:
 {
   "error": {
     "code": "SCHEDULE_OVERLAP",
-    "message": "El horario se empalma con Bases de Datos (Ingeniería en Sistemas Computacionales), lunes 10:00–12:00. Elige otra hora de entrada o de salida.",
+    "message": "El miércoles, 07:00–09:00 se empalma con Bases de Datos (Ingeniería en Sistemas Computacionales, grupo 3101), de 08:00–10:00. No se guardó ningún horario. Elige otra hora de entrada o de salida para ese día.",
     "details": {
+      "weekday": 3,
+      "start_time": "07:00",
+      "end_time": "09:00",
+      "all_or_nothing": true,
       "conflicts": [
         {
           "subject_name": "Bases de Datos",
+          "career_code": "ISC",
           "career_name": "Ingeniería en Sistemas Computacionales",
-          "weekday": 1,
-          "start_time": "10:00",
-          "end_time": "12:00"
+          "group": "3101",
+          "weekday": 3,
+          "start_time": "08:00",
+          "end_time": "10:00"
         }
       ]
     }
@@ -129,6 +135,7 @@ Algunas operaciones se permiten pero conviene revisar algo. La respuesta incluye
 | `POST` | `/assignments/{assignment_id}/reactivate` | Reactivar una asignación | Docente | Sí |
 | `GET` | `/assignments/{assignment_id}/schedules` | Listar los horarios de una asignación | Docente | — |
 | `POST` | `/assignments/{assignment_id}/schedules` | Agregar un horario | Docente | Sí |
+| `POST` | `/assignments/{assignment_id}/schedules/batch` | Agregar horarios de varios días (todo o nada, RN-42) | Docente | Sí |
 
 ### Horarios
 
@@ -211,11 +218,12 @@ Cada código tiene un estado HTTP fijo y un mensaje por defecto; el servicio pue
 | `SUBJECT_INACTIVE` | 422 | La materia está desactivada. Reactívala antes de usarla. |
 | `SUBJECT_HAS_ACTIVE_ASSIGNMENTS` | 409 | La materia tiene asignaciones activas. Desactívalas o elimínalas antes de quitarla. |
 | `ASSIGNMENT_NOT_FOUND` | 404 | La asignación no existe. |
-| `ASSIGNMENT_ALREADY_EXISTS` | 409 | Ya tienes una asignación activa de esa materia en esa carrera. |
+| `ASSIGNMENT_ALREADY_EXISTS` | 409 | Ya tienes una asignación activa de esa materia en esa carrera y grupo. |
 | `ASSIGNMENT_INACTIVE` | 422 | La asignación está desactivada. Reactívala antes de modificarla. |
 | `ASSIGNMENT_HAS_LOGBOOK` | 409 | La asignación tiene sesiones en la bitácora: no se puede borrar ni cambiar su materia o carrera. Desactívala y crea una nueva. |
 | `SCHEDULE_NOT_FOUND` | 404 | El horario no existe. |
 | `SCHEDULE_OVERLAP` | 409 | El horario se empalma con otra de tus clases. Elige otra hora. |
+| `SCHEDULE_RANGES_OVERLAP` | 422 | Dos rangos de horas de la captura se empalman el mismo día. Revisa las horas. |
 | `TIME_RANGE_INVALID` | 422 | La hora de salida debe ser posterior a la hora de entrada. |
 | `CLASS_TOO_SHORT` | 422 | La clase dura menos de lo permitido. |
 | `CLASS_TOO_LONG` | 422 | La clase dura más de lo permitido. |

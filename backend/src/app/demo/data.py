@@ -48,6 +48,7 @@ class DemoAssignment:
     career_code: str
     hourly_rate: Decimal
     slots: tuple[DemoSlot, ...]
+    group: str | None = None
     # Tarifa a la que cambia después de la primera quincena emitida (muestra que el cambio
     # no altera las sesiones ya registradas).
     new_rate: Decimal | None = None
@@ -57,6 +58,9 @@ def _slot(weekday: Weekday, start: str, end: str) -> DemoSlot:
     return DemoSlot(weekday, time.fromisoformat(start), time.fromisoformat(end))
 
 
+# Incluye una materia en dos grupos el mismo día (Programación Orientada a Objetos: 3101 en
+# la mañana y 3102 en la tarde) y una impartida tres días con el mismo horario (Cálculo
+# Diferencial). Varias clases no tienen grupo: es opcional.
 ASSIGNMENTS: Final = (
     DemoAssignment(
         "Bases de Datos",
@@ -64,6 +68,7 @@ ASSIGNMENTS: Final = (
         "ISC",
         Decimal("135.00"),
         (_slot(Weekday.MONDAY, "07:00", "09:00"), _slot(Weekday.WEDNESDAY, "07:00", "09:00")),
+        group="3101",
     ),
     DemoAssignment(
         "Programación Orientada a Objetos",
@@ -71,7 +76,16 @@ ASSIGNMENTS: Final = (
         "ISC",
         Decimal("125.00"),
         (_slot(Weekday.TUESDAY, "07:00", "09:00"), _slot(Weekday.THURSDAY, "07:00", "09:00")),
+        group="3101",
         new_rate=Decimal("135.00"),
+    ),
+    DemoAssignment(
+        "Programación Orientada a Objetos",
+        "SCD-1020",
+        "ISC",
+        Decimal("125.00"),
+        (_slot(Weekday.TUESDAY, "14:00", "16:00"), _slot(Weekday.THURSDAY, "14:00", "16:00")),
+        group="3102",
     ),
     DemoAssignment(
         "Bases de Datos",
@@ -106,6 +120,11 @@ ASSIGNMENTS: Final = (
         "ACF-0901",
         "IMEC",
         Decimal("125.00"),
-        (_slot(Weekday.FRIDAY, "11:00", "12:40"),),
+        (
+            _slot(Weekday.WEDNESDAY, "11:00", "12:40"),
+            _slot(Weekday.THURSDAY, "11:00", "12:40"),
+            _slot(Weekday.FRIDAY, "11:00", "12:40"),
+        ),
+        group="1201",
     ),
 )

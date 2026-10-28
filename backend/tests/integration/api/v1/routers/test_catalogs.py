@@ -61,6 +61,8 @@ def test_business_rules_publish_the_configured_limits(teacher_api: Api) -> None:
     assert rules["class_max_duration_minutes"] == 300
     assert rules["logbook_max_age_days"] == 30
     assert rules["payroll_issue_requires_closed_period"] is True
+    assert rules["afternoon_shift_start"] == "14:00"
+    assert rules["schedule_batch_max_ranges"] == 7
 
 
 def test_catalogs_require_a_session(db_client: TestClient) -> None:

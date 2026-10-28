@@ -70,6 +70,7 @@ from app.services.logbook import entry_range, recorded, slots_of
 from app.services.policy import BusinessPolicy
 from app.services.presenters import (
     assignment_summary,
+    class_details,
     period_response,
     receipt_period,
     receipt_summary,
@@ -82,6 +83,7 @@ def session_for_payroll(entry: LogbookEntry) -> SessionForPayroll:
         assignment_key=entry.assignment_id,
         subject_name=entry.assignment.subject.name,
         career_name=entry.assignment.career.name,
+        group_code=entry.assignment.group_code,
         hourly_rate=entry.hourly_rate.amount,
         minutes=entry_range(entry).minutes,
     )
@@ -172,6 +174,7 @@ class PayrollService:
                     assignment_id=public_ids[line.assignment_key],
                     subject_name=line.subject_name,
                     career_name=line.career_name,
+                    group=line.group_code,
                     hourly_rate=line.hourly_rate,
                     session_count=line.session_count,
                     minutes=line.minutes,
@@ -271,6 +274,7 @@ class PayrollService:
                 assignment_id=line.assignment_key,
                 subject_name=line.subject_name,
                 career_name=line.career_name,
+                group_code=line.group_code,
                 minutes=line.minutes,
                 hourly_rate=line.hourly_rate,
                 amount=line.amount,
@@ -321,6 +325,7 @@ class PayrollService:
                     assignment_id=line.assignment.public_id,
                     subject_name=line.subject_name,
                     career_name=line.career_name,
+                    group=line.group_code,
                     hourly_rate=line.hourly_rate,
                     minutes=line.minutes,
                     hours=line.hours,
@@ -420,8 +425,7 @@ class PayrollService:
                             {
                                 "logbook_entry_id": str(entry.public_id),
                                 "date": entry.session_date.isoformat(),
-                                "subject_name": entry.assignment.subject.name,
-                                "career_name": entry.assignment.career.name,
+                                **class_details(entry.assignment),
                                 "start_time": entry.start_time.strftime(CLOCK_TIME_FORMAT),
                                 "end_time": entry.end_time.strftime(CLOCK_TIME_FORMAT),
                             }
@@ -447,6 +451,7 @@ class PayrollService:
                             {
                                 "subject_name": line.subject_name,
                                 "career_name": line.career_name,
+                                "group": line.group_code,
                                 "hourly_rate": f"{line.hourly_rate:.2f}",
                             }
                             for line in changed
@@ -467,9 +472,7 @@ class PayrollService:
                 {
                     "date": occurrence.day.isoformat(),
                     "schedule_id": str(schedule.public_id),
-                    "assignment_id": str(schedule.assignment.public_id),
-                    "subject_name": schedule.assignment.subject.name,
-                    "career_name": schedule.assignment.career.name,
+                    **class_details(schedule.assignment),
                     "start_time": schedule.start_time.strftime(CLOCK_TIME_FORMAT),
                     "end_time": schedule.end_time.strftime(CLOCK_TIME_FORMAT),
                 }

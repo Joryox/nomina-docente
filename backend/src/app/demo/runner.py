@@ -5,9 +5,12 @@ sesiones y recibos pasan por las mismas validaciones que una petición real. Par
 la bitácora de quincenas anteriores, el calendario del negocio «viaja» a la fecha de cada
 sesión (con ``MovableClock``), y los recibos se emiten al día siguiente de cada quincena.
 
-Es idempotente: lo que ya existe se conserva y solo se agrega lo que falta.
+Es idempotente: lo que ya existe se conserva y solo se agrega lo que falta. Una cuenta
+cargada antes de que existieran los grupos recibe el grupo en sus clases sin grupo.
 """
 
+import uuid
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
@@ -38,7 +41,7 @@ from app.repositories.user import UserRepository
 from app.schemas.assignments import AssignmentCreate, AssignmentUpdate
 from app.schemas.logbook import LogbookEntryCreate
 from app.schemas.payroll import InstitutionResponse
-from app.schemas.schedules import ScheduleCreate
+from app.schemas.schedules import ScheduleBatchCreate, ScheduleRangeInput
 from app.schemas.subjects import SubjectCreate
 from app.services.assignments import AssignmentService
 from app.services.logbook import LogbookService
@@ -203,31 +206,61 @@ class DemoLoader:
             raise DemoDataError(
                 f"No existe la carrera {spec.career_code}: ejecuta scripts/seed.sh."
             )
-        duplicate = self._assignment_repo.find_active_duplicate(teacher.id, subject.id, career.id)
-        if duplicate is None:
+        public_id = self._find_assignment(teacher, subject.id, career.id, spec.group)
+        if public_id is None:
             created_assignment = self._assignments.create(
                 teacher,
                 AssignmentCreate(
                     subject_id=subject.public_id,
                     career_code=spec.career_code,
                     hourly_rate=spec.hourly_rate,
+                    group=spec.group,
                 ),
             )
             self.report.assignments += 1
             public_id = created_assignment.id
-        else:
-            public_id = duplicate.public_id
         existing = self._assignments.require(teacher, public_id)
         current = {(s.weekday, s.start_time) for s in existing.schedules}
+        # Los días faltantes con el mismo horario van en un solo rango, como en la pantalla.
+        missing: dict[tuple[time, time], list[int]] = defaultdict(list)
         for slot in spec.slots:
             if (slot.weekday, slot.start) not in current:
-                self._schedules.create(
-                    teacher,
-                    existing.public_id,
-                    ScheduleCreate(weekday=slot.weekday, start_time=slot.start, end_time=slot.end),
-                )
-                self.report.schedules += 1
+                missing[(slot.start, slot.end)].append(slot.weekday)
+        if missing:
+            schedules = self._schedules.create_many(
+                teacher,
+                existing.public_id,
+                ScheduleBatchCreate(
+                    ranges=[
+                        ScheduleRangeInput.model_validate(
+                            {"weekdays": days, "start_time": start, "end_time": end}
+                        )
+                        for (start, end), days in missing.items()
+                    ]
+                ),
+            )
+            self.report.schedules += len(schedules)
         return self._assignments.require(teacher, existing.public_id)
+
+    def _find_assignment(
+        self, teacher: Teacher, subject_id: int, career_id: int, group: str | None
+    ) -> uuid.UUID | None:
+        """La asignación activa de la especificación. Si la cuenta se cargó antes de los
+        grupos, la misma clase sin grupo recibe el grupo de la especificación."""
+        found = self._assignment_repo.find_active_duplicate(
+            teacher.id, subject_id, career_id, group
+        )
+        if found is not None:
+            return found.public_id
+        if group is None:
+            return None
+        legacy = self._assignment_repo.find_active_duplicate(
+            teacher.id, subject_id, career_id, None
+        )
+        if legacy is None:
+            return None
+        self._assignments.update(teacher, legacy.public_id, AssignmentUpdate(group=group))
+        return legacy.public_id
 
     def _log_period(self, teacher: Teacher, assignments: list[Assignment], period: Period) -> None:
         if self._receipt_repo.is_locked(teacher.id, period.start):

@@ -15,7 +15,7 @@ from app.repositories.errors import ConstraintViolationError
 CONSTRAINT_ERRORS: Mapping[str, ErrorCode] = {
     "uq_subjects_teacher_id_name_normalized": ErrorCode.SUBJECT_ALREADY_EXISTS,
     "fk_assignments_subject_id_teacher_id_subjects": ErrorCode.SUBJECT_HAS_ACTIVE_ASSIGNMENTS,
-    "uq_assignments_active_teacher_subject_career": ErrorCode.ASSIGNMENT_ALREADY_EXISTS,
+    "uq_assignments_active_teacher_subject_career_group": ErrorCode.ASSIGNMENT_ALREADY_EXISTS,
     "fk_logbook_entries_assignment_id_teacher_id_assignments": ErrorCode.ASSIGNMENT_HAS_LOGBOOK,
     "fk_payroll_receipt_lines_assignment_id_teacher_id_assignments": (
         ErrorCode.ASSIGNMENT_HAS_LOGBOOK

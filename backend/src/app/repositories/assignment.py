@@ -57,7 +57,12 @@ class AssignmentRepository(BaseRepository[Assignment]):
                 Assignment.career_id.in_(select(Career.id).where(Career.code == career_code))
             )
         statement = _with_details(
-            statement.order_by(Assignment.is_active.desc(), Assignment.created_at, Assignment.id)
+            statement.order_by(
+                Assignment.is_active.desc(),
+                Assignment.created_at,
+                Assignment.group_code.nulls_first(),
+                Assignment.id,
+            )
         )
         return self._paginate(statement, offset=offset, limit=limit)
 
@@ -68,13 +73,21 @@ class AssignmentRepository(BaseRepository[Assignment]):
         return list(self._session.scalars(_with_details(statement.order_by(Assignment.id))))
 
     def find_active_duplicate(
-        self, teacher_id: int, subject_id: int, career_id: int, *, exclude_id: int | None = None
+        self,
+        teacher_id: int,
+        subject_id: int,
+        career_id: int,
+        group_code: str | None,
+        *,
+        exclude_id: int | None = None,
     ) -> Assignment | None:
-        """RN-14: otra asignación activa con la misma materia y carrera."""
+        """RN-14 y RN-41: otra asignación activa con la misma materia, carrera y grupo
+        («sin grupo» cuenta como un valor, igual que NULLS NOT DISTINCT en la base)."""
         condition = (
             (Assignment.teacher_id == teacher_id)
             & (Assignment.subject_id == subject_id)
             & (Assignment.career_id == career_id)
+            & Assignment.group_code.is_not_distinct_from(group_code)
             & Assignment.is_active
         )
         if exclude_id is not None:

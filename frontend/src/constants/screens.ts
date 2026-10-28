@@ -105,6 +105,10 @@ export const SCREENS = {
       subjectPlaceholder: "Elige una materia",
       career: "Carrera",
       careerPlaceholder: "Elige una carrera",
+      group: "Grupo",
+      groupPlaceholder: "3101",
+      groupHint:
+        "Escríbelo si das esta materia a más de un grupo de la misma carrera. Se guarda en mayúsculas.",
       rate: "Tarifa por hora",
       ratePlaceholder: "Elige una tarifa",
       rateHint: "Elige la que te corresponde según tu contrato.",
@@ -115,7 +119,7 @@ export const SCREENS = {
       submitCreate: "Crear clase",
       submitEdit: "Guardar cambios",
       submitting: "Guardando…",
-      created: (subject: string, career: string) => `Clase ${subject} – ${career} creada`,
+      created: (name: string) => `Clase ${name} creada`,
       saved: "Clase guardada",
       noChanges: "No hay cambios por guardar.",
     },
@@ -151,23 +155,37 @@ export const SCREENS = {
     emptyNoClassesHint: "El horario se arma con tus clases activas. Créalas en Mis clases.",
     goToClasses: "Ir a Mis clases",
     dayEmpty: "Sin clases",
-    blockLabel: (subject: string, career: string, day: string, range: string) =>
-      `${subject}, ${career}, ${day} ${range}. Editar o eliminar`,
+    blockLabel: (subject: string, context: string, day: string, range: string) =>
+      `${subject}, ${context}, ${day} ${range}. Editar o eliminar`,
     form: {
       createTitle: "Agregar horario",
       editTitle: "Editar horario",
       description:
+        "Elige la clase, marca los días y escribe las horas en formato de 24 horas. Si otros días la das a otra hora, agrega otro rango.",
+      editDescription:
         "Una clase semanal: el día y las horas en que la impartes, en formato de 24 horas.",
       assignment: "Clase",
       assignmentPlaceholder: "Elige materia y carrera",
       weekday: "Día de la semana",
       weekdayPlaceholder: "Elige un día",
-      submitCreate: "Guardar horario",
+      days: "Días",
+      daysHint: "Marca todos los días en que la impartes a estas horas.",
+      rangeLegend: (index: number) => `Rango de horas ${index}`,
+      addRange: "Agregar otro rango de horas",
+      removeRange: (index: number) => `Quitar el rango ${index}`,
+      summary: (count: number) =>
+        count === 1
+          ? "Se agregará 1 horario a tu semana."
+          : `Se agregarán ${count} horarios a tu semana.`,
+      allOrNothing:
+        "Si algún día choca con otra clase, no se guarda ninguno y te decimos qué día y con cuál.",
+      submitCreate: (count: number) =>
+        count > 1 ? `Guardar ${count} horarios` : "Guardar horario",
       submitEdit: "Guardar cambios",
       submitting: "Guardando…",
-      created: "Horario guardado",
+      created: (count: number) =>
+        count === 1 ? "Horario guardado" : `${count} horarios guardados`,
       saved: "Horario actualizado",
-      addAnother: "Si das la misma clase otro día, agrégalo como otro horario.",
     },
     remove: {
       action: "Eliminar horario",

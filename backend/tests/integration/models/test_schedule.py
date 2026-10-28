@@ -96,6 +96,18 @@ def test_adjacent_schedules_do_not_overlap(
     seeded_session.flush()
 
 
+def test_an_assignment_can_have_several_schedules_on_the_same_day(
+    seeded_session: Session, assignment: Assignment
+) -> None:
+    """RN-16: una clase puede repetirse el mismo día a otra hora (por ejemplo, dos bloques)."""
+    for start, end in ((time(7), time(9)), (time(14), time(16))):
+        seeded_session.add(build_schedule(assignment, Weekday.MONDAY, start, end))
+    seeded_session.flush()
+
+    count = select(func.count()).where(Schedule.assignment_id == assignment.id)
+    assert seeded_session.scalar(count) == 3  # con el de 10:00 a 12:00 del fixture
+
+
 def test_same_hours_on_another_day_are_allowed(
     seeded_session: Session, assignment: Assignment, other_assignment: Assignment
 ) -> None:

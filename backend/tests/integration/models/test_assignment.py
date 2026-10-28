@@ -66,12 +66,12 @@ def test_subject_must_belong_to_the_same_teacher(
 def test_same_subject_and_career_cannot_be_active_twice(
     seeded_session: Session, career: Career, hourly_rate: HourlyRate
 ) -> None:
-    """RN-14."""
+    """RN-14: sin grupo, «sin grupo» cuenta como un valor (NULLS NOT DISTINCT)."""
     assignment = create_assignment(
         seeded_session, create_teacher(seeded_session), career, hourly_rate
     )
 
-    with violates(seeded_session, "uq_assignments_active_teacher_subject_career"):
+    with violates(seeded_session, "uq_assignments_active_teacher_subject_career_group"):
         seeded_session.add(
             Assignment(
                 teacher_id=assignment.teacher_id,
@@ -80,6 +80,57 @@ def test_same_subject_and_career_cannot_be_active_twice(
                 hourly_rate_id=hourly_rate.id,
             )
         )
+
+
+def test_same_group_cannot_be_active_twice(
+    seeded_session: Session, career: Career, hourly_rate: HourlyRate
+) -> None:
+    """RN-41."""
+    assignment = create_assignment(
+        seeded_session, create_teacher(seeded_session), career, hourly_rate, group_code="3101"
+    )
+
+    with violates(seeded_session, "uq_assignments_active_teacher_subject_career_group"):
+        seeded_session.add(
+            Assignment(
+                teacher_id=assignment.teacher_id,
+                subject_id=assignment.subject_id,
+                career_id=career.id,
+                group_code="3101",
+                hourly_rate_id=hourly_rate.id,
+            )
+        )
+
+
+def test_other_groups_of_the_same_subject_and_career_are_allowed(
+    seeded_session: Session, career: Career, hourly_rate: HourlyRate
+) -> None:
+    """RN-41: la misma materia y carrera en grupos distintos, y una más sin grupo."""
+    first = create_assignment(
+        seeded_session, create_teacher(seeded_session), career, hourly_rate, group_code="3101"
+    )
+
+    for group in ("3102", None):
+        seeded_session.add(
+            Assignment(
+                teacher_id=first.teacher_id,
+                subject_id=first.subject_id,
+                career_id=career.id,
+                group_code=group,
+                hourly_rate_id=hourly_rate.id,
+            )
+        )
+        seeded_session.flush()
+
+
+@pytest.mark.parametrize("group", ["3101 ", "a1", "", "3101--A", "-3101"])
+def test_group_must_be_normalized(
+    seeded_session: Session, career: Career, hourly_rate: HourlyRate, group: str
+) -> None:
+    teacher = create_teacher(seeded_session)
+
+    with violates(seeded_session, "ck_assignments_group_code_format"):
+        create_assignment(seeded_session, teacher, career, hourly_rate, group_code=group)
 
 
 def test_inactive_assignment_allows_a_new_one(

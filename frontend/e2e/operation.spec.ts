@@ -101,31 +101,36 @@ test.describe("operación completa", () => {
     await chooseOption(page, /Carrera/, "sistemas");
     await chooseSelect(page, /Tarifa por hora/, "$135.00 MXN");
     await classDialog.getByRole("button", { name: "Crear clase" }).click();
-    await expect(page.getByText("Clase Redes de Computadoras – ISC creada")).toBeVisible();
+    await expect(page.getByText("Clase Redes de Computadoras · ISC creada")).toBeVisible();
     await expect(
       page.getByRole("region", { name: "Ingeniería en Sistemas Computacionales" }),
     ).toContainText("$135.00");
 
-    // 3. Horario: alta y empalme explicado.
+    // 3. Horario: alta y empalme explicado (con varios días, no se guarda ninguno).
     const weekday = WEEKDAYS[todayWeekday() - 1] ?? "lunes";
+    const otherDay = WEEKDAYS[todayWeekday() % 7] ?? "martes";
     await page.goto("/panel/horario");
-    for (const [start, end] of [
-      ["00:00", "00:50"],
-      ["00:30", "01:30"],
+    for (const [days, start, end] of [
+      [[weekday], "00:00", "00:50"],
+      [[otherDay, weekday], "00:30", "01:30"],
     ] as const) {
       await page.getByRole("button", { name: "Agregar horario" }).first().click();
       const dialog = page.getByRole("dialog", { name: "Agregar horario" });
       await chooseOption(page, /Clase/, "redes");
-      await chooseSelect(page, /Día de la semana/, weekday);
+      for (const day of days) {
+        await dialog.getByRole("checkbox", { name: day }).click();
+      }
       await dialog.getByLabel("Hora de entrada").fill(start);
       await dialog.getByLabel("Hora de salida").fill(end);
       await dialog.getByLabel("Hora de salida").blur();
-      await dialog.getByRole("button", { name: "Guardar horario" }).click();
+      await expect(dialog.getByText("Matutino")).toBeVisible();
+      await dialog.getByRole("button", { name: /^Guardar \d* ?horarios?$/ }).click();
     }
     await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
-      `El horario se empalma con Redes de Computadoras (Ingeniería en Sistemas Computacionales), ${weekday} 00:00–00:50`,
+      `El ${weekday}, 00:30–01:30 se empalma con Redes de Computadoras · ISC (00:00–00:50). No se guardó ningún horario.`,
     );
     await page.getByRole("dialog").getByRole("button", { name: "Cancelar" }).click();
+    await expect(page.getByRole("button", { name: /00:30–01:30/ })).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: /Redes de Computadoras.*00:00–00:50/ }).first(),
     ).toBeVisible();
@@ -183,6 +188,79 @@ test.describe("operación completa", () => {
     await page.getByRole("button", { name: "Más acciones para Redes de Computadoras" }).click();
     await page.getByRole("menuitem", { name: "Desactivar" }).click();
     await expect(page.getByRole("dialog")).toContainText("tiene clases activas");
+  });
+
+  test("una materia en dos grupos y horarios de varios días en una captura", async ({
+    page,
+  }, info) => {
+    test.skip(info.project.name !== "escritorio", "La captura se prueba en escritorio.");
+    test.setTimeout(120_000);
+    await registerTeacher(page, uniqueEmail("grupos"));
+
+    // Dos clases de la misma materia y carrera, distinguidas por el grupo.
+    await page.goto("/panel/clases");
+    for (const group of ["3101", "3102 b"]) {
+      await page.getByRole("button", { name: "Nueva clase" }).first().click();
+      const dialog = page.getByRole("dialog", { name: "Nueva clase" });
+      if (group === "3101") {
+        await dialog.getByRole("button", { name: /No está en la lista/ }).click();
+        await dialog.getByLabel("Nombre de la materia nueva").fill("programación web");
+        await dialog.getByRole("button", { name: "Agregar y elegir" }).click();
+      } else {
+        await chooseOption(page, /Materia/, "web");
+      }
+      await chooseOption(page, /Carrera/, "sistemas");
+      await dialog.getByLabel(/Grupo/).fill(group);
+      await chooseSelect(page, /Tarifa por hora/, "$125.00 MXN");
+      await dialog.getByRole("button", { name: "Crear clase" }).click();
+    }
+    await expect(
+      page.getByText("Clase Programación Web · ISC · Grupo 3102-B creada"),
+    ).toBeVisible();
+    const careerCard = page.getByRole("region", { name: "Ingeniería en Sistemas Computacionales" });
+    await expect(careerCard).toContainText("Grupo 3101");
+    await expect(careerCard).toContainText("Grupo 3102-B");
+
+    // Grupo 3101: lunes, miércoles y viernes en la mañana y el martes en la tarde, en una captura.
+    await page.goto("/panel/horario");
+    await page.getByRole("button", { name: "Agregar horario" }).first().click();
+    const dialog = page.getByRole("dialog", { name: "Agregar horario" });
+    await chooseOption(page, /Clase/, "3101");
+    for (const day of ["lunes", "miércoles", "viernes"]) {
+      await dialog.getByRole("checkbox", { name: day }).click();
+    }
+    await dialog.getByLabel("Hora de entrada").fill("07:00");
+    await dialog.getByLabel("Hora de salida").fill("09:00");
+    await dialog.getByRole("button", { name: "Agregar otro rango de horas" }).click();
+    const second = dialog.getByRole("region", { name: "Rango de horas 2" });
+    await second.getByRole("checkbox", { name: "martes" }).click();
+    await second.getByLabel("Hora de entrada").fill("14:00");
+    await second.getByLabel("Hora de salida").fill("16:00");
+    await second.getByLabel("Hora de salida").blur();
+    await expect(second.getByText("Vespertino")).toBeVisible();
+    await expect(dialog.getByText("Se agregarán 4 horarios a tu semana.")).toBeVisible();
+    await dialog.getByRole("button", { name: "Guardar 4 horarios" }).click();
+    await expect(page.getByText("4 horarios guardados")).toBeVisible();
+
+    // Grupo 3102-B el lunes en la tarde: la misma materia dos veces el mismo día.
+    await page.getByRole("button", { name: "Agregar horario" }).first().click();
+    await chooseOption(page, /Clase/, "3102");
+    await dialog.getByRole("checkbox", { name: "lunes" }).click();
+    await dialog.getByLabel("Hora de entrada").fill("16:00");
+    await dialog.getByLabel("Hora de salida").fill("18:00");
+    await dialog.getByRole("button", { name: "Guardar horario" }).click();
+    await expect(page.getByText("Horario guardado", { exact: true })).toBeVisible();
+
+    const blocks = page.getByRole("button", {
+      name: /^Programación Web, Ingeniería en Sistemas Computacionales · Grupo/,
+    });
+    await expect(blocks).toHaveCount(5);
+    await expect(
+      page.getByRole("button", { name: /Grupo 3101 · Matutino, lunes 07:00–09:00/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Grupo 3102-B · Vespertino, lunes 16:00–18:00/ }),
+    ).toBeVisible();
   });
 
   test("la cuenta de demostración luce completa en todas las pantallas", async ({ page }) => {

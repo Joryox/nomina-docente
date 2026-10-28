@@ -4,13 +4,13 @@ import { invalidateAfter } from "@/lib/query-invalidation";
 import { queryKeys } from "@/lib/query-keys";
 
 import {
-  createSchedule,
+  createSchedules,
   deleteSchedule,
   getWeeklySchedule,
   listAssignmentSchedules,
   updateSchedule,
 } from "../api/schedules";
-import type { ScheduleChanges, SchedulePayload } from "../types/schedules";
+import type { ScheduleBatchPayload, ScheduleChanges } from "../types/schedules";
 
 /** Horario de la semana agrupado por día, listo para la vista semanal. */
 export function useWeeklySchedule() {
@@ -38,10 +38,10 @@ function useScheduleMutation<TVariables, TResult>(
   });
 }
 
-export function useCreateSchedule() {
+export function useCreateSchedules() {
   return useScheduleMutation(
-    ({ assignmentId, schedule }: { assignmentId: string; schedule: SchedulePayload }) =>
-      createSchedule(assignmentId, schedule),
+    ({ assignmentId, batch }: { assignmentId: string; batch: ScheduleBatchPayload }) =>
+      createSchedules(assignmentId, batch),
   );
 }
 

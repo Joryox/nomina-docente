@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 import psycopg
 import pytest
 from alembic.config import Config
-from sqlalchemy import Engine
+from sqlalchemy import Connection, Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -18,11 +18,19 @@ ALEMBIC_INI = BACKEND_DIR / "alembic.ini"
 
 def run_alembic(engine: Engine, command: Callable[[Config, str], None], revision: str) -> None:
     """Ejecuta un comando de Alembic (``upgrade``, ``downgrade``) sobre ``engine``."""
+    with engine.begin() as connection:
+        run_alembic_on(connection, command, revision)
+
+
+def run_alembic_on(
+    connection: Connection, command: Callable[[Config, str], None], revision: str
+) -> None:
+    """Igual que ``run_alembic``, dentro de la transacción de ``connection`` (que la prueba
+    puede revertir al terminar)."""
     config = Config(ALEMBIC_INI)
     config.attributes["configure_logger"] = False
-    with engine.begin() as connection:
-        config.attributes["connection"] = connection
-        command(config, revision)
+    config.attributes["connection"] = connection
+    command(config, revision)
 
 
 @contextmanager

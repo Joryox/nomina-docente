@@ -53,6 +53,7 @@ export const assignmentSummarySchema = z.object({
   subject_name: z.string(),
   career_code: z.string(),
   career_name: z.string(),
+  group: z.string().nullable(),
   is_active: z.boolean(),
 }) satisfies z.ZodType<ApiSchemas["AssignmentSummary"]>;
 

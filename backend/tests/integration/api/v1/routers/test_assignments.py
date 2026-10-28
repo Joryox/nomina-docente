@@ -84,6 +84,97 @@ class TestCreate:
         error(teacher_api.post("/assignments", _payload(subject["id"])), 422, "RATE_INACTIVE")
 
 
+class TestGroups:
+    """RN-41: grupo opcional, normalizado y parte de la unicidad."""
+
+    def test_same_subject_and_career_in_two_groups(self, teacher_api: Api) -> None:
+        subject = create_subject(teacher_api)
+
+        morning = ok(
+            teacher_api.post("/assignments", _payload(subject["id"]) | {"group": " 3101 "}), 201
+        )
+        evening = ok(
+            teacher_api.post("/assignments", _payload(subject["id"]) | {"group": "3102"}), 201
+        )
+        without = ok(teacher_api.post("/assignments", _payload(subject["id"])), 201)
+
+        assert (morning["group"], evening["group"], without["group"]) == ("3101", "3102", None)
+        assert ok(teacher_api.get("/assignments", subject_id=subject["id"]))["total_items"] == 3
+
+    @pytest.mark.parametrize("group", ["3101", "3101", None, ""])
+    def test_same_group_or_both_without_group_is_a_duplicate(
+        self, teacher_api: Api, group: str | None
+    ) -> None:
+        subject = create_subject(teacher_api)
+        ok(teacher_api.post("/assignments", _payload(subject["id"]) | {"group": group}), 201)
+
+        body = error(
+            teacher_api.post("/assignments", _payload(subject["id"]) | {"group": group}),
+            409,
+            "ASSIGNMENT_ALREADY_EXISTS",
+        )
+
+        assert body["details"]["group"] == (group or None)
+
+    @pytest.mark.parametrize(
+        ("sent", "stored"), [("3101 a", "3101-A"), ("  b2 ", "B2"), ("", None), (None, None)]
+    )
+    def test_group_is_normalized(
+        self, teacher_api: Api, sent: str | None, stored: str | None
+    ) -> None:
+        subject = create_subject(teacher_api)
+
+        assignment = ok(
+            teacher_api.post("/assignments", _payload(subject["id"]) | {"group": sent}), 201
+        )
+
+        assert assignment["group"] == stored
+
+    @pytest.mark.parametrize("group", ["31/01", "Grupo 3101 de la tarde", "3101_A", "Ñ1"])
+    def test_invalid_group_is_rejected(self, teacher_api: Api, group: str) -> None:
+        subject = create_subject(teacher_api)
+
+        error(
+            teacher_api.post("/assignments", _payload(subject["id"]) | {"group": group}),
+            422,
+            "VALIDATION_ERROR",
+        )
+
+    def test_group_can_change_or_be_removed_even_with_logbook(self, teacher_api: Api) -> None:
+        assignment = create_assignment(teacher_api)
+        logged(teacher_api, assignment["id"], MONDAY, "07:00", "09:00")
+
+        changed = ok(teacher_api.patch(f"/assignments/{assignment['id']}", {"group": "3101"}))
+        removed = ok(teacher_api.patch(f"/assignments/{assignment['id']}", {"group": None}))
+
+        assert (changed["group"], removed["group"]) == ("3101", None)
+
+    def test_changing_to_a_group_already_in_use_is_rejected(self, teacher_api: Api) -> None:
+        subject = create_subject(teacher_api)
+        ok(teacher_api.post("/assignments", _payload(subject["id"]) | {"group": "3101"}), 201)
+        other = ok(
+            teacher_api.post("/assignments", _payload(subject["id"]) | {"group": "3102"}), 201
+        )
+
+        error(
+            teacher_api.patch(f"/assignments/{other['id']}", {"group": "3101"}),
+            409,
+            "ASSIGNMENT_ALREADY_EXISTS",
+        )
+
+    def test_reactivation_checks_the_group(self, teacher_api: Api) -> None:
+        subject = create_subject(teacher_api)
+        first = ok(
+            teacher_api.post("/assignments", _payload(subject["id"]) | {"group": "3101"}), 201
+        )
+        ok(teacher_api.post(f"/assignments/{first['id']}/deactivate"))
+        ok(teacher_api.post("/assignments", _payload(subject["id"]) | {"group": "3102"}), 201)
+
+        reactivated = ok(teacher_api.post(f"/assignments/{first['id']}/reactivate"))
+
+        assert (reactivated["is_active"], reactivated["group"]) == (True, "3101")
+
+
 class TestRateChange:
     def test_rate_change_does_not_alter_registered_sessions(self, teacher_api: Api) -> None:
         assignment = create_assignment(teacher_api, rate="125.00")

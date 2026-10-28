@@ -9,7 +9,7 @@ import { BACKEND_UNAVAILABLE_STATUSES } from "@/constants/http";
 import { WARNING_MESSAGES } from "@/constants/warning-messages";
 
 import type { ApiErrorCode, ApiSchemas } from "./api-types";
-import { formatTimeRange, formatWeekday } from "./formatters";
+import { formatClassLabel, formatTimeRange, formatWeekday } from "./formatters";
 
 /** Formato único de error que responde el backend. */
 const apiErrorBodySchema = z.object({
@@ -54,36 +54,54 @@ export class ApiError extends Error {
 }
 
 const weekday = z.literal([1, 2, 3, 4, 5, 6, 7]);
+const timeRange = { start_time: z.string(), end_time: z.string() };
+const conflictingClass = {
+  subject_name: z.string(),
+  career_code: z.string(),
+  group: z.string().nullable(),
+  ...timeRange,
+};
 const scheduleConflicts = z.object({
-  conflicts: z
-    .array(
-      z.object({
-        subject_name: z.string(),
-        career_name: z.string(),
-        weekday,
-        start_time: z.string(),
-        end_time: z.string(),
-      }),
-    )
-    .min(1),
+  weekday,
+  ...timeRange,
+  all_or_nothing: z.boolean(),
+  conflicts: z.array(z.object(conflictingClass)).min(1),
+});
+const rangesConflict = z.object({
+  weekday,
+  ranges: z.array(z.object(timeRange)).length(2),
 });
 const sessionConflicts = z.object({
-  conflicts: z
-    .array(z.object({ subject_name: z.string(), start_time: z.string(), end_time: z.string() }))
-    .min(1),
+  conflicts: z.array(z.object(conflictingClass)).min(1),
 });
+
+function classOf(conflict: z.infer<z.ZodObject<typeof conflictingClass>>): string {
+  return formatClassLabel(conflict.subject_name, conflict.career_code, conflict.group);
+}
 
 /** Mensajes que usan los datos del error; si los datos no vienen, se usa el texto general. */
 const DETAILED: Partial<Record<string, (details: Details) => string | undefined>> = {
   SCHEDULE_OVERLAP: (details) => {
-    const parsed = scheduleConflicts.safeParse(details);
-    const first = parsed.data?.conflicts[0];
-    return first
+    const parsed = scheduleConflicts.safeParse(details).data;
+    const first = parsed?.conflicts[0];
+    return parsed && first
       ? DETAILED_ERROR_MESSAGES.scheduleOverlap(
-          first.subject_name,
-          first.career_name,
-          formatWeekday(first.weekday),
+          formatWeekday(parsed.weekday),
+          formatTimeRange(parsed.start_time, parsed.end_time),
+          classOf(first),
           formatTimeRange(first.start_time, first.end_time),
+          parsed.all_or_nothing,
+        )
+      : undefined;
+  },
+  SCHEDULE_RANGES_OVERLAP: (details) => {
+    const parsed = rangesConflict.safeParse(details).data;
+    const [first, second] = parsed?.ranges ?? [];
+    return parsed && first && second
+      ? DETAILED_ERROR_MESSAGES.scheduleRangesOverlap(
+          formatWeekday(parsed.weekday),
+          formatTimeRange(first.start_time, first.end_time),
+          formatTimeRange(second.start_time, second.end_time),
         )
       : undefined;
   },
@@ -91,7 +109,7 @@ const DETAILED: Partial<Record<string, (details: Details) => string | undefined>
     const first = sessionConflicts.safeParse(details).data?.conflicts[0];
     return first
       ? DETAILED_ERROR_MESSAGES.sessionOverlap(
-          first.subject_name,
+          classOf(first),
           formatTimeRange(first.start_time, first.end_time),
         )
       : undefined;

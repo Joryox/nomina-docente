@@ -24,6 +24,7 @@ class SessionForPayroll:
     assignment_key: int
     subject_name: str
     career_name: str
+    group_code: str | None
     hourly_rate: Decimal
     minutes: int
 
@@ -33,6 +34,7 @@ class PayrollLine:
     assignment_key: int
     subject_name: str
     career_name: str
+    group_code: str | None
     hourly_rate: Decimal
     session_count: int
     minutes: int
@@ -72,7 +74,8 @@ class PayrollCalculation:
 
 
 def calculate_payroll(sessions: list[SessionForPayroll]) -> PayrollCalculation:
-    """Agrupa por (asignación, tarifa), suma minutos exactos y ordena por materia y carrera."""
+    """Agrupa por (asignación, tarifa), suma minutos exactos y ordena por materia, carrera y
+    grupo (sin grupo primero)."""
     groups: dict[tuple[int, Decimal], list[SessionForPayroll]] = defaultdict(list)
     for session in sessions:
         groups[(session.assignment_key, session.hourly_rate)].append(session)
@@ -81,6 +84,7 @@ def calculate_payroll(sessions: list[SessionForPayroll]) -> PayrollCalculation:
             assignment_key=key,
             subject_name=group[0].subject_name,
             career_name=group[0].career_name,
+            group_code=group[0].group_code,
             hourly_rate=rate,
             session_count=len(group),
             minutes=sum(session.minutes for session in group),
@@ -88,6 +92,12 @@ def calculate_payroll(sessions: list[SessionForPayroll]) -> PayrollCalculation:
         for (key, rate), group in groups.items()
     ]
     lines.sort(
-        key=lambda line: (sort_key(line.subject_name), sort_key(line.career_name), line.hourly_rate)
+        key=lambda line: (
+            sort_key(line.subject_name),
+            sort_key(line.career_name),
+            line.group_code is not None,
+            line.group_code or "",
+            line.hourly_rate,
+        )
     )
     return PayrollCalculation(tuple(lines))

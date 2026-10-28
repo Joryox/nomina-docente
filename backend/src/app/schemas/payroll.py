@@ -46,6 +46,7 @@ class PayrollLineResponse(BaseModel):
     assignment_id: uuid.UUID
     subject_name: str
     career_name: str
+    group: str | None
     hourly_rate: Money
     session_count: int
     minutes: int
@@ -94,6 +95,9 @@ class ReceiptLineResponse(BaseModel):
     assignment_id: uuid.UUID
     subject_name: str
     career_name: str
+    group: str | None = Field(
+        description="Grupo copiado al emitir; nulo en recibos emitidos sin grupo"
+    )
     hourly_rate: Money
     minutes: int
     hours: Hours

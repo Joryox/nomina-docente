@@ -134,3 +134,15 @@ def test_rejects_minimum_class_duration_above_the_maximum(
         build_settings(valid_settings_values)
 
     assert "CLASS_MIN_DURATION_MINUTES" in describe_validation_error(error.value)
+
+
+@pytest.mark.parametrize("value", ["14:00:30", "25:00", "tarde", "14:00+01:00"])
+def test_afternoon_shift_start_is_a_whole_minute_clock_time(
+    valid_settings_values: dict[str, Any], value: str
+) -> None:
+    valid_settings_values["afternoon_shift_start"] = value
+
+    with pytest.raises(ValidationError) as error:
+        build_settings(valid_settings_values)
+
+    assert "AFTERNOON_SHIFT_START" in describe_validation_error(error.value)

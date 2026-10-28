@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { Hours } from "@/components/domain/hours";
+import { ShiftBadge } from "@/components/domain/shift-badge";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,10 +29,17 @@ import { SCREENS } from "@/constants/screens";
 import { TEXTS } from "@/constants/texts";
 import { MINUTES_PER_HOUR } from "@/constants/validation";
 import { useAssignments } from "@/features/assignments/hooks/use-assignments";
+import { useShiftOf } from "@/features/catalogs/hooks/use-catalogs";
 import { toUserMessage } from "@/lib/api-error";
 import type { Weekday } from "@/lib/api-types";
 import { minutesOfDay } from "@/lib/calendar";
-import { formatTimeRange, formatWeekday } from "@/lib/formatters";
+import {
+  formatClassContext,
+  formatSubjectWithGroup,
+  formatTimeRange,
+  formatWeekday,
+} from "@/lib/formatters";
+import type { Shift } from "@/lib/shifts";
 
 import { useDeleteSchedule, useWeeklySchedule } from "../hooks/use-schedules";
 import type { WeeklySchedule } from "../types/schedules";
@@ -154,10 +162,16 @@ interface ViewProps {
   onSelect: (weekday: number, item: WeeklyClass) => void;
 }
 
-function blockLabel(day: number, item: WeeklyClass): string {
+/** Carrera, grupo y turno: «ISC · Grupo 3101 · Matutino». */
+function classContext(item: WeeklyClass, career: string, shift: Shift | null): string {
+  const context = formatClassContext(career, item.assignment.group);
+  return shift ? [context, TEXTS.classes.shifts[shift]].join(TEXTS.classes.separator) : context;
+}
+
+function blockLabel(day: number, item: WeeklyClass, shift: Shift | null): string {
   return texts.blockLabel(
     item.assignment.subject_name,
-    item.assignment.career_name,
+    classContext(item, item.assignment.career_name, shift),
     formatWeekday(day as Weekday),
     formatTimeRange(item.start_time, item.end_time),
   );
@@ -165,6 +179,7 @@ function blockLabel(day: number, item: WeeklyClass): string {
 
 /** Cuadrícula de escritorio: una columna por día y bloques a la altura de su horario. */
 function WeekGrid({ days, onSelect }: ViewProps) {
+  const shiftOf = useShiftOf();
   const { first, last } = hourRange(days);
   const hours = Array.from({ length: last - first }, (_, index) => first + index);
   const hourOffset = (time: string) => minutesOfDay(time) / MINUTES_PER_HOUR - first;
@@ -217,7 +232,8 @@ function WeekGrid({ days, onSelect }: ViewProps) {
                   <button
                     key={item.schedule_id}
                     type="button"
-                    aria-label={blockLabel(day.weekday, item)}
+                    aria-label={blockLabel(day.weekday, item, shiftOf(item.start_time))}
+                    title={blockLabel(day.weekday, item, shiftOf(item.start_time))}
                     onClick={() => onSelect(day.weekday, item)}
                     className="absolute inset-x-1 grid content-start overflow-hidden rounded-md border border-l-4 border-primary-ink border-y-line border-r-line bg-primary-soft px-2 py-0.5 text-left transition-colors duration-(--duration-fast) hover:bg-primary-soft-hover"
                     style={{
@@ -235,7 +251,7 @@ function WeekGrid({ days, onSelect }: ViewProps) {
                     </span>
                     {item.duration_minutes >= MINUTES_PER_HOUR ? (
                       <span className="truncate text-small text-fg-muted">
-                        {item.assignment.career_code}
+                        {classContext(item, item.assignment.career_code, shiftOf(item.start_time))}
                       </span>
                     ) : null}
                   </button>
@@ -251,6 +267,7 @@ function WeekGrid({ days, onSelect }: ViewProps) {
 
 /** Celular: un bloque por día con sus clases en orden. */
 function DayList({ days, onSelect }: ViewProps) {
+  const shiftOf = useShiftOf();
   return (
     <div className="grid gap-4 md:hidden">
       {days.map((day) => (
@@ -268,7 +285,7 @@ function DayList({ days, onSelect }: ViewProps) {
                 <li key={item.schedule_id}>
                   <button
                     type="button"
-                    aria-label={blockLabel(day.weekday, item)}
+                    aria-label={blockLabel(day.weekday, item, shiftOf(item.start_time))}
                     onClick={() => onSelect(day.weekday, item)}
                     className="grid w-full gap-0.5 px-5 py-3 text-left hover:bg-surface-hover"
                   >
@@ -279,8 +296,8 @@ function DayList({ days, onSelect }: ViewProps) {
                       <span className="figures">
                         {formatTimeRange(item.start_time, item.end_time)}
                       </span>
-                      {" · "}
-                      {item.assignment.career_name}
+                      {TEXTS.classes.separator}
+                      {classContext(item, item.assignment.career_name, shiftOf(item.start_time))}
                     </span>
                   </button>
                 </li>
@@ -305,6 +322,7 @@ function ClassDialog({
 }) {
   const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
   const remove = useDeleteSchedule();
+  const shift = useShiftOf()(item.start_time);
   const when = `${formatWeekday(weekday as Weekday)} ${formatTimeRange(item.start_time, item.end_time)}`;
   const close = (open: boolean) => !open && onClose();
 
@@ -316,7 +334,10 @@ function ClassDialog({
         schedule={{
           id: item.schedule_id,
           assignmentId: item.assignment.id,
-          assignmentLabel: item.assignment.subject_name,
+          assignmentLabel: formatSubjectWithGroup(
+            item.assignment.subject_name,
+            item.assignment.group,
+          ),
           weekday,
           startTime: item.start_time,
           endTime: item.end_time,
@@ -329,7 +350,10 @@ function ClassDialog({
       <ConfirmDialog
         open
         onOpenChange={close}
-        title={texts.remove.title(item.assignment.subject_name, when)}
+        title={texts.remove.title(
+          formatSubjectWithGroup(item.assignment.subject_name, item.assignment.group),
+          when,
+        )}
         description={texts.remove.body}
         confirmLabel={texts.remove.confirm}
         onConfirm={async () => {
@@ -349,10 +373,13 @@ function ClassDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{item.assignment.subject_name}</DialogTitle>
-          <DialogDescription>{item.assignment.career_name}</DialogDescription>
+          <DialogDescription>
+            {formatClassContext(item.assignment.career_name, item.assignment.group)}
+          </DialogDescription>
         </DialogHeader>
-        <DialogBody>
+        <DialogBody className="flex flex-wrap items-center gap-2">
           <p className="text-body text-fg capitalize figures">{when}</p>
+          {shift ? <ShiftBadge shift={shift} /> : null}
         </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => setMode("delete")}>

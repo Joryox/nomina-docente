@@ -75,6 +75,7 @@ def test_summary_with_classes_sessions_and_receipts(teacher_api: Api) -> None:
                 "subject_name": "Bases de Datos",
                 "career_code": "ISC",
                 "career_name": "Ingeniería en Sistemas Computacionales",
+                "group": None,
                 "is_active": True,
             },
             "start_time": "07:00",

@@ -7,6 +7,8 @@
   las ya registradas y los recibos emitidos no cambian.
 - **Cambio de materia o carrera:** solo sin bitácora; con historial cambiaría el sentido de
   sesiones ya registradas. En ese caso se desactiva y se crea otra asignación.
+- **Grupo** (RN-41): opcional y parte de la unicidad (materia + carrera + grupo). Se cambia
+  siempre: no altera horas ni importes, y los recibos emitidos guardan su propia copia.
 - **Desactivar** guarda el último día activo (hoy) y elimina sus horarios: una clase que ya
   no se imparte no debe ocupar el horario semanal ni bloquear otras clases. La bitácora y
   los recibos se conservan.
@@ -102,7 +104,7 @@ class AssignmentService:
         subject = self._require_active_subject(teacher, data.subject_id)
         career = self._require_active_career(data.career_code)
         rate = self._require_active_rate(data.hourly_rate)
-        self._ensure_no_duplicate(teacher, subject, career)
+        self._ensure_no_duplicate(teacher, subject, career, data.group)
         try:
             with self._unit_of_work.transaction():
                 assignment = self._assignments.add(
@@ -110,6 +112,7 @@ class AssignmentService:
                         teacher_id=teacher.id,
                         subject_id=subject.id,
                         career_id=career.id,
+                        group_code=data.group,
                         hourly_rate_id=rate.id,
                     )
                 )
@@ -129,11 +132,12 @@ class AssignmentService:
             subject = self._require_active_subject(teacher, data.subject_id)
         if data.career_code is not None and data.career_code != career.code:
             career = self._require_active_career(data.career_code)
+        group = data.group if "group" in data.model_fields_set else assignment.group_code
         identity_changed = subject.id != assignment.subject_id or career.id != assignment.career_id
-        if identity_changed:
-            if self._assignments.with_logbook([assignment.id]):
-                raise domain_error(ErrorCode.ASSIGNMENT_HAS_LOGBOOK)
-            self._ensure_no_duplicate(teacher, subject, career, exclude=assignment)
+        if identity_changed and self._assignments.with_logbook([assignment.id]):
+            raise domain_error(ErrorCode.ASSIGNMENT_HAS_LOGBOOK)
+        if identity_changed or group != assignment.group_code:
+            self._ensure_no_duplicate(teacher, subject, career, group, exclude=assignment)
         rate_id = assignment.hourly_rate_id
         if data.hourly_rate is not None and data.hourly_rate != assignment.hourly_rate.amount:
             rate_id = self._require_active_rate(data.hourly_rate).id
@@ -141,6 +145,7 @@ class AssignmentService:
             with self._unit_of_work.transaction():
                 assignment.subject_id = subject.id
                 assignment.career_id = career.id
+                assignment.group_code = group
                 assignment.hourly_rate_id = rate_id
                 self._assignments.flush()
         except ConstraintViolationError as error:
@@ -170,7 +175,11 @@ class AssignmentService:
                     "con una tarifa vigente.",
                 )
             self._ensure_no_duplicate(
-                teacher, assignment.subject, assignment.career, exclude=assignment
+                teacher,
+                assignment.subject,
+                assignment.career,
+                assignment.group_code,
+                exclude=assignment,
             )
             try:
                 with self._unit_of_work.transaction():
@@ -224,18 +233,20 @@ class AssignmentService:
         teacher: Teacher,
         subject: Subject,
         career: Career,
+        group: str | None,
         *,
         exclude: Assignment | None = None,
     ) -> None:
         duplicate = self._assignments.find_active_duplicate(
-            teacher.id, subject.id, career.id, exclude_id=exclude.id if exclude else None
+            teacher.id, subject.id, career.id, group, exclude_id=exclude.id if exclude else None
         )
         if duplicate is not None:
+            which = f"del grupo {group}" if group else "sin grupo"
             raise domain_error(
                 ErrorCode.ASSIGNMENT_ALREADY_EXISTS,
-                f"Ya tienes una asignación activa de {subject.name} en {career.name}. "
-                "Cambia su tarifa en lugar de crear otra.",
-                details={"assignment_id": str(duplicate.public_id)},
+                f"Ya tienes una asignación activa de {subject.name} en {career.name} {which}. "
+                "Usa otro grupo o cambia la tarifa de la existente.",
+                details={"assignment_id": str(duplicate.public_id), "group": group},
             )
 
     def _responses(self, assignments: list[Assignment]) -> list[AssignmentResponse]:
@@ -253,6 +264,7 @@ class AssignmentService:
                         is_active=assignment.subject.is_active,
                     ),
                     career=career_response(assignment.career),
+                    group=assignment.group_code,
                     hourly_rate=rate_response(assignment.hourly_rate),
                     is_active=assignment.is_active,
                     active_until=assignment.active_until,

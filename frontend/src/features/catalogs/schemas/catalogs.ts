@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-import { careerSchema, hourlyRateSchema, isoDateSchema, pageSchema } from "@/lib/api-schemas";
+import {
+  careerSchema,
+  clockTimeSchema,
+  hourlyRateSchema,
+  isoDateSchema,
+  pageSchema,
+} from "@/lib/api-schemas";
 import type { ApiSchemas } from "@/lib/api-types";
 
 export const careerPageSchema = pageSchema(careerSchema) satisfies z.ZodType<
@@ -19,6 +25,8 @@ export const businessRulesSchema = z.object({
   class_max_duration_minutes: z.number().int(),
   logbook_max_age_days: z.number().int(),
   payroll_issue_requires_closed_period: z.boolean(),
+  afternoon_shift_start: clockTimeSchema,
+  schedule_batch_max_ranges: z.number().int(),
   max_page_size: z.number().int(),
   quick_logbook_max_entries: z.number().int(),
 }) satisfies z.ZodType<ApiSchemas["BusinessRulesResponse"]>;

@@ -10,10 +10,13 @@ export const FIELD_LIMITS = {
   subjectName: 150,
   subjectCode: 20,
   logbookNotes: 500,
+  groupCode: 10,
   searchTerm: 100,
 } as const;
 
 export const SUBJECT_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
+/** Grupo ya normalizado (RN-41): mayúsculas, dígitos y guiones entre partes («3101-A»). */
+export const GROUP_CODE_PATTERN = /^[A-Z0-9]+(-[A-Z0-9]+)*$/;
 export const CLOCK_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 export const MONEY_PATTERN = /^\d{1,8}(\.\d{1,2})?$/;
 export const PERIOD_YEAR_RANGE = { min: 2000, max: 2100 } as const;
